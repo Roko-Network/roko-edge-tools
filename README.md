@@ -13,6 +13,12 @@ node itself is distributed as either:
 
 Node operation does not require access to the private source repository. See
 [nodes.roko.network](https://nodes.roko.network/) for the current runbook.
+The recommended setup path is to download the checksum manifest and reviewed
+one-off scripts and their
+[checksum manifest](https://downloads.roko.network/scripts/SHA256SUMS),
+verify them locally, inspect them, and then run the native or Docker workflow.
+Do not pipe a remote script directly into a shell. Offline Docker archives are
+available by HTTPS and through the official torrent for registry-free setup.
 
 The tools are intentionally dependency-light:
 
