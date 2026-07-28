@@ -47,6 +47,7 @@ cd roko-edge-tools
 | `bin/roko-time-health` | Chrony/system clock diagnostics for NTP and edge time hosts |
 | `bin/roko-node-tail` | Convenience log tail for a systemd-managed node |
 | `bin/roko-edge-report` | Generate a sanitized support bundle |
+| `bin/roko-seed-refresh` | Add current ROKO snapshot/release torrents to Transmission and verify completed payloads |
 
 ## Common environment variables
 
@@ -55,7 +56,33 @@ export ROKO_RPC_URL=http://127.0.0.1:9944
 export ROKO_SERVICE=roko-node
 export ROKO_BASE_PATH=/var/lib/roko
 export ROKO_NTP_SOURCE=ntp01.roko.network
+export ROKO_SEED_DIR=/srv/roko-seed
+export ROKO_SEED_PROFILES="normal releases"
 ```
+
+## BitTorrent seeding
+
+Seeders help distribute public snapshots and node release bundles. They do not
+need validator keys, wallet material, private source access, or exposed RPC.
+
+```bash
+sudo install -d -o debian-transmission -g debian-transmission \
+  /srv/roko-seed/snapshots /srv/roko-seed/releases
+./bin/roko-seed-refresh
+```
+
+The default profiles seed the current normal snapshot and current node release
+bundle. Add `archive` only when you have enough disk and bandwidth:
+
+```bash
+ROKO_SEED_PROFILES="normal archive releases" ./bin/roko-seed-refresh
+```
+
+For unattended refresh, install
+`examples/roko-seed-refresh.service` and
+`examples/roko-seed-refresh.timer` to `/etc/systemd/system/`, then enable the
+timer. See the public guide at
+[docs.roko.network](https://docs.roko.network/#bittorrent-seeding).
 
 ## What this does not do
 
@@ -63,6 +90,7 @@ export ROKO_NTP_SOURCE=ntp01.roko.network
 - It does not insert PTP² keys.
 - It does not expose RPC or NTP services.
 - It does not change firewall rules.
+- It does not delete old torrent data automatically.
 
 Use it to observe and report; make operational changes deliberately.
 
