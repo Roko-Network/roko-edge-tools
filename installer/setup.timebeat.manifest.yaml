@@ -3,7 +3,7 @@ kind: SetupManifest
 metadata:
   name: roko-node-timebeat-guided
   version: 1.0.0
-  description: Guided ROKO node preparation using an operator-licensed Timebeat Agent and reviewed PTP² configuration.
+  description: Guided ROKO validator timing preparation using the endorsed partner Timebeat Agent and reviewed PTP² Mesh configuration.
   install_type: user
 
 spec:

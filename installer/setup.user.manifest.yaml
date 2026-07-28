@@ -3,7 +3,7 @@ kind: SetupManifest
 metadata:
   name: roko-node-guided
   version: 1.0.0
-  description: Guided ROKO full, archive, observer, or validator-candidate preparation with Chrony.
+  description: Guided ROKO full, archive, observer, or validator-candidate bootstrap/testing/edge preparation with Chrony.
   install_type: user
 
 spec:

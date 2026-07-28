@@ -12,14 +12,19 @@ guided launcher immediately.
 
 ## Choose the clock stack
 
-Standard guided installation:
+Chrony bootstrap/testing/edge installation:
 
 ```bash
 ./bin/roko-guided-install --time-stack chrony --dry-run
 ./bin/roko-guided-install --time-stack chrony
 ```
 
-Licensed Timebeat installation:
+Official partner validator-timing installation:
+
+Timebeat is ROKO Network's endorsed official timing partner. Validator
+operators targeting eligibility for the maximum payout tier must run a
+licensed Timebeat deployment and join the Timebeat PTP² Mesh. Eligibility also
+depends on measured performance and current network program rules.
 
 1. Download the stable package for the host architecture and request a
    per-node licence directly from
@@ -81,7 +86,10 @@ activation, and authoring require the separate reviewed operator process:
 
 ROKO's built-in PTP² observer mode and Timebeat's licensed PTP² Mesh are
 separate layers. The former is authenticated ROKO libp2p observation; the
-latter is the host timing product that steers and distributes precision time.
+latter is the endorsed partner timing product that steers and distributes
+precision time and satisfies the partner-mesh requirement for maximum-tier
+validator eligibility. Running the ROKO observer does not replace that
+requirement.
 
 ## Direct AIWG use
 
