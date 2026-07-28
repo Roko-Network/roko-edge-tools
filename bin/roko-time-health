@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/roko-edge-common.sh
+. "$TOOL_DIR/lib/roko-edge-common.sh"
+
+section "system clock"
+if have timedatectl; then
+  timedatectl status --no-pager || true
+else
+  warn "timedatectl not available"
+fi
+
+section "chrony"
+if have chronyc; then
+  chronyc tracking || true
+  chronyc sources -v || true
+  chronyc activity || true
+else
+  warn "chronyc not available; install chrony for detailed time diagnostics"
+fi
+
+section "ROKO public NTP reachability"
+if have chronyd && have chronyc; then
+  chronyc -N -n sources "$ROKO_NTP_SOURCE" >/dev/null 2>&1 || true
+fi
+if have ntpdate; then
+  ntpdate -q "$ROKO_NTP_SOURCE" || true
+elif have sntp; then
+  sntp "$ROKO_NTP_SOURCE" || true
+else
+  warn "install ntpdate or sntp for one-shot public NTP reach checks"
+fi

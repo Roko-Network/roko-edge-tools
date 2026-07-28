@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+"""Probe ROKO JSON-RPC health with Python standard library only."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import urllib.error
+import urllib.request
+
+
+METHODS = [
+    ("system_health", []),
+    ("system_nodeRoles", []),
+    ("chain_getFinalizedHead", []),
+    ("temporal_getMeshState", []),
+    ("temporal_getConsensusTime", []),
+]
+
+
+def rpc_batch(url: str, timeout: float) -> list[dict]:
+    body = [
+        {"jsonrpc": "2.0", "id": index + 1, "method": method, "params": params}
+        for index, (method, params) in enumerate(METHODS)
+    ]
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode(),
+        headers={"content-type": "application/json", "user-agent": "roko-edge-tools/1"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as res:
+        return json.loads(res.read().decode())
+
+
+def by_id(batch: list[dict], idx: int) -> dict:
+    for item in batch:
+        if item.get("id") == idx:
+            return item
+    return {}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--rpc", default="http://127.0.0.1:9944", help="ROKO JSON-RPC URL")
+    parser.add_argument("--timeout", type=float, default=8.0, help="HTTP timeout seconds")
+    parser.add_argument("--json", action="store_true", help="print raw JSON summary")
+    args = parser.parse_args()
+
+    try:
+      batch = rpc_batch(args.rpc, args.timeout)
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+      print(f"error: RPC probe failed: {exc}", file=sys.stderr)
+      return 2
+
+    health = by_id(batch, 1).get("result") or {}
+    roles = by_id(batch, 2).get("result")
+    finalized = by_id(batch, 3).get("result")
+    mesh = by_id(batch, 4).get("result") or {}
+    consensus_time = by_id(batch, 5).get("result")
+
+    summary = {
+        "rpc": args.rpc,
+        "peers": health.get("peers"),
+        "isSyncing": health.get("isSyncing"),
+        "roles": roles,
+        "finalizedHead": finalized,
+        "meshPeerCount": mesh.get("peerCount"),
+        "timeQuality": mesh.get("timeQuality"),
+        "convergenceState": mesh.get("convergenceState"),
+        "consensusTime": consensus_time,
+    }
+
+    if args.json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+    else:
+        print(f"RPC: {summary['rpc']}")
+        print(f"peers: {summary['peers']} syncing: {summary['isSyncing']} roles: {summary['roles']}")
+        print(f"finalized: {summary['finalizedHead']}")
+        print(
+            "mesh: peers={meshPeerCount} quality={timeQuality} convergence={convergenceState}".format(
+                **summary
+            )
+        )
+        print(f"consensusTime: {summary['consensusTime']}")
+
+    if health.get("isSyncing") is True:
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

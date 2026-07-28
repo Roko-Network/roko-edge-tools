@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/roko-edge-common.sh
+. "$TOOL_DIR/lib/roko-edge-common.sh"
+
+LINES="${1:-120}"
+if ! have journalctl; then
+  echo "error: journalctl not available" >&2
+  exit 2
+fi
+
+journalctl -u "$ROKO_SERVICE" --no-pager --lines "$LINES" --follow

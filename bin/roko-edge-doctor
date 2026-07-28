@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/roko-edge-common.sh
+. "$TOOL_DIR/lib/roko-edge-common.sh"
+
+section "environment"
+printf 'ROKO_RPC_URL=%s\n' "$ROKO_RPC_URL"
+printf 'ROKO_SERVICE=%s\n' "$ROKO_SERVICE"
+printf 'ROKO_BASE_PATH=%s\n' "$ROKO_BASE_PATH"
+printf 'ROKO_NTP_SOURCE=%s\n' "$ROKO_NTP_SOURCE"
+
+section "required tools"
+for tool in curl python3 systemctl journalctl chronyc ss df; do
+  if have "$tool"; then ok "$tool"; else warn "$tool missing"; fi
+done
+
+section "service"
+if have systemctl; then
+  systemctl is-enabled "$ROKO_SERVICE" 2>/dev/null || true
+  systemctl is-active "$ROKO_SERVICE" 2>/dev/null || true
+  systemctl status "$ROKO_SERVICE" --no-pager --lines=8 2>/dev/null || true
+else
+  warn "systemctl not available"
+fi
+
+section "rpc"
+if have python3; then
+  "$TOOL_DIR/bin/roko-rpc-health" --rpc "$ROKO_RPC_URL" || true
+else
+  run_optional "system_health" json_rpc system_health
+fi
+
+section "time"
+"$TOOL_DIR/bin/roko-time-health" || true
+
+section "storage"
+if [ -e "$ROKO_BASE_PATH" ]; then
+  df -h "$ROKO_BASE_PATH" || true
+  du -sh "$ROKO_BASE_PATH" 2>/dev/null || true
+else
+  warn "base path not found: $ROKO_BASE_PATH"
+fi
+
+section "network listeners"
+if have ss; then
+  ss -ltnup | grep -E '(:9944|:9933|:30333|:123)[[:space:]]' || true
+else
+  warn "ss not available"
+fi
+
+section "recent logs"
+if have journalctl; then
+  journalctl -u "$ROKO_SERVICE" --since "30 min ago" --no-pager --lines=40 2>/dev/null || true
+fi
