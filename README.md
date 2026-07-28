@@ -2,6 +2,18 @@
 
 Small helper tools for people running ROKO local, edge, observer, or lab nodes.
 
+This is the only public repository required by these optional diagnostics. The
+node itself is distributed as either:
+
+- an architecture-specific public image at
+  `ghcr.io/roko-network/roko-node:testnet-latest-{amd64,arm64}`; or
+- a checksum-verified native binary from
+  [downloads.roko.network](https://downloads.roko.network/), also available
+  through [torrent.roko.network](https://torrent.roko.network/).
+
+Node operation does not require access to the private source repository. See
+[nodes.roko.network](https://nodes.roko.network/) for the current runbook.
+
 The tools are intentionally dependency-light:
 
 - Bash for host/service/time checks
