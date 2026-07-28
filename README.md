@@ -1,13 +1,36 @@
-# ROKO Edge Tools
+<p align="center">
+  <a href="https://nodes.roko.network/edge/">
+    <img src="assets/roko-logo.png" width="104" height="104" alt="ROKO Network">
+  </a>
+</p>
 
-Small helper tools for people running ROKO local, edge, observer, or lab nodes.
+<h1 align="center">ROKO Edge Tools</h1>
 
-The tools are intentionally dependency-light:
+<p align="center">
+  Operator-first health, diagnostics, and reporting tools for infrastructure you control.
+</p>
+
+<p align="center">
+  <a href="https://nodes.roko.network/edge/">Edge guide</a>
+  ·
+  <a href="https://time.roko.network/">ROKO Time</a>
+  ·
+  <a href="https://docs.roko.network/">Documentation</a>
+</p>
+
+---
+
+ROKO Edge Tools is the dependency-light companion for local, edge, observer,
+and lab nodes. The toolkit inspects your host and reports what it sees; it does
+not silently change network, validator, or time configuration.
+
+## Design principles
 
 - Bash for host/service/time checks
 - Python 3 standard library for JSON-RPC probes
-- No secrets
-- No writes unless you explicitly copy example config into your host
+- No secret collection
+- No configuration writes unless you explicitly copy the example yourself
+- Local RPC by default
 
 ## Quick start
 
@@ -20,10 +43,10 @@ cd roko-edge-tools
 ./bin/roko-time-health
 ```
 
-## Tools
+## Included tools
 
 | Tool | Purpose |
-|---|---|
+|:---|:---|
 | `bin/roko-edge-doctor` | One-shot local node, service, RPC, disk, network, and Chrony health summary |
 | `bin/roko-rpc-health` | JSON-RPC health probe for local or public ROKO RPC |
 | `bin/roko-time-health` | Chrony/system clock diagnostics for NTP and edge time hosts |
@@ -39,7 +62,7 @@ export ROKO_BASE_PATH=/var/lib/roko
 export ROKO_NTP_SOURCE=ntp01.roko.network
 ```
 
-## What this does not do
+## Safety boundary
 
 - It does not manage validator keys.
 - It does not insert PTP² keys.
@@ -48,12 +71,10 @@ export ROKO_NTP_SOURCE=ntp01.roko.network
 
 Use it to observe and report; make operational changes deliberately.
 
+Read the [edge operator notes](docs/edge-operator-notes.md) before exposing
+services beyond loopback or a private LAN.
+
 ## Mirrors
 
-Primary public repo:
-
-- `https://github.com/Roko-Network/roko-edge-tools`
-
-Mirror:
-
-- `https://git.integrolabs.net/roctinam/roko-edge-tools`
+- Primary: [github.com/Roko-Network/roko-edge-tools](https://github.com/Roko-Network/roko-edge-tools)
+- Mirror: [git.integrolabs.net/roctinam/roko-edge-tools](https://git.integrolabs.net/roctinam/roko-edge-tools)

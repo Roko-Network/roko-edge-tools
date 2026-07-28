@@ -1,4 +1,8 @@
-# Edge operator notes
+# ROKO edge operator notes
+
+[Edge guide](https://nodes.roko.network/edge/) ·
+[ROKO Time](https://time.roko.network/) ·
+[Back to tools](../README.md)
 
 ## Recommended operating model
 
