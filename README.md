@@ -9,7 +9,7 @@ node itself is distributed as either:
   `ghcr.io/roko-network/roko-node:testnet-latest-{amd64,arm64}`; or
 - a checksum-verified native binary from
   [downloads.roko.network](https://downloads.roko.network/), also available
-  through [torrent.roko.network](https://torrent.roko.network/).
+  through the [peer-assisted download guide](https://downloads.roko.network/torrent).
 
 Node operation does not require access to the private source repository. See
 [nodes.roko.network](https://nodes.roko.network/) for the current runbook.
