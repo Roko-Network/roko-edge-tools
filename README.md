@@ -12,7 +12,7 @@ The tools are intentionally dependency-light:
 ## Quick start
 
 ```bash
-git clone https://github.com/jmagly/roko-edge-tools.git
+git clone https://github.com/Roko-Network/roko-edge-tools.git
 cd roko-edge-tools
 
 ./bin/roko-edge-doctor
@@ -52,8 +52,8 @@ Use it to observe and report; make operational changes deliberately.
 
 Primary public repo:
 
-- `https://github.com/jmagly/roko-edge-tools`
+- `https://github.com/Roko-Network/roko-edge-tools`
 
 Mirror:
 
-- `https://github.com/roctinam/roko-edge-tools`
+- `https://git.integrolabs.net/roctinam/roko-edge-tools`
