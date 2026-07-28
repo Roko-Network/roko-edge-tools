@@ -38,6 +38,20 @@ cd roko-edge-tools
 ./bin/roko-time-health
 ```
 
+For a guided full, archive, observer, or validator-candidate installation:
+
+```bash
+./bin/roko-guided-install --time-stack chrony --dry-run
+./bin/roko-guided-install --time-stack chrony
+```
+
+Operators using Timebeat can select `--time-stack timebeat`; they must obtain
+their own package and per-node licence from
+[timebeat.app](https://www.timebeat.app/downloads/software). The installer
+collects the local package, licence, and reviewed configuration paths and
+performs the remaining installation and verification steps. See the
+[agentic installer guide](installer/README.md).
+
 ## Tools
 
 | Tool | Purpose |
@@ -48,6 +62,7 @@ cd roko-edge-tools
 | `bin/roko-node-tail` | Convenience log tail for a systemd-managed node |
 | `bin/roko-edge-report` | Generate a sanitized support bundle |
 | `bin/roko-seed-refresh` | Add current ROKO snapshot/release torrents to Transmission and verify completed payloads |
+| `bin/roko-guided-install` | Run the self-contained AIWG-manifested installer for Chrony or operator-licensed Timebeat deployments |
 
 ## Common environment variables
 
@@ -84,10 +99,17 @@ For unattended refresh, install
 timer. See the public guide at
 [docs.roko.network](https://docs.roko.network/#bittorrent-seeding).
 
-## What this does not do
+## Safety boundaries
 
-- It does not manage validator keys.
-- It does not insert PTP² keys.
+- The guided observer flow inserts one ROKO `ptp2` key interactively; it never
+  places the secret in argv, a manifest, or a report.
+- The validator-candidate flow does not generate or manage validator session
+  keys and never enables authoring.
+- Timebeat software, configurations, and licences remain vendor/operator
+  supplied and are never redistributed by ROKO.
+- The installer performs the host, clock, ROKO runtime, service, observer-key,
+  synchronization, finality, and readiness-report steps. It does not guess a
+  vendor Timebeat configuration or activate validator authority.
 - It does not expose RPC or NTP services.
 - It does not change firewall rules.
 - It does not delete old torrent data automatically.
