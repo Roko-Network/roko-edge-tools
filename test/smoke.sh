@@ -19,5 +19,7 @@ grep -R "bittorrent-seeding" README.md examples bin >/dev/null
 grep -R "setup.aiwg.io/v1" installer/*.yaml >/dev/null
 grep -R "www.timebeat.app/downloads/software" README.md installer >/dev/null
 grep -R "does not redistribute" README.md installer >/dev/null
+grep -F "wait for explicit operator approval" installer/AGENT-INSTALL.md >/dev/null
+grep -F "Do not include secrets" installer/AGENT-INSTALL.md >/dev/null
 
 echo "smoke ok"

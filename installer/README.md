@@ -10,6 +10,20 @@ No AIWG installation is required on the target node. AIWG agents can inspect
 and operate the canonical manifests; operators can run the self-contained
 guided launcher immediately.
 
+## Hand this install to an AI agent
+
+Give the agent
+[`AGENT-INSTALL.md`](AGENT-INSTALL.md). It is the public, model-neutral
+execution contract for the installer. It requires the agent to collect every
+choice first, inspect the selected manifest and scripts, run the dry-run, wait
+for explicit approval, and prove the full readiness gate before reporting
+success.
+
+The contract also prevents an agent from exposing RPC, deleting chain data,
+handling key material, enabling validator authoring, or treating an active
+service as proof of readiness. AIWG is optional; the bundled launcher is the
+compatible execution path for agents that do not have the AIWG CLI.
+
 ## Choose the clock stack
 
 Chrony bootstrap/testing/edge installation:
