@@ -24,6 +24,25 @@ handling key material, enabling validator authoring, or treating an active
 service as proof of readiness. AIWG is optional; the bundled launcher is the
 compatible execution path for agents that do not have the AIWG CLI.
 
+## Choose the connectivity layers
+
+Every installed role connects to the live ROKO blockchain P2P network through
+the published bootnode and runs ROKO's `/roko/timesync/1` protocol. The role
+and clock-stack choices determine how the host participates beyond that
+baseline:
+
+| Selection | ROKO chain P2P | ROKO PTP² | Timebeat PTP² Mesh |
+| --- | --- | --- | --- |
+| `full`, `archive`, or `validator-candidate` + Chrony | connected | non-advertising node protocol | not selected |
+| `observer` + Chrony | connected | authenticated observer advertisement | not selected |
+| `full`, `archive`, or `validator-candidate` + Timebeat | connected | non-advertising node protocol | operator-configured licensed mesh |
+| `observer` + Timebeat | connected | authenticated observer advertisement | operator-configured licensed mesh |
+
+ROKO PTP² is a ROKO libp2p protocol, not IEEE 1588 traffic on UDP/319 or
+UDP/320. Timebeat PTP² is a separate timing product and network. Selecting
+`observer` does not enroll a validator, and selecting Timebeat does not enable
+ROKO observer advertisement.
+
 ## Choose the clock stack
 
 Chrony bootstrap/testing/edge installation:
@@ -81,8 +100,8 @@ configuration contains a PTP² section and installs the reviewed file exactly.
 - testnet chain specification;
 - hardened, non-authoring full/archive/observer service;
 - interactive ROKO `ptp2` observer-key insertion when that role is selected;
-- matching genesis, peers, full sync, stable peer identity, and advancing
-  finalized-head verification; and
+- matching genesis, ROKO peers, ROKO time-mesh RPC, non-authoring role, full
+  sync, stable peer identity, and advancing finalized-head verification; and
 - a value-free readiness report.
 
 Before any change, the launcher shows the resolved node name, role, runtime,

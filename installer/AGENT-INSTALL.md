@@ -15,6 +15,17 @@ Collect all of these choices before running an installation step:
 - synchronization timeout; and
 - readiness-report path.
 
+Explain the resulting connectivity before approval:
+
+- every role joins the ROKO blockchain P2P network and runs the ROKO time
+  protocol;
+- `observer` adds authenticated ROKO PTP² advertisement with a dedicated
+  local key;
+- `timebeat` joins a separate operator-configured licensed PTP² timing mesh;
+  and
+- selecting `observer` with `timebeat` enables both PTP² layers alongside
+  ROKO chain P2P.
+
 For Timebeat, also ask the operator to place the vendor package, per-node
 licence, and reviewed configuration on the target host. Ask only for their
 local file paths. Never request, display, copy, summarize, or transmit the
@@ -35,8 +46,9 @@ contents of a licence, key, token, or proprietary configuration.
 6. Show the resolved plan and wait for explicit operator approval.
 7. Run the same launcher command without `--dry-run`.
 8. Report success only after the readiness gate proves the expected genesis,
-   one or more peers, `isSyncing: false`, stable peer identity, and advancing
-   finality. Give the operator the readiness-report path.
+   one or more ROKO peers, an available ROKO time-mesh RPC, a non-authoring
+   role, `isSyncing: false`, stable peer identity, and advancing finality. Give
+   the operator the readiness-report path.
 
 Chrony:
 
@@ -79,6 +91,7 @@ Return a concise report containing:
 - selected role, runtime, and clock owner;
 - installed node revision and verified testnet genesis;
 - peer count, synchronization state, and finality result;
+- ROKO PTP² mode and whether Timebeat PTP² was selected;
 - readiness-report path;
 - any skipped or failed gate; and
 - the next reviewed action, if the role is `validator-candidate`.

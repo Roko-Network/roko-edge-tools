@@ -21,5 +21,16 @@ grep -R "www.timebeat.app/downloads/software" README.md installer >/dev/null
 grep -R "does not redistribute" README.md installer >/dev/null
 grep -F "wait for explicit operator approval" installer/AGENT-INSTALL.md >/dev/null
 grep -F "Do not include secrets" installer/AGENT-INSTALL.md >/dev/null
+grep -F "ROKO chain P2P: enabled via the public bootnode" bin/roko-guided-install >/dev/null
+grep -F "temporal_getMeshState" installer/scripts/start-and-verify.sh >/dev/null
+grep -F "roko_ptp2_mode=" installer/scripts/write-readiness-report.sh >/dev/null
+
+dry_run_output="$(
+  NODE_NAME=smoke-observer NODE_ROLE=observer RUNTIME=native \
+    SYNC_TIMEOUT_SECONDS=60 REPORT_PATH=/tmp/roko-smoke-readiness.txt \
+    bin/roko-guided-install --time-stack chrony --non-interactive --dry-run
+)"
+grep -F "ROKO PTP²:      authenticated observer" <<<"$dry_run_output" >/dev/null
+grep -F "Timebeat PTP²:  not selected" <<<"$dry_run_output" >/dev/null
 
 echo "smoke ok"

@@ -45,6 +45,12 @@ For a guided full, archive, observer, or validator-candidate installation:
 ./bin/roko-guided-install --time-stack chrony
 ```
 
+Every role joins the live ROKO chain P2P network. Choose `observer` to
+advertise authenticated measurements on ROKO's built-in PTP² protocol. Choose
+`--time-stack timebeat` for the separate licensed Timebeat PTP² Mesh. An
+`observer` using Timebeat participates in both PTP² layers while remaining a
+non-authoring ROKO node until separately enrolled.
+
 Operators using Timebeat can select `--time-stack timebeat`; they must obtain
 their own package and per-node licence from
 [timebeat.app](https://www.timebeat.app/downloads/software). The installer

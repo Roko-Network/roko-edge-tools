@@ -17,7 +17,9 @@ while (( SECONDS < deadline )); do
         {"jsonrpc":"2.0","id":1,"method":"chain_getBlockHash","params":[0]},
         {"jsonrpc":"2.0","id":2,"method":"system_health","params":[]},
         {"jsonrpc":"2.0","id":3,"method":"system_localPeerId","params":[]},
-        {"jsonrpc":"2.0","id":4,"method":"chain_getFinalizedHead","params":[]}
+        {"jsonrpc":"2.0","id":4,"method":"chain_getFinalizedHead","params":[]},
+        {"jsonrpc":"2.0","id":5,"method":"temporal_getMeshState","params":[]},
+        {"jsonrpc":"2.0","id":6,"method":"system_nodeRoles","params":[]}
       ]' 2>/dev/null || true
   )"
   if [[ -n "$response" ]] && python3 - "$expected_genesis" "$response" <<'PY'
@@ -32,6 +34,12 @@ health = items.get(2, {}).get("result") or {}
 if health.get("isSyncing") is not False or int(health.get("peers", 0)) < 1:
     raise SystemExit(1)
 if not items.get(3, {}).get("result") or not items.get(4, {}).get("result"):
+    raise SystemExit(1)
+mesh = items.get(5, {}).get("result") or {}
+if not isinstance(mesh.get("peerCount"), int):
+    raise SystemExit(1)
+roles = items.get(6, {}).get("result") or []
+if "Authority" in roles:
     raise SystemExit(1)
 PY
   then
@@ -67,7 +75,7 @@ PY
       fail "The node local peer identity changed across observations."
     [[ "$first_finalized" != "$second_finalized" ]] ||
       fail "The node is synchronized but finalized head did not advance across observations."
-    log "Genesis, peer connectivity, full synchronization, persistent peer identity, and advancing finality verified."
+    log "Genesis, ROKO peer connectivity, ROKO time-mesh RPC, non-authoring role, full synchronization, persistent peer identity, and advancing finality verified."
     exit 0
   fi
   log "Waiting for P2P synchronization and advancing finality..."

@@ -11,6 +11,21 @@ umask 077
   printf 'node_role=%s\n' "${NODE_ROLE:?}"
   printf 'runtime=%s\n' "${RUNTIME:?}"
   printf 'clock_provider=%s\n' "${CLOCK_PROVIDER:-chrony}"
+  printf 'roko_chain_p2p=enabled\n'
+  printf 'roko_ptp2_mode=%s\n' "$(
+    if [[ "$NODE_ROLE" == observer ]]; then
+      printf 'authenticated-observer'
+    else
+      printf 'non-advertising-node'
+    fi
+  )"
+  printf 'timebeat_ptp2=%s\n' "$(
+    if [[ "${CLOCK_PROVIDER:-chrony}" == timebeat ]]; then
+      printf 'operator-configured'
+    else
+      printf 'not-selected'
+    fi
+  )"
   printf 'service_active=%s\n' "$(systemctl is-active roko-node.service)"
   printf 'binary='
   if [[ "$RUNTIME" == native ]]; then

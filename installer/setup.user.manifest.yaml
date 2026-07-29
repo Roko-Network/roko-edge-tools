@@ -22,7 +22,7 @@ spec:
       type: choice
       choices: [full, archive, observer, validator-candidate]
       interactive_required: true
-      description: Install role. Validator candidates remain non-authoring until separately enrolled.
+      description: Install role. Every role joins ROKO chain P2P and its time protocol; observer additionally advertises authenticated ROKO PTP² measurements. Validator candidates remain non-authoring until separately enrolled.
     - name: RUNTIME
       type: choice
       choices: [native, docker]
@@ -32,7 +32,7 @@ spec:
       type: choice
       choices: [chrony]
       default: chrony
-      description: Host clock provider for the standard guided profile.
+      description: Host clock provider for the standard guided profile. Chrony does not join the separate licensed Timebeat PTP² Mesh.
     - name: SYNC_TIMEOUT_SECONDS
       type: int
       default: 3600
