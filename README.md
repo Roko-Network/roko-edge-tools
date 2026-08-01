@@ -1,6 +1,24 @@
-# ROKO Edge Tools
+<p align="center">
+  <a href="https://nodes.roko.network/edge/">
+    <img src="assets/roko-logo.png" width="104" height="104" alt="ROKO Network">
+  </a>
+</p>
 
-Small helper tools for people running ROKO local, edge, observer, or lab nodes.
+<h1 align="center">ROKO Edge Tools</h1>
+
+<p align="center">
+  Operator-first health, installation, diagnostics, and reporting tools for infrastructure you control.
+</p>
+
+<p align="center">
+  <a href="https://nodes.roko.network/edge/">Edge guide</a>
+  ·
+  <a href="https://time.roko.network/">ROKO Time</a>
+  ·
+  <a href="https://docs.roko.network/">Documentation</a>
+</p>
+
+---
 
 This is the only public repository required by these optional diagnostics. The
 node itself is distributed as either:
@@ -138,10 +156,5 @@ Use it to observe and report; make operational changes deliberately.
 
 ## Mirrors
 
-Primary public repo:
-
-- `https://github.com/Roko-Network/roko-edge-tools`
-
-Mirror:
-
-- `https://git.integrolabs.net/roctinam/roko-edge-tools`
+- Primary: [github.com/Roko-Network/roko-edge-tools](https://github.com/Roko-Network/roko-edge-tools)
+- Mirror: [git.integrolabs.net/roctinam/roko-edge-tools](https://git.integrolabs.net/roctinam/roko-edge-tools)
