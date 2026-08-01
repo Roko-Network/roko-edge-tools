@@ -1,0 +1,33 @@
+timebeat:
+  license.keyfile: /etc/timebeat/timebeat.lic
+  config.peerids: /etc/timebeat/peerids.json
+
+  # Chrony owns the system clock while this deployment is qualified.
+  clock_sync:
+    adjust_clock: false
+    primary_clocks: []
+    secondary_clocks: []
+
+    ptpsquared:
+      enable: true
+      discovery:
+        dht: true
+        dht_seed_list:
+          - /ip4/10.101.101.123/tcp/65107/p2p/16Uiu2HAm5yZqRwD8teWSM5zgG9VMDSiy16s2Q7jS6Pf9fuNUfZtS
+          - /ip4/10.101.101.125/tcp/65107/p2p/16Uiu2HAkvpcfdwS4B2cYjJtE6FPsrMxV7kjnnNrugd3Gt89x4qG7
+      keypath: /etc/timebeat/ptp2key.private
+      interface: "@TIMEBEAT_INTERFACE@"
+      seats_to_offer: 0
+      seats_to_fill: 3
+      concurrent_sources: 2
+
+setup.dashboards.enabled: false
+output.elasticsearch.enabled: false
+logging.to_files: true
+logging.files:
+  path: /var/log/timebeat
+  name: timebeat
+  keepfiles: 7
+  permissions: 0600
+seccomp.enabled: false
+monitoring.enabled: false

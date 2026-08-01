@@ -9,7 +9,7 @@ metadata:
 spec:
   platforms:
     - os: linux
-      distros: [ubuntu, debian, fedora, rhel, rocky, centos]
+      distros: [ubuntu, debian]
       arch: [x86_64, arm64]
       shell: bash
 
@@ -32,7 +32,7 @@ spec:
       type: choice
       choices: [timebeat]
       default: timebeat
-      description: Host clock provider for the separate licensed Timebeat PTP² Mesh; choose observer as the node role to also advertise authenticated ROKO PTP² measurements.
+      description: Licensed Timebeat PTP² mesh monitor; Chrony remains the host clock owner during qualification.
     - name: TIMEBEAT_PACKAGE
       type: path
       interactive_required: true
@@ -41,10 +41,10 @@ spec:
       type: path
       interactive_required: true
       description: Per-node licence obtained directly from Timebeat.
-    - name: TIMEBEAT_CONFIG
-      type: path
+    - name: TIMEBEAT_INTERFACE
+      type: string
       interactive_required: true
-      description: Operator-reviewed timebeat.yml with licence and PTP² Mesh configuration.
+      description: Network interface used to reach both managed OTA PTP² seeds.
     - name: SYNC_TIMEOUT_SECONDS
       type: int
       default: 3600
@@ -77,7 +77,7 @@ spec:
       type: script
       script: scripts/install-timebeat.sh
       depends_on: [preflight]
-      params: [TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_CONFIG]
+      params: [TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_INTERFACE]
       verify: systemctl is-active --quiet timebeat.service
     - id: install-node
       type: script

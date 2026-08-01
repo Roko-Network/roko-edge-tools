@@ -14,7 +14,7 @@ Runs the script-first installation flow described by the ROKO AIWG
 SetupManifest. Every parameter is collected before the first system change.
 
 Options:
-  --time-stack chrony|timebeat  Host clock owner (default: chrony)
+  --time-stack chrony|timebeat  Timing profile (default: chrony)
   --dry-run                     Show the resolved plan without changing the host
   --non-interactive             Require all parameters from environment values
   -h, --help                    Show this help
@@ -31,7 +31,7 @@ Connectivity layers:
 
 Environment values:
   NODE_NAME, NODE_ROLE, RUNTIME, SYNC_TIMEOUT_SECONDS, REPORT_PATH
-  TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_CONFIG (Timebeat profile only)
+  TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_INTERFACE (Timebeat profile only)
 EOF
 }
 
@@ -146,8 +146,8 @@ prompt_value REPORT_PATH "Readiness report path" "$PWD/roko-install-readiness.tx
 
 CLOCK_PROVIDER="$time_stack"
 if [[ "$time_stack" == timebeat ]]; then
-  clock_step="Install the operator-supplied Timebeat files and verify one active clock owner"
-  timebeat_connectivity="configured from the operator-reviewed licensed profile"
+  clock_step="Install Chrony plus verified Timebeat 2.3.5 and join both ROKO OTA sources"
+  timebeat_connectivity="both managed OTA seeds with two concurrent sources"
 else
   clock_step="Install Chrony and wait for synchronization against diverse sources"
   timebeat_connectivity="not selected"
@@ -160,12 +160,12 @@ fi
 if [[ "$time_stack" == timebeat ]]; then
   prompt_value TIMEBEAT_PACKAGE "Path to the vendor-downloaded Timebeat .deb or .rpm"
   prompt_value TIMEBEAT_LICENSE "Path to the per-node Timebeat licence"
-  prompt_value TIMEBEAT_CONFIG "Path to the reviewed Timebeat configuration"
+  prompt_value TIMEBEAT_INTERFACE "Network interface used to reach the OTA mesh" "$(ip route show default 2>/dev/null | awk 'NR == 1 { print $5 }')"
 fi
 
 export NODE_NAME NODE_ROLE RUNTIME CLOCK_PROVIDER SYNC_TIMEOUT_SECONDS REPORT_PATH
 if [[ "$time_stack" == timebeat ]]; then
-  export TIMEBEAT_PACKAGE TIMEBEAT_LICENSE TIMEBEAT_CONFIG
+  export TIMEBEAT_PACKAGE TIMEBEAT_LICENSE TIMEBEAT_INTERFACE
 fi
 
 cat <<EOF

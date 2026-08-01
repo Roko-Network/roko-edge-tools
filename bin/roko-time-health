@@ -2,7 +2,7 @@
 set -euo pipefail
 
 TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=../lib/roko-edge-common.sh
+# shellcheck disable=SC1091
 . "$TOOL_DIR/lib/roko-edge-common.sh"
 
 section "system clock"
@@ -19,6 +19,29 @@ if have chronyc; then
   chronyc activity || true
 else
   warn "chronyc not available; install chrony for detailed time diagnostics"
+fi
+
+section "Timebeat PTP2 mesh"
+if have timebeat; then
+  timebeat version 2>/dev/null || true
+elif [[ -x /usr/share/timebeat/bin/timebeat ]]; then
+  /usr/share/timebeat/bin/timebeat version 2>/dev/null || true
+else
+  warn "Timebeat is not installed"
+fi
+if have systemctl && systemctl is-active --quiet timebeat.service; then
+  printf 'timebeat.service: active\n'
+  if have ss; then
+    for ota in 10.101.101.123 10.101.101.125; do
+      if ss -Hnt state established | grep -q "$ota:65107"; then
+        printf 'OTA session %s: established\n' "$ota"
+      else
+        warn "OTA session $ota:65107 is not established"
+      fi
+    done
+  fi
+else
+  warn "timebeat.service is not active"
 fi
 
 section "ROKO public NTP reachability"

@@ -26,10 +26,11 @@ Explain the resulting connectivity before approval:
 - selecting `observer` with `timebeat` enables both PTP² layers alongside
   ROKO chain P2P.
 
-For Timebeat, also ask the operator to place the vendor package, per-node
-licence, and reviewed configuration on the target host. Ask only for their
-local file paths. Never request, display, copy, summarize, or transmit the
-contents of a licence, key, token, or proprietary configuration.
+For Timebeat, ask the operator to place the vendor package and per-node licence
+on the target host and identify the interface that reaches the OTA mesh. Ask
+only for local file paths; the installer renders the canonical dual-source
+profile. Never request, display, copy, summarize, or transmit licence, key, or
+token contents.
 
 ## Required execution protocol
 
@@ -79,6 +80,12 @@ Do not:
 - enroll a validator, bond funds, alter the authority set, or enable authoring;
 - run an unreviewed recovery step; or
 - claim completion because a service is merely active.
+
+The required Timebeat policy is exact: verified 2.3.5 package, OTA-1 plus
+OTA-3, `concurrent_sources: 2`, `seats_to_offer: 0`, and
+`adjust_clock: false`. OTA-2 is deferred. Chrony must retain two independent
+bootstrap sources. Never use Grissom as a validator time source and never
+lower the ROKO node's minimum time-source requirement below two.
 
 Stop and ask the operator before any action outside the printed dry-run plan.
 A `validator-candidate` installation must finish as a fully synchronized,

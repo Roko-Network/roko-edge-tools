@@ -52,10 +52,11 @@ advertise authenticated measurements on ROKO's built-in PTP² protocol. Choose
 non-authoring ROKO node until separately enrolled.
 
 Operators using Timebeat can select `--time-stack timebeat`; they must obtain
-their own package and per-node licence from
+the pinned 2.3.5 package and per-node licence from
 [timebeat.app](https://www.timebeat.app/downloads/software). The installer
-collects the local package, licence, and reviewed configuration paths and
-performs the remaining installation and verification steps. See the
+collects the local package and licence paths, renders the reviewed ROKO
+dual-OTA configuration, and performs the remaining installation and
+verification steps. See the
 [agentic installer guide](installer/README.md).
 
 ## Tools
@@ -111,8 +112,8 @@ timer. See the public guide at
   places the secret in argv, a manifest, or a report.
 - The validator-candidate flow does not generate or manage validator session
   keys and never enables authoring.
-- Timebeat software, configurations, and licences remain vendor/operator
-  supplied and are never redistributed by ROKO.
+- Timebeat software and licences remain vendor/operator supplied and are never
+  redistributed by ROKO; the non-secret ROKO mesh profile is bundled here.
 - The installer performs the host, clock, ROKO runtime, service, observer-key,
   synchronization, finality, and readiness-report steps. It does not guess a
   vendor Timebeat configuration or activate validator authority.
