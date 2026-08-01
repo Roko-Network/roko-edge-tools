@@ -8,7 +8,7 @@ status: stable
 version: 1.0.0
 last_reviewed: 2026-08-01
 read_when: Adding licensed Timebeat software or an operator PTP Squared authority.
-previous: professional.md
+previous: hardware-acceptance.md
 next: security-network.md
 ---
 
@@ -44,4 +44,4 @@ Provide local paths only.
 
 ---
 
-Pagenbar: [← Professional design](professional.md) · [Index](README.md) · [Next: Security/network →](security-network.md)
+Pagenbar: [← Hardware acceptance](hardware-acceptance.md) · [Index](README.md) · [Next: Security/network →](security-network.md)

@@ -26,6 +26,7 @@ This docset intentionally contains no private ROKO timing topology.
 | --- | --- |
 | Hobbyist node | [Concepts](concepts.md) → [Choose sources](choose-sources.md) → [Hobbyist setup](hobbyist.md) → [Verification](verification.md) |
 | Professional node or validator candidate | [Concepts](concepts.md) → [Choose sources](choose-sources.md) → [Professional design](professional.md) → [Security](security-network.md) → [Verification](verification.md) |
+| Mainnet physical clock | Professional path → [Hardware selection](mainnet-hardware.md) → [GNSS site installation](gnss-site-installation.md) → [Hardware deployment](hardware-deployment.md) → [Hardware acceptance](hardware-acceptance.md) |
 | Licensed Timebeat/PTP Squared | Professional path, then [Timebeat and PTP Squared](timebeat-ptp2.md) |
 | Diagnose a deployment | [Verification](verification.md) → [Troubleshooting](troubleshooting.md) |
 | Agent-assisted deployment | [Agent contract](agent-contract.md), which routes back through the applicable pages |
@@ -37,6 +38,7 @@ This docset intentionally contains no private ROKO timing topology.
 - The ROKO public source is not the only selected authority.
 - The host is stable before the ROKO node starts.
 - A validator candidate remains non-authoring until separate enrollment.
+- Every mainnet validator has directly connected, active GNSS; network-only synchronization and oscillator-only holdover do not satisfy enrollment.
 - Secrets, licences, private keys, and proprietary configuration contents never
   enter prompts, logs, reports, or Git.
 

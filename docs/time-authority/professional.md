@@ -9,7 +9,7 @@ version: 1.0.0
 last_reviewed: 2026-08-01
 read_when: Designing production, institutional, or validator-candidate timing.
 previous: hobbyist.md
-next: timebeat-ptp2.md
+next: mainnet-hardware.md
 ---
 
 # Professional and validator-candidate deployment
@@ -46,6 +46,10 @@ For validator candidates, require two mapped ROKO temporal peers and converged
 state in addition to Chrony acceptance. Enrollment, bonding, session-key
 custody, and authority activation remain separate reviewed operations.
 
+Mainnet additionally requires a physical hardware clock with directly
+connected, active GNSS at every validator site. Continue through the hardware
+selection, site, deployment, and acceptance pages before Timebeat integration.
+
 ## Higher-assurance options
 
 Use NTS where both client and authority support it, dedicated GNSS/PTP hardware
@@ -56,4 +60,4 @@ controls.
 
 ---
 
-Pagenbar: [← Hobbyist setup](hobbyist.md) · [Index](README.md) · [Next: Timebeat/PTP² →](timebeat-ptp2.md)
+Pagenbar: [← Hobbyist setup](hobbyist.md) · [Index](README.md) · [Next: Mainnet hardware →](mainnet-hardware.md)

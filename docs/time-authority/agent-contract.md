@@ -24,6 +24,8 @@ do not crawl unrelated repository content or improvise policy from filenames.
    whether NTP will be served, and whether Timebeat is selected.
 2. Route through `concepts.md` and `choose-sources.md`, then the applicable role
    pages and `verification.md`.
+   For mainnet, the physical-hardware, GNSS-site, deployment, and acceptance
+   pages are mandatory; require directly connected active GNSS.
 3. Collect all parameters before changes. Request paths to protected files,
    never their contents.
 4. Inspect the selected manifest and scripts.

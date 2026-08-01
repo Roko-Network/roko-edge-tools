@@ -30,6 +30,22 @@ routes:
     file: professional.md
     audience: [professional, agent]
     tasks: [design, deploy, operate]
+  - id: mainnet-hardware
+    file: mainnet-hardware.md
+    audience: [professional, agent]
+    tasks: [select, procure, design]
+  - id: gnss-site
+    file: gnss-site-installation.md
+    audience: [professional, agent]
+    tasks: [survey, install, protect]
+  - id: hardware-deployment
+    file: hardware-deployment.md
+    audience: [professional, agent]
+    tasks: [install, configure, integrate]
+  - id: hardware-acceptance
+    file: hardware-acceptance.md
+    audience: [professional, agent]
+    tasks: [verify, qualify, maintain]
   - id: timebeat
     file: timebeat-ptp2.md
     audience: [professional, agent]
