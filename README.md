@@ -13,6 +13,10 @@ node itself is distributed as either:
 
 Node operation does not require access to the private source repository. See
 [nodes.roko.network](https://nodes.roko.network/) for the current runbook.
+For source selection, clock architecture, hobbyist/professional deployment,
+Timebeat, security, verification, and recovery, start with the
+[ROKO Time Authority docset](docs/time-authority/README.md). Its metadata and
+Pagenbar links support deterministic agent traversal without requiring AIWG.
 The recommended setup path is to download the checksum manifest and reviewed
 one-off scripts and their
 [checksum manifest](https://downloads.roko.network/scripts/SHA256SUMS),
@@ -44,6 +48,11 @@ For a guided full, archive, observer, or validator-candidate installation:
 ./bin/roko-guided-install --time-stack chrony --dry-run
 ./bin/roko-guided-install --time-stack chrony
 ```
+
+Before choosing a region or timing stack, read
+[`docs/time-authority/README.md`](docs/time-authority/README.md). It routes
+humans and agents to focused pages rather than requiring a repository-wide
+crawl.
 
 Every role joins the live ROKO chain P2P network. Choose `observer` to
 advertise authenticated measurements on ROKO's built-in PTP² protocol. Choose

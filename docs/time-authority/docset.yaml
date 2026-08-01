@@ -1,0 +1,52 @@
+schema: aiwg.pagenbar.docset/v1
+id: roko-time-authority
+title: ROKO Time Authority Deployment
+version: 1.0.0
+entrypoint: README.md
+default_path: choose-sources.md
+principles:
+  - Establish trustworthy host time before joining ROKO.
+  - Use ntp01.roko.network as one source, never the only source.
+  - Require at least two selectable sources from different failure domains.
+  - Verify observed stratum, offset, root distance, reachability, and leap state.
+routes:
+  - id: orientation
+    file: README.md
+    audience: [human, agent]
+    tasks: [route, scope]
+  - id: concepts
+    file: concepts.md
+    audience: [hobbyist, professional, agent]
+    tasks: [learn, design]
+  - id: source-selection
+    file: choose-sources.md
+    audience: [hobbyist, professional, agent]
+    tasks: [select, verify]
+  - id: hobbyist
+    file: hobbyist.md
+    audience: [hobbyist, agent]
+    tasks: [install, verify]
+  - id: professional
+    file: professional.md
+    audience: [professional, agent]
+    tasks: [design, deploy, operate]
+  - id: timebeat
+    file: timebeat-ptp2.md
+    audience: [professional, agent]
+    tasks: [install, integrate]
+  - id: security
+    file: security-network.md
+    audience: [hobbyist, professional, agent]
+    tasks: [harden, expose]
+  - id: verification
+    file: verification.md
+    audience: [hobbyist, professional, agent]
+    tasks: [verify, monitor, accept]
+  - id: troubleshooting
+    file: troubleshooting.md
+    audience: [hobbyist, professional, agent]
+    tasks: [diagnose, recover]
+  - id: agent-contract
+    file: agent-contract.md
+    audience: [agent, operator]
+    tasks: [plan, execute, report]

@@ -12,6 +12,7 @@ for installer_script in installer/scripts/*.sh; do
   bash -n "$installer_script"
 done
 python3 -m py_compile bin/roko-rpc-health
+python3 test/docset.py
 
 grep -R "ntp01.roko.network" README.md examples docs bin lib >/dev/null
 grep -R "/roko/timesync/1" README.md docs >/dev/null
@@ -24,6 +25,11 @@ grep -F "Do not include secrets" installer/AGENT-INSTALL.md >/dev/null
 grep -F "ROKO chain P2P: enabled via the public bootnode" bin/roko-guided-install >/dev/null
 grep -F "temporal_getMeshState" installer/scripts/start-and-verify.sh >/dev/null
 grep -F "roko_ptp2_mode=" installer/scripts/write-readiness-report.sh >/dev/null
+grep -F "schema: aiwg.pagenbar.docset/v1" docs/time-authority/docset.yaml >/dev/null
+for page in docs/time-authority/*.md; do
+  grep -F "Pagenbar:" "$page" >/dev/null
+  grep -F "last_reviewed:" "$page" >/dev/null
+done
 grep -F "time-a-g.nist.gov" installer/scripts/chrony-regional-sources.sh >/dev/null
 grep -F "ptbtime4.ptb.de" installer/scripts/chrony-regional-sources.sh >/dev/null
 grep -F "ntp.nict.jp" installer/scripts/chrony-regional-sources.sh >/dev/null

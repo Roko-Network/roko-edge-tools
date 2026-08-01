@@ -1,8 +1,11 @@
 # ROKO node agent handoff
 
 Use this contract when an AI agent is installing a ROKO testnet node for an
-operator. The bundled launcher is the execution authority. The
-`setup.aiwg.io/v1` manifests are the machine-readable plan.
+operator. Begin at [`../docs/time-authority/README.md`](../docs/time-authority/README.md),
+read its `docset.yaml`, and follow the route for the operator's role. The
+metadata and Pagenbar links work with or without AIWG. The bundled launcher is
+the execution authority and the `setup.aiwg.io/v1` manifests are the
+machine-readable plan.
 
 ## Operator choices
 
@@ -36,7 +39,8 @@ token, or private topology contents.
 1. Clone or update the public
    [`Roko-Network/roko-edge-tools`](https://github.com/Roko-Network/roko-edge-tools)
    repository.
-2. Read this file, `installer/README.md`, and the selected manifest:
+2. Read `docs/time-authority/README.md`, `docs/time-authority/docset.yaml`, the
+   pages selected by that route, this file, `installer/README.md`, and the selected manifest:
    `installer/setup.user.manifest.yaml` for Chrony or
    `installer/setup.timebeat.manifest.yaml` for Timebeat.
 3. Inspect the referenced scripts. Do not replace them with improvised
