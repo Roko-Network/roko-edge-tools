@@ -1,4 +1,0 @@
-# Independent bootstrap sources. Chrony remains system-clock authority while
-# the Timebeat PTP2 mesh is qualified.
-server time-a-g.nist.gov iburst minpoll 4 maxpoll 6
-server time-b-g.nist.gov iburst minpoll 4 maxpoll 6

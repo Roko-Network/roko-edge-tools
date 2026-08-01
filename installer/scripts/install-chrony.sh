@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+# shellcheck disable=SC1091
+source "$(dirname "${BASH_SOURCE[0]}")/chrony-regional-sources.sh"
 
 load_os_release
 
@@ -27,11 +30,7 @@ esac
 as_root install -d -o root -g root -m 0755 /etc/chrony/sources.d
 task_source="$(mktemp)"
 trap 'rm -f -- "$task_source"' EXIT
-cat >"$task_source" <<'EOF'
-# ROKO is one source, not the only source.
-server time.roko.network iburst
-pool pool.ntp.org iburst maxsources 3
-EOF
+render_chrony_regional_sources >"$task_source"
 as_root install -o root -g root -m 0644 "$task_source" /etc/chrony/sources.d/roko.sources
 
 if ! grep -Eq '^[[:space:]]*sourcedir[[:space:]]+/etc/chrony/sources\.d([[:space:]]|$)' "$chrony_config"; then

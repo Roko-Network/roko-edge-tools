@@ -31,7 +31,8 @@ Connectivity layers:
 
 Environment values:
   NODE_NAME, NODE_ROLE, RUNTIME, SYNC_TIMEOUT_SECONDS, REPORT_PATH
-  TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_INTERFACE (Timebeat profile only)
+  TIME_REGION (global, americas, europe, asia, oceania, or africa)
+  TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_CONFIG (Timebeat profile only)
 EOF
 }
 
@@ -134,6 +135,8 @@ prompt_choice NODE_ROLE "Choose the node role (observer advertises authenticated
 prompt_choice RUNTIME "Choose the runtime:" native native docker
 prompt_value SYNC_TIMEOUT_SECONDS "Maximum synchronization wait in seconds" 3600
 prompt_value REPORT_PATH "Readiness report path" "$PWD/roko-install-readiness.txt"
+prompt_choice TIME_REGION "Choose the nearest public time-source region:" global \
+  global americas europe asia oceania africa
 
 [[ "$NODE_NAME" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || {
   printf 'NODE_NAME must use 1-64 letters, digits, dots, underscores, or hyphens.\n' >&2
@@ -146,8 +149,8 @@ prompt_value REPORT_PATH "Readiness report path" "$PWD/roko-install-readiness.tx
 
 CLOCK_PROVIDER="$time_stack"
 if [[ "$time_stack" == timebeat ]]; then
-  clock_step="Install Chrony plus verified Timebeat 2.3.5 and join both ROKO OTA sources"
-  timebeat_connectivity="both managed OTA seeds with two concurrent sources"
+  clock_step="Bootstrap Chrony from regional public authorities and install verified Timebeat 2.3.5"
+  timebeat_connectivity="operator-reviewed public or self-operated PTP2 authority profile"
 else
   clock_step="Install Chrony and wait for synchronization against diverse sources"
   timebeat_connectivity="not selected"
@@ -160,12 +163,12 @@ fi
 if [[ "$time_stack" == timebeat ]]; then
   prompt_value TIMEBEAT_PACKAGE "Path to the vendor-downloaded Timebeat .deb or .rpm"
   prompt_value TIMEBEAT_LICENSE "Path to the per-node Timebeat licence"
-  prompt_value TIMEBEAT_INTERFACE "Network interface used to reach the OTA mesh" "$(ip route show default 2>/dev/null | awk 'NR == 1 { print $5 }')"
+  prompt_value TIMEBEAT_CONFIG "Path to the reviewed Timebeat configuration"
 fi
 
-export NODE_NAME NODE_ROLE RUNTIME CLOCK_PROVIDER SYNC_TIMEOUT_SECONDS REPORT_PATH
+export NODE_NAME NODE_ROLE RUNTIME CLOCK_PROVIDER SYNC_TIMEOUT_SECONDS REPORT_PATH TIME_REGION
 if [[ "$time_stack" == timebeat ]]; then
-  export TIMEBEAT_PACKAGE TIMEBEAT_LICENSE TIMEBEAT_INTERFACE
+  export TIMEBEAT_PACKAGE TIMEBEAT_LICENSE TIMEBEAT_CONFIG
 fi
 
 cat <<EOF
@@ -176,6 +179,7 @@ ROKO guided installation plan
   Role:           $NODE_ROLE
   Runtime:        $RUNTIME
   Clock owner:    $CLOCK_PROVIDER
+  Time region:    $TIME_REGION
   Sync timeout:   ${SYNC_TIMEOUT_SECONDS}s
   Report:         $REPORT_PATH
 

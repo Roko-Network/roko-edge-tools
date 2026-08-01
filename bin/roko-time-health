@@ -21,7 +21,7 @@ else
   warn "chronyc not available; install chrony for detailed time diagnostics"
 fi
 
-section "Timebeat PTP2 mesh"
+section "Timebeat PTP2"
 if have timebeat; then
   timebeat version 2>/dev/null || true
 elif [[ -x /usr/share/timebeat/bin/timebeat ]]; then
@@ -31,15 +31,6 @@ else
 fi
 if have systemctl && systemctl is-active --quiet timebeat.service; then
   printf 'timebeat.service: active\n'
-  if have ss; then
-    for ota in 10.101.101.123 10.101.101.125; do
-      if ss -Hnt state established | grep -q "$ota:65107"; then
-        printf 'OTA session %s: established\n' "$ota"
-      else
-        warn "OTA session $ota:65107 is not established"
-      fi
-    done
-  fi
 else
   warn "timebeat.service is not active"
 fi

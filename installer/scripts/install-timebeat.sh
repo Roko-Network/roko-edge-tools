@@ -5,17 +5,13 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 : "${TIMEBEAT_PACKAGE:?TIMEBEAT_PACKAGE is required for the Timebeat profile}"
 : "${TIMEBEAT_LICENSE:?TIMEBEAT_LICENSE is required for the Timebeat profile}"
-: "${TIMEBEAT_INTERFACE:?TIMEBEAT_INTERFACE is required for the Timebeat profile}"
+: "${TIMEBEAT_CONFIG:?TIMEBEAT_CONFIG is required for the Timebeat profile}"
 
-for input_file in "$TIMEBEAT_PACKAGE" "$TIMEBEAT_LICENSE"; do
+for input_file in "$TIMEBEAT_PACKAGE" "$TIMEBEAT_LICENSE" "$TIMEBEAT_CONFIG"; do
   [[ -f "$input_file" ]] || fail "Required operator-supplied Timebeat file not found: $input_file"
 done
-[[ "$TIMEBEAT_INTERFACE" =~ ^[A-Za-z0-9_.:-]{1,32}$ ]] || fail "Invalid Timebeat interface name."
-[[ -d "/sys/class/net/$TIMEBEAT_INTERFACE" ]] || fail "Interface does not exist: $TIMEBEAT_INTERFACE"
-for ota in 10.101.101.123 10.101.101.125; do
-  timeout 5 bash -c "exec 3<>/dev/tcp/$ota/65107" 2>/dev/null ||
-    fail "Cannot reach required OTA seed $ota on TCP/65107. No changes were made."
-done
+grep -qi 'ptpsquared' "$TIMEBEAT_CONFIG" ||
+  fail "The reviewed Timebeat configuration must include a PTP Squared section."
 
 case "$(uname -m)" in
   x86_64) expected_sha=b62701ca64ddb75193116ab94af0af831c9bde516322db00809db4fc287a49f0 ;;
@@ -25,12 +21,6 @@ esac
 actual_sha="$(sha256sum "$TIMEBEAT_PACKAGE" | awk '{print $1}')"
 [[ "$actual_sha" == "$expected_sha" ]] ||
   fail "Timebeat package checksum does not match the pinned 2.3.5 release for this architecture."
-
-template="$(dirname "${BASH_SOURCE[0]}")/../timebeat-roko-dual-source.yml.in"
-[[ -f "$template" ]] || fail "Bundled ROKO dual-source Timebeat template is missing."
-rendered_config="$(mktemp)"
-trap 'rm -f -- "$rendered_config"' EXIT
-sed "s/@TIMEBEAT_INTERFACE@/$TIMEBEAT_INTERFACE/g" "$template" >"$rendered_config"
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 if [[ -f /etc/timebeat/timebeat.yml ]]; then
@@ -53,10 +43,15 @@ esac
 
 as_root install -d -o root -g root -m 0750 /etc/timebeat
 as_root install -o root -g root -m 0600 "$TIMEBEAT_LICENSE" /etc/timebeat/timebeat.lic
-as_root install -o root -g root -m 0640 "$rendered_config" /etc/timebeat/timebeat.yml
+as_root install -o root -g root -m 0640 "$TIMEBEAT_CONFIG" /etc/timebeat/timebeat.yml
 as_root install -d -o root -g root -m 0755 /etc/chrony/sources.d
+regional_sources="$(mktemp)"
+trap 'rm -f -- "$regional_sources"' EXIT
+# shellcheck disable=SC1091
+source "$(dirname "${BASH_SOURCE[0]}")/chrony-regional-sources.sh"
+render_chrony_regional_sources >"$regional_sources"
 as_root install -o root -g root -m 0644 \
-  "$(dirname "${BASH_SOURCE[0]}")/../roko-validator.sources" \
+  "$regional_sources" \
   /etc/chrony/sources.d/roko-validator.sources
 if command -v apt-get >/dev/null 2>&1; then
   as_root apt-get update
@@ -75,5 +70,5 @@ for conflicting_unit in ntp.service ntpd.service ptp4l.service; do
   fi
 done
 
-log "Verified Timebeat 2.3.5 installed with the ROKO dual-OTA, two-source profile."
-log "Chrony remains the clock owner; confirm both OTA sessions before validator activation."
+log "Verified Timebeat 2.3.5 installed with the operator-reviewed PTP Squared profile."
+log "Chrony remains the clock owner; prove two independent sources before joining ROKO."

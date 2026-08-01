@@ -41,10 +41,10 @@ spec:
       type: path
       interactive_required: true
       description: Per-node licence obtained directly from Timebeat.
-    - name: TIMEBEAT_INTERFACE
-      type: string
+    - name: TIMEBEAT_CONFIG
+      type: path
       interactive_required: true
-      description: Network interface used to reach both managed OTA PTP² seeds.
+      description: Operator-reviewed PTP Squared configuration using public or self-operated authorities.
     - name: SYNC_TIMEOUT_SECONDS
       type: int
       default: 3600
@@ -77,7 +77,7 @@ spec:
       type: script
       script: scripts/install-timebeat.sh
       depends_on: [preflight]
-      params: [TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_INTERFACE]
+      params: [TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_CONFIG, TIME_REGION]
       verify: systemctl is-active --quiet timebeat.service
     - id: install-node
       type: script

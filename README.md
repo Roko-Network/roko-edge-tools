@@ -54,9 +54,8 @@ non-authoring ROKO node until separately enrolled.
 Operators using Timebeat can select `--time-stack timebeat`; they must obtain
 the pinned 2.3.5 package and per-node licence from
 [timebeat.app](https://www.timebeat.app/downloads/software). The installer
-collects the local package and licence paths, renders the reviewed ROKO
-dual-OTA configuration, and performs the remaining installation and
-verification steps. See the
+collects the local package, licence, and reviewed PTP Squared configuration
+paths and performs the remaining installation and verification steps. See the
 [agentic installer guide](installer/README.md).
 
 ## Tools
@@ -81,6 +80,11 @@ export ROKO_NTP_SOURCE=ntp01.roko.network
 export ROKO_SEED_DIR=/srv/roko-seed
 export ROKO_SEED_PROFILES="normal releases"
 ```
+
+`ntp01.roko.network` is currently available as an optional public bootstrap
+and consistency source. It is not a substitute for independent Stratum 1/2
+authorities. The guided installer offers regional source profiles and requires
+Chrony to select at least two sources.
 
 ## BitTorrent seeding
 

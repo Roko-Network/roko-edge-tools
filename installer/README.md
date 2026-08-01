@@ -62,15 +62,15 @@ depends on measured performance and current network program rules.
 1. Download the stable package for the host architecture and request a
    per-node licence directly from
    [Timebeat software downloads](https://www.timebeat.app/downloads/software).
-2. Sign in to the vendor guides and review the bundled
-   `timebeat-roko-dual-source.yml.in` against the vendor's
+2. Sign in to the vendor guides and prepare a configuration for public or
+   operator-owned time authorities using the vendor's
    [installation](https://timebeat.app/community/platform/install-timebeat),
    [initial configuration](https://timebeat.app/community/platform/initial-configuration),
    and [PTP² Mesh](https://timebeat.app/community/platform/ptpsquared-mesh-basics)
    guides.
-3. Save the package and licence as local files on the target host. The guided
-   installer verifies the pinned 2.3.5 package checksum, asks for the mesh
-   interface, and renders the reviewed ROKO profile locally.
+3. Save the package, licence, and reviewed configuration as local files on the
+   target host. The guided installer verifies the pinned 2.3.5 package
+   checksum and installs the reviewed files without displaying their contents.
 4. Run:
 
 ```bash
@@ -78,18 +78,19 @@ depends on measured performance and current network program rules.
 ./bin/roko-guided-install --time-stack timebeat
 ```
 
-The profile connects to OTA-1 and OTA-3, fills three seats, uses two concurrent
-sources, and offers no seats. OTA-2 is intentionally absent. It installs the
-licence without copying its contents into logs, Git, environment files, or a
-ROKO service unit. ROKO does not redistribute the package or licence.
+The public installer does not expose or depend on ROKO's internal timing
+topology. Establish a public or self-operated time authority before joining
+the network, and use at least two independent sources. The installer keeps
+licence contents out of logs, Git, environment files, and ROKO service units.
 
 Chrony remains the system-clock owner during qualification, using two
 independent NIST sources. Timebeat runs with `adjust_clock: false` and provides
 licensed PTP² mesh participation and evidence. The installer rejects active
 ntpd or ptp4l daemons.
 
-Do not substitute Grissom, a public NTP pool, or OTA-2 for either managed OTA
-seed. Do not enable seat offering or clock adjustment on validator consumers.
+Treat regional pool entries as discovery/diversity sources rather than a
+guaranteed stratum. Inspect `chronyc sources -v` and require at least two
+selectable sources before continuing.
 
 ## What the installer completes
 
