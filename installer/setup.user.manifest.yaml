@@ -1,0 +1,107 @@
+apiVersion: setup.aiwg.io/v1
+kind: SetupManifest
+metadata:
+  name: roko-node-guided
+  version: 1.0.0
+  description: Guided ROKO full, archive, observer, or validator-candidate bootstrap/testing/edge preparation with Chrony.
+  install_type: user
+
+spec:
+  platforms:
+    - os: linux
+      distros: [ubuntu, debian, fedora, rhel, rocky, centos]
+      arch: [x86_64, arm64]
+      shell: bash
+
+  params:
+    - name: NODE_NAME
+      type: string
+      interactive_required: true
+      description: Public node name using letters, digits, dots, underscores, or hyphens.
+    - name: NODE_ROLE
+      type: choice
+      choices: [full, archive, observer, validator-candidate]
+      interactive_required: true
+      description: Install role. Every role joins ROKO chain P2P and its time protocol; observer additionally advertises authenticated ROKO PTP² measurements. Validator candidates remain non-authoring until separately enrolled.
+    - name: RUNTIME
+      type: choice
+      choices: [native, docker]
+      interactive_required: true
+      description: Verified native binary or immutable container-image runtime.
+    - name: CLOCK_PROVIDER
+      type: choice
+      choices: [chrony]
+      default: chrony
+      description: Host clock provider for the standard guided profile. Chrony does not join the separate licensed Timebeat PTP² Mesh.
+    - name: SYNC_TIMEOUT_SECONDS
+      type: int
+      default: 3600
+      description: Maximum time to wait for full P2P synchronization.
+    - name: REPORT_PATH
+      type: path
+      default: ./roko-install-readiness.txt
+      description: Value-free installation receipt.
+
+  prerequisites:
+    - name: bash
+      detect: command -v bash
+      install_hint: Install Bash using the operating-system package manager.
+    - name: systemd
+      detect: command -v systemctl
+      install_hint: Use a supported systemd-based Linux distribution.
+    - name: curl
+      detect: command -v curl
+      install_hint: Install curl using the operating-system package manager.
+    - name: python3
+      detect: command -v python3
+      install_hint: Install Python 3 using the operating-system package manager.
+
+  steps:
+    - id: preflight
+      type: script
+      script: scripts/preflight.sh
+      params: [NODE_NAME, NODE_ROLE, RUNTIME]
+    - id: install-clock
+      type: script
+      script: scripts/install-chrony.sh
+      depends_on: [preflight]
+      params: [CLOCK_PROVIDER]
+      verify: chronyc waitsync 1 0.01
+    - id: install-node
+      type: script
+      script: scripts/install-roko-node.sh
+      depends_on: [install-clock]
+      params: [NODE_NAME, NODE_ROLE, RUNTIME, CLOCK_PROVIDER]
+      verify: test -f /etc/systemd/system/roko-node.service
+    - id: configure-observer
+      type: script
+      script: scripts/configure-roko-observer.sh
+      depends_on: [install-node]
+      params: [NODE_ROLE, RUNTIME]
+    - id: start-and-verify
+      type: script
+      script: scripts/start-and-verify.sh
+      depends_on: [install-node, configure-observer]
+      params: [SYNC_TIMEOUT_SECONDS]
+      verify: systemctl is-active --quiet roko-node.service
+      on_fail: restart-services
+    - id: readiness-report
+      type: script
+      script: scripts/write-readiness-report.sh
+      depends_on: [start-and-verify]
+      params: [NODE_NAME, NODE_ROLE, RUNTIME, CLOCK_PROVIDER, REPORT_PATH]
+      verify: test -s "${REPORT_PATH}"
+
+  recovery:
+    - id: restart-services
+      steps:
+        - id: restart-clock-and-node
+          type: script
+          script: scripts/restart-services.sh
+          params: [CLOCK_PROVIDER]
+
+  briefing:
+    success: ROKO node installation and full synchronization checks completed.
+    next_steps:
+      - Review the value-free readiness report.
+      - Validator candidates must complete the separate reviewed enrollment process before authoring.

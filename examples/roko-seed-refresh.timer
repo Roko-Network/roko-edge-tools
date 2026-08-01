@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh public ROKO artifact torrents every 30 minutes
+Documentation=https://docs.roko.network/#bittorrent-seeding
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

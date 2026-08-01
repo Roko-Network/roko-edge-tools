@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+time_stack=chrony
+dry_run=false
+non_interactive=false
+
+usage() {
+  cat <<'EOF'
+Usage: roko-guided-install [OPTIONS]
+
+Runs the script-first installation flow described by the ROKO AIWG
+SetupManifest. Every parameter is collected before the first system change.
+
+Options:
+  --time-stack chrony|timebeat  Timing profile (default: chrony)
+  --dry-run                     Show the resolved plan without changing the host
+  --non-interactive             Require all parameters from environment values
+  -h, --help                    Show this help
+
+chrony   Installs/configures Chrony with diverse NTP sources.
+timebeat Installs an operator-supplied Timebeat package, licence, and reviewed
+         configuration. ROKO does not redistribute Timebeat software or keys.
+
+Connectivity layers:
+  Every role joins the ROKO blockchain P2P network and runs the ROKO
+  /roko/timesync/1 protocol. The observer role additionally advertises
+  authenticated ROKO PTP² measurements with a dedicated key. Timebeat is a
+  separate licensed PTP² timing mesh selected with --time-stack timebeat.
+
+Environment values:
+  NODE_NAME, NODE_ROLE, RUNTIME, SYNC_TIMEOUT_SECONDS, REPORT_PATH
+  TIME_REGION (global, americas, europe, asia, oceania, or africa)
+  TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_CONFIG (Timebeat profile only)
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    --time-stack) time_stack="${2:-}"; shift ;;
+    --dry-run) dry_run=true ;;
+    --non-interactive) non_interactive=true ;;
+    -h|--help) usage; exit 0 ;;
+    *) printf 'Unknown argument: %s\n' "$1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+case "$time_stack" in
+  chrony) manifest="$repo_root/installer/setup.user.manifest.yaml" ;;
+  timebeat) manifest="$repo_root/installer/setup.timebeat.manifest.yaml" ;;
+  *) printf '%s\n' "--time-stack must be chrony or timebeat" >&2; exit 2 ;;
+esac
+
+prompt_value() {
+  local variable="$1"
+  local label="$2"
+  local fallback="${3:-}"
+  local current="${!variable:-}"
+
+  if [[ -n "$current" ]]; then
+    fallback="$current"
+  fi
+  if "$non_interactive"; then
+    [[ -n "$fallback" ]] || {
+      printf 'Missing required environment value: %s\n' "$variable" >&2
+      exit 2
+    }
+    printf -v "$variable" '%s' "$fallback"
+    return
+  fi
+  [[ -t 0 ]] || {
+    printf 'Interactive input is unavailable. Set %s or use a terminal.\n' "$variable" >&2
+    exit 2
+  }
+  if [[ -n "$fallback" ]]; then
+    read -r -p "$label [$fallback]: " current
+    current="${current:-$fallback}"
+  else
+    read -r -p "$label: " current
+  fi
+  [[ -n "$current" ]] || {
+    printf '%s is required.\n' "$variable" >&2
+    exit 2
+  }
+  printf -v "$variable" '%s' "$current"
+}
+
+prompt_choice() {
+  local variable="$1"
+  local label="$2"
+  local fallback="$3"
+  shift 3
+  local choices=("$@")
+  local selected="${!variable:-$fallback}"
+
+  if ! "$non_interactive"; then
+    [[ -t 0 ]] || {
+      printf 'Interactive input is unavailable. Set %s or use --non-interactive.\n' "$variable" >&2
+      exit 2
+    }
+    printf '%s\n' "$label"
+    local index
+    for index in "${!choices[@]}"; do
+      printf '  %d) %s%s\n' "$((index + 1))" "${choices[$index]}" \
+        "$([[ "${choices[$index]}" == "$selected" ]] && printf ' (default)')"
+    done
+    local answer
+    read -r -p "Select 1-${#choices[@]} [$selected]: " answer
+    if [[ -n "$answer" ]]; then
+      if [[ ! "$answer" =~ ^[0-9]+$ ]] ||
+        (( answer < 1 || answer > ${#choices[@]} )); then
+        printf 'Invalid selection for %s.\n' "$variable" >&2
+        exit 2
+      fi
+      selected="${choices[$((answer - 1))]}"
+    fi
+  fi
+
+  local choice
+  for choice in "${choices[@]}"; do
+    if [[ "$selected" == "$choice" ]]; then
+      printf -v "$variable" '%s' "$selected"
+      return
+    fi
+  done
+  printf 'Invalid %s value: %s\n' "$variable" "$selected" >&2
+  exit 2
+}
+
+prompt_value NODE_NAME "Public node name" "$(hostname -s 2>/dev/null || printf 'roko-node')"
+prompt_choice NODE_ROLE "Choose the node role (observer advertises authenticated ROKO PTP² measurements):" full \
+  full archive observer validator-candidate
+prompt_choice RUNTIME "Choose the runtime:" native native docker
+prompt_value SYNC_TIMEOUT_SECONDS "Maximum synchronization wait in seconds" 3600
+prompt_value REPORT_PATH "Readiness report path" "$PWD/roko-install-readiness.txt"
+prompt_choice TIME_REGION "Choose the nearest public time-source region:" global \
+  global americas europe asia oceania africa
+
+[[ "$NODE_NAME" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || {
+  printf 'NODE_NAME must use 1-64 letters, digits, dots, underscores, or hyphens.\n' >&2
+  exit 2
+}
+[[ "$SYNC_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] || {
+  printf 'SYNC_TIMEOUT_SECONDS must be a positive integer.\n' >&2
+  exit 2
+}
+
+CLOCK_PROVIDER="$time_stack"
+if [[ "$time_stack" == timebeat ]]; then
+  clock_step="Bootstrap Chrony from regional public authorities and install verified Timebeat 2.3.5"
+  timebeat_connectivity="operator-reviewed public or self-operated PTP2 authority profile"
+else
+  clock_step="Install Chrony and wait for synchronization against diverse sources"
+  timebeat_connectivity="not selected"
+fi
+if [[ "$NODE_ROLE" == observer ]]; then
+  roko_ptp2_mode="authenticated observer (dedicated ptp2 key and advertisement)"
+else
+  roko_ptp2_mode="non-advertising node protocol"
+fi
+if [[ "$time_stack" == timebeat ]]; then
+  prompt_value TIMEBEAT_PACKAGE "Path to the vendor-downloaded Timebeat .deb or .rpm"
+  prompt_value TIMEBEAT_LICENSE "Path to the per-node Timebeat licence"
+  prompt_value TIMEBEAT_CONFIG "Path to the reviewed Timebeat configuration"
+fi
+
+export NODE_NAME NODE_ROLE RUNTIME CLOCK_PROVIDER SYNC_TIMEOUT_SECONDS REPORT_PATH TIME_REGION
+if [[ "$time_stack" == timebeat ]]; then
+  export TIMEBEAT_PACKAGE TIMEBEAT_LICENSE TIMEBEAT_CONFIG
+fi
+
+cat <<EOF
+
+ROKO guided installation plan
+  Manifest:       $manifest
+  Node name:      $NODE_NAME
+  Role:           $NODE_ROLE
+  Runtime:        $RUNTIME
+  Clock owner:    $CLOCK_PROVIDER
+  Time region:    $TIME_REGION
+  Sync timeout:   ${SYNC_TIMEOUT_SECONDS}s
+  Report:         $REPORT_PATH
+
+Connectivity
+  ROKO chain P2P: enabled via the public bootnode
+  ROKO PTP²:      $roko_ptp2_mode
+  Timebeat PTP²:  $timebeat_connectivity
+
+Steps
+  1. Preflight the supported Linux host and storage
+  2. $clock_step
+  3. Download, checksum, and install the ROKO runtime and testnet chain spec
+  4. Configure a hardened non-authoring service
+  5. Insert a dedicated ROKO observer key when the observer role is selected
+  6. Require matching genesis, ROKO peers, time-mesh RPC, full sync, stable identity, and finality
+  7. Write a value-free readiness report
+EOF
+
+if [[ "$NODE_ROLE" == validator-candidate ]]; then
+  cat <<'EOF'
+
+Safety boundary: validator-candidate installs remain non-authoring. Session-key
+provisioning, bonding, enrollment, and authority activation are a separate
+reviewed process.
+EOF
+fi
+
+if "$dry_run"; then
+  printf '\nDry run complete. No installation step was executed.\n'
+  exit 0
+fi
+
+if ! "$non_interactive"; then
+  read -r -p "Proceed with these system changes? [y/N]: " answer
+  [[ "$answer" =~ ^[Yy]$ ]] || {
+    printf 'Installation cancelled; no step was executed.\n'
+    exit 0
+  }
+fi
+
+scripts_dir="$repo_root/installer/scripts"
+node_installed=false
+
+offer_recovery() {
+  local failed_step="$1"
+  printf 'Step failed: %s\n' "$failed_step" >&2
+  if ! "$node_installed"; then
+    return
+  fi
+  if "$non_interactive" || [[ ! -t 0 ]]; then
+    printf 'Recovery was not run automatically. Review the error and run:\n  %s\n' \
+      "$scripts_dir/restart-services.sh" >&2
+    return
+  fi
+  local answer
+  read -r -p "Restart the clock and ROKO services as recovery? [y/N]: " answer
+  if [[ "$answer" =~ ^[Yy]$ ]]; then
+    "$scripts_dir/restart-services.sh" || true
+  fi
+}
+
+run_step() {
+  local step_id="$1"
+  local script="$2"
+  printf '\n==> %s\n' "$step_id"
+  if ! "$script"; then
+    offer_recovery "$step_id"
+    exit 1
+  fi
+}
+
+run_step preflight "$scripts_dir/preflight.sh"
+if [[ "$time_stack" == timebeat ]]; then
+  run_step install-timebeat "$scripts_dir/install-timebeat.sh"
+else
+  run_step install-chrony "$scripts_dir/install-chrony.sh"
+fi
+run_step install-node "$scripts_dir/install-roko-node.sh"
+node_installed=true
+run_step configure-observer "$scripts_dir/configure-roko-observer.sh"
+run_step start-and-verify "$scripts_dir/start-and-verify.sh"
+run_step readiness-report "$scripts_dir/write-readiness-report.sh"
+
+printf '\nROKO installation is ready. Review: %s\n' "$REPORT_PATH"

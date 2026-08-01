@@ -7,7 +7,7 @@
 <h1 align="center">ROKO Edge Tools</h1>
 
 <p align="center">
-  Operator-first health, diagnostics, and reporting tools for infrastructure you control.
+  Operator-first health, installation, diagnostics, and reporting tools for infrastructure you control.
 </p>
 
 <p align="center">
@@ -20,17 +20,34 @@
 
 ---
 
-ROKO Edge Tools is the dependency-light companion for local, edge, observer,
-and lab nodes. The toolkit inspects your host and reports what it sees; it does
-not silently change network, validator, or time configuration.
+This is the only public repository required by these optional diagnostics. The
+node itself is distributed as either:
 
-## Design principles
+- an architecture-specific public image at
+  `ghcr.io/roko-network/roko-node:testnet-latest-{amd64,arm64}`; or
+- a checksum-verified native binary from
+  [downloads.roko.network](https://downloads.roko.network/), also available
+  through the [peer-assisted download guide](https://downloads.roko.network/torrent).
+
+Node operation does not require access to the private source repository. See
+[nodes.roko.network](https://nodes.roko.network/) for the current runbook.
+For source selection, clock architecture, hobbyist/professional deployment,
+Timebeat, security, verification, and recovery, start with the
+[ROKO Time Authority docset](docs/time-authority/README.md). Its metadata and
+Pagenbar links support deterministic agent traversal without requiring AIWG.
+The recommended setup path is to download the checksum manifest and reviewed
+one-off scripts and their
+[checksum manifest](https://downloads.roko.network/scripts/SHA256SUMS),
+verify them locally, inspect them, and then run the native or Docker workflow.
+Do not pipe a remote script directly into a shell. Offline Docker archives are
+available by HTTPS and through the official torrent for registry-free setup.
+
+The tools are intentionally dependency-light:
 
 - Bash for host/service/time checks
 - Python 3 standard library for JSON-RPC probes
-- No secret collection
-- No configuration writes unless you explicitly copy the example yourself
-- Local RPC by default
+- No secrets
+- No writes unless you explicitly copy example config into your host
 
 ## Quick start
 
@@ -43,15 +60,42 @@ cd roko-edge-tools
 ./bin/roko-time-health
 ```
 
-## Included tools
+For a guided full, archive, observer, or validator-candidate installation:
+
+```bash
+./bin/roko-guided-install --time-stack chrony --dry-run
+./bin/roko-guided-install --time-stack chrony
+```
+
+Before choosing a region or timing stack, read
+[`docs/time-authority/README.md`](docs/time-authority/README.md). It routes
+humans and agents to focused pages rather than requiring a repository-wide
+crawl.
+
+Every role joins the live ROKO chain P2P network. Choose `observer` to
+advertise authenticated measurements on ROKO's built-in PTP² protocol. Choose
+`--time-stack timebeat` for the separate licensed Timebeat PTP² Mesh. An
+`observer` using Timebeat participates in both PTP² layers while remaining a
+non-authoring ROKO node until separately enrolled.
+
+Operators using Timebeat can select `--time-stack timebeat`; they must obtain
+the pinned 2.3.5 package and per-node licence from
+[timebeat.app](https://www.timebeat.app/downloads/software). The installer
+collects the local package, licence, and reviewed PTP Squared configuration
+paths and performs the remaining installation and verification steps. See the
+[agentic installer guide](installer/README.md).
+
+## Tools
 
 | Tool | Purpose |
-|:---|:---|
+|---|---|
 | `bin/roko-edge-doctor` | One-shot local node, service, RPC, disk, network, and Chrony health summary |
 | `bin/roko-rpc-health` | JSON-RPC health probe for local or public ROKO RPC |
 | `bin/roko-time-health` | Chrony/system clock diagnostics for NTP and edge time hosts |
 | `bin/roko-node-tail` | Convenience log tail for a systemd-managed node |
 | `bin/roko-edge-report` | Generate a sanitized support bundle |
+| `bin/roko-seed-refresh` | Add current ROKO snapshot/release torrents to Transmission and verify completed payloads |
+| `bin/roko-guided-install` | Run the self-contained AIWG-manifested installer for Chrony or operator-licensed Timebeat deployments |
 
 ## Common environment variables
 
@@ -60,19 +104,55 @@ export ROKO_RPC_URL=http://127.0.0.1:9944
 export ROKO_SERVICE=roko-node
 export ROKO_BASE_PATH=/var/lib/roko
 export ROKO_NTP_SOURCE=ntp01.roko.network
+export ROKO_SEED_DIR=/srv/roko-seed
+export ROKO_SEED_PROFILES="normal releases"
 ```
 
-## Safety boundary
+`ntp01.roko.network` is currently available as an optional public bootstrap
+and consistency source. It is not a substitute for independent Stratum 1/2
+authorities. The guided installer offers regional source profiles and requires
+Chrony to select at least two sources.
 
-- It does not manage validator keys.
-- It does not insert PTP² keys.
+## BitTorrent seeding
+
+Seeders help distribute public snapshots and node release bundles. They do not
+need validator keys, wallet material, private source access, or exposed RPC.
+
+```bash
+sudo install -d -o debian-transmission -g debian-transmission \
+  /srv/roko-seed/snapshots /srv/roko-seed/releases
+./bin/roko-seed-refresh
+```
+
+The default profiles seed the current normal snapshot and current node release
+bundle. Add `archive` only when you have enough disk and bandwidth:
+
+```bash
+ROKO_SEED_PROFILES="normal archive releases" ./bin/roko-seed-refresh
+```
+
+For unattended refresh, install
+`examples/roko-seed-refresh.service` and
+`examples/roko-seed-refresh.timer` to `/etc/systemd/system/`, then enable the
+timer. See the public guide at
+[docs.roko.network](https://docs.roko.network/#bittorrent-seeding).
+
+## Safety boundaries
+
+- The guided observer flow inserts one ROKO `ptp2` key interactively; it never
+  places the secret in argv, a manifest, or a report.
+- The validator-candidate flow does not generate or manage validator session
+  keys and never enables authoring.
+- Timebeat software and licences remain vendor/operator supplied and are never
+  redistributed by ROKO; the non-secret ROKO mesh profile is bundled here.
+- The installer performs the host, clock, ROKO runtime, service, observer-key,
+  synchronization, finality, and readiness-report steps. It does not guess a
+  vendor Timebeat configuration or activate validator authority.
 - It does not expose RPC or NTP services.
 - It does not change firewall rules.
+- It does not delete old torrent data automatically.
 
 Use it to observe and report; make operational changes deliberately.
-
-Read the [edge operator notes](docs/edge-operator-notes.md) before exposing
-services beyond loopback or a private LAN.
 
 ## Mirrors
 

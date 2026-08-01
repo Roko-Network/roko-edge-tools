@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/roko-edge-common.sh
+. "$TOOL_DIR/lib/roko-edge-common.sh"
+
+ROKO_SEED_DIR="${ROKO_SEED_DIR:-/srv/roko-seed}"
+ROKO_SEED_PROFILES="${ROKO_SEED_PROFILES:-normal releases}"
+ROKO_SNAPSHOT_BASE="${ROKO_SNAPSHOT_BASE:-https://snapshots.roko.network/mainnet}"
+ROKO_RELEASE_BASE="${ROKO_RELEASE_BASE:-https://downloads.roko.network/releases/current}"
+TR_REMOTE="${TR_REMOTE:-transmission-remote}"
+TR_HOST="${TR_HOST:-127.0.0.1:9091}"
+TR_AUTH="${TR_AUTH:-}"
+ROKO_SEED_DRY_RUN="${ROKO_SEED_DRY_RUN:-0}"
+
+tr_args=("$TR_HOST")
+if [ -n "$TR_AUTH" ]; then
+  tr_args+=(--auth "$TR_AUTH")
+fi
+
+transmission() {
+  if [ "$ROKO_SEED_DRY_RUN" = "1" ]; then
+    printf 'dry-run: %s' "$TR_REMOTE"
+    printf ' %q' "${tr_args[@]}" "$@"
+    printf '\n'
+    return 0
+  fi
+  "$TR_REMOTE" "${tr_args[@]}" "$@"
+}
+
+ensure_seed_dir() {
+  local dir="$1"
+  mkdir -p "$dir"
+}
+
+add_torrent() {
+  local label="$1"
+  local url="$2"
+  local dir="$3"
+
+  ensure_seed_dir "$dir"
+  section "add $label"
+  printf 'url=%s\n' "$url"
+  printf 'download_dir=%s\n' "$dir"
+
+  set +e
+  local output
+  output="$(transmission --add "$url" --download-dir "$dir" 2>&1)"
+  local status=$?
+  set -e
+
+  printf '%s\n' "$output"
+  if [ "$status" -ne 0 ]; then
+    if printf '%s\n' "$output" | grep -Eiq 'duplicate|already.*added|exists'; then
+      ok "$label already present"
+      return 0
+    fi
+    warn "failed to add $label"
+    return 1
+  fi
+}
+
+fetch_release_torrent_url() {
+  local magnet
+  magnet="$(curl --fail --silent --show-error --location "$ROKO_RELEASE_BASE/MAGNET.txt" | sed -n '1p')"
+  if [ -z "$magnet" ]; then
+    return 1
+  fi
+  printf '%s\n' "$magnet"
+}
+
+snapshot_checksum_from_manifest() {
+  local manifest_url="$1"
+  curl --fail --silent --show-error --location "$manifest_url" |
+    python3 -c 'import json, sys; archive = json.load(sys.stdin)["archive"]; print("%s  %s" % (archive["sha256"], archive["file"]))'
+}
+
+verify_snapshot_manifest() {
+  local label="$1"
+  local manifest_url="$2"
+  local dir="$3"
+  local checksum_file
+
+  ensure_seed_dir "$dir"
+  checksum_file="$(mktemp)"
+  section "verify $label"
+  if ! snapshot_checksum_from_manifest "$manifest_url" > "$checksum_file"; then
+    rm -f "$checksum_file"
+    warn "could not read manifest checksum for $label"
+    return 0
+  fi
+
+  set +e
+  (
+    cd "$dir"
+    sha256sum -c "$checksum_file"
+  )
+  local status=$?
+  set -e
+  rm -f "$checksum_file"
+
+  if [ "$status" -eq 0 ]; then
+    ok "$label checksum passed"
+  else
+    warn "$label checksum did not pass yet; the payload may still be downloading"
+  fi
+  return 0
+}
+
+verify_release_checksums() {
+  local label="$1"
+  local url="$2"
+  local dir="$3"
+  local checksum_file selected_file
+
+  ensure_seed_dir "$dir"
+  checksum_file="$(mktemp)"
+  selected_file="$(mktemp)"
+  section "verify $label"
+  if ! curl --fail --silent --show-error --location --output "$checksum_file" "$url"; then
+    rm -f "$checksum_file" "$selected_file"
+    warn "checksum not available for $label"
+    return 0
+  fi
+
+  : > "$selected_file"
+  while read -r digest file; do
+    [ -n "${digest:-}" ] || continue
+    if [ -f "$dir/$file" ]; then
+      printf '%s  %s\n' "$digest" "$file" >> "$selected_file"
+    else
+      for candidate in "$dir"/*/"$file"; do
+        if [ -f "$candidate" ]; then
+          printf '%s  %s\n' "$digest" "${candidate#"$dir"/}" >> "$selected_file"
+        fi
+      done
+    fi
+  done < "$checksum_file"
+
+  if [ ! -s "$selected_file" ]; then
+    rm -f "$checksum_file" "$selected_file"
+    warn "$label payload files are not present yet"
+    return 0
+  fi
+
+  set +e
+  (cd "$dir" && sha256sum -c "$selected_file")
+  local status=$?
+  set -e
+  rm -f "$checksum_file" "$selected_file"
+
+  if [ "$status" -eq 0 ]; then
+    ok "$label checksum passed"
+  else
+    warn "$label checksum did not pass yet; the payload may still be downloading"
+  fi
+  return 0
+}
+
+if ! have curl; then
+  warn "curl is required"
+  exit 1
+fi
+
+if ! have sha256sum; then
+  warn "sha256sum is required"
+  exit 1
+fi
+
+if ! have python3; then
+  warn "python3 is required"
+  exit 1
+fi
+
+if ! have "$TR_REMOTE"; then
+  warn "$TR_REMOTE is required"
+  exit 1
+fi
+
+section "transmission"
+transmission --session-info | sed -n '1,18p' || {
+  warn "could not reach Transmission RPC at $TR_HOST"
+  exit 1
+}
+
+for profile in $ROKO_SEED_PROFILES; do
+  case "$profile" in
+    normal)
+      add_torrent "normal snapshot" \
+        "$ROKO_SNAPSHOT_BASE/normal/normal-latest.torrent" \
+        "$ROKO_SEED_DIR/snapshots"
+      verify_snapshot_manifest "normal snapshot" \
+        "$ROKO_SNAPSHOT_BASE/normal/normal-latest.json" \
+        "$ROKO_SEED_DIR/snapshots"
+      ;;
+    archive)
+      add_torrent "archive snapshot" \
+        "$ROKO_SNAPSHOT_BASE/archive-latest.torrent" \
+        "$ROKO_SEED_DIR/snapshots"
+      verify_snapshot_manifest "archive snapshot" \
+        "$ROKO_SNAPSHOT_BASE/archive-latest.json" \
+        "$ROKO_SEED_DIR/snapshots"
+      ;;
+    releases|release)
+      release_torrent="$(fetch_release_torrent_url || true)"
+      if [ -z "${release_torrent:-}" ]; then
+        warn "could not read release magnet at $ROKO_RELEASE_BASE/MAGNET.txt"
+        continue
+      fi
+      add_torrent "node release bundle" "$release_torrent" "$ROKO_SEED_DIR/releases"
+      verify_release_checksums "node releases" \
+        "$ROKO_RELEASE_BASE/SHA256SUMS" \
+        "$ROKO_SEED_DIR/releases"
+      ;;
+    *)
+      warn "unknown profile: $profile"
+      ;;
+  esac
+done
+
+section "current torrents"
+transmission --list || true

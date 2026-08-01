@@ -1,0 +1,17 @@
+[Unit]
+Description=Refresh public ROKO artifact torrents
+Documentation=https://docs.roko.network/#bittorrent-seeding
+Wants=network-online.target transmission-daemon.service
+After=network-online.target transmission-daemon.service
+
+[Service]
+Type=oneshot
+Environment=ROKO_SEED_DIR=/srv/roko-seed
+Environment=ROKO_SEED_PROFILES=normal releases
+ExecStart=/opt/roko-edge-tools/bin/roko-seed-refresh
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/roko-seed
