@@ -202,8 +202,10 @@ if [[ "$NODE_ROLE" == validator-candidate ]]; then
   cat <<'EOF'
 
 Safety boundary: validator-candidate installs remain non-authoring. Session-key
-provisioning, bonding, enrollment, and authority activation are a separate
-reviewed process.
+provisioning and signed enrollment remain separate from host installation.
+After synchronization, the launcher offers a beginner-safe wallet, claim,
+50-pwROKO lock and native-bond handoff. The operator signs in their own
+wallet; the launcher never requests a seed or private key.
 EOF
 fi
 
@@ -264,3 +266,50 @@ run_step start-and-verify "$scripts_dir/start-and-verify.sh"
 run_step readiness-report "$scripts_dir/write-readiness-report.sh"
 
 printf '\nROKO installation is ready. Review: %s\n' "$REPORT_PATH"
+
+if [[ "$NODE_ROLE" == validator-candidate ]]; then
+  cat <<'EOF'
+
+Validator onboarding
+  Guide: https://docs.roko.network/pages/prepare-validator.html
+  Claim: https://claim.roko.network
+  Lock pwROKO: https://stake.roko.network
+  Intended testnet self-bond: 50 pwROKO (keep additional liquid ROKO for fees)
+
+Never give this installer, an AI agent, or support your seed phrase or private
+key. Wallet creation, account selection, and every signed transaction happen
+inside your wallet. A successful bond is not yet validator enrollment: the
+node still needs locally generated session keys, session.setKeys,
+staking.validate, candidacy verification, and selection into an active session.
+EOF
+  if ! "$non_interactive" && [[ -t 0 ]]; then
+    read -r -p "Open the guide and continue with wallet/funding steps now? [y/N]: " answer
+    if [[ "$answer" =~ ^[Yy]$ ]]; then
+      cat <<'EOF'
+
+1. Create/select a dedicated EVM account in your own wallet and add ROKO chain
+   ID 52370. Record only its public 0x address in your operator notes.
+2. If the same Ethereum address is snapshot-eligible, claim at
+   https://claim.roko.network. Otherwise obtain testnet funding through the
+   documented faucet/support path. You need 50 ROKO plus transaction fees.
+3. At https://stake.roko.network, connect that account and Lock 50 ROKO.
+   The live runtime does not expose EVM staking precompile 0x0700. A successful
+   transaction to that empty address is not a bond.
+4. Return to the guide for a release-matched native bond, local session-key
+   creation, and signed enrollment. Require a real on-chain staking ledger.
+   Keep author/key-management RPC loopback-only and time-bounded.
+5. Verify direct P2P reachability to at least two active ROKO authorities.
+   Syncing through boot.roko.network alone does not satisfy the temporal mesh;
+   temporal_getConsensusTime.peerCount must show mapped authority peers.
+EOF
+      read -r -p "Has the lock finalized and has native staking storage confirmed the bond? [y/N]: " answer
+      if [[ ! "$answer" =~ ^[Yy]$ ]]; then
+        printf '%s\n' "Enrollment paused safely. The synced node remains non-authoring; rerun or resume from the guide."
+      else
+        printf '%s\n' "Lock and native-ledger checkpoint acknowledged. Continue with the guide; this launcher does not claim validator activation."
+      fi
+    else
+      printf '%s\n' "Wallet onboarding deferred. The synced node remains a safe non-authoring candidate."
+    fi
+  fi
+fi

@@ -80,7 +80,8 @@ Do not:
 - reset or delete chain data;
 - create, rotate, reveal, or export wallet, session, libp2p, PTP², licence, or
   signing-key material;
-- enroll a validator, bond funds, alter the authority set, or enable authoring;
+- sign for the user, ask the user to paste a seed/private key, alter the
+  authority set, or enable authoring before active-session verification;
 - run an unreviewed recovery step; or
 - claim completion because a service is merely active.
 
@@ -90,8 +91,15 @@ PTP Squared profile. Chrony must select at least two independent bootstrap
 sources, and the ROKO node's minimum time-source requirement must remain two.
 
 Stop and ask the operator before any action outside the printed dry-run plan.
-A `validator-candidate` installation must finish as a fully synchronized,
-non-authoring peer. Validator activation is a separate reviewed process.
+A `validator-candidate` installation must first finish as a fully synchronized,
+non-authoring peer. The agent may then explain wallet setup, open the public
+claim/staking pages, read public balances and receipts, and guide the user
+through the manifest's interactive onboarding prompts. The user performs every
+wallet confirmation. The current testnet target is a 50-pwROKO self-bond plus
+liquid ROKO for fees. The live runtime does not expose EVM staking precompile
+`0x0700`; require a native staking ledger rather than an EVM success receipt as
+bond proof. Do not confuse lock, bond, session-key registration,
+validate intent, candidacy, queued selection, and active-session membership.
 
 ## Completion response
 

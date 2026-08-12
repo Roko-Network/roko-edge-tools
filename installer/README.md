@@ -111,9 +111,15 @@ review this plan. For automated lab provisioning, supply all documented
 environment values and use `--non-interactive`; no implicit defaults are used
 for missing required values.
 
-The `validator-candidate` role deliberately stops at a fully synchronized
-non-authoring peer. Validator session keys, bonding, enrollment, authority-set
-activation, and authoring require the separate reviewed operator process:
+The `validator-candidate` role first stops at a fully synchronized
+non-authoring peer, then offers an optional interactive beginner handoff. It
+walks the operator to wallet setup, holder claim or other testnet funding,
+locking 50 ROKO, the release-matched native bond handoff, and the remaining
+local session-key and signed-enrollment checks. The live runtime does not
+expose EVM staking precompile `0x0700`, so a successful transaction to that
+empty address is not accepted as bond proof. Wallet secrets and signing stay
+in the user's wallet.
+The installer never treats a bond or `--validator` as activation:
 
 - [Prepare a validator](https://docs.roko.network/pages/prepare-validator.html)
 - [Validator key custody](https://docs.roko.network/pages/validator-key-custody.html)

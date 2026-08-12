@@ -14,7 +14,8 @@ next: hobbyist.md
 
 # Choose and qualify time sources
 
-Use at least two selectable sources. One can be ROKO's public Stratum 2 node;
+Use at least two selectable **Internet NTP** sources. No timing hardware is
+required for this bootstrap profile. One can be ROKO's public Stratum 2 node;
 pair it with a geographically close Stratum 1 or 2 authority.
 
 ## Source directory
@@ -62,6 +63,11 @@ server time-a-g.nist.gov iburst minpoll 6 maxpoll 10
 pool north-america.pool.ntp.org iburst maxsources 2
 minsources 2
 ```
+
+Only one source is normally selected (`^*`). Other acceptable sources show
+`^+`; they still count toward the two-source readiness gate. This Chrony list
+is unrelated to the `peerCount` returned by ROKO temporal RPC, which counts
+mapped blockchain time-protocol peers.
 
 ---
 

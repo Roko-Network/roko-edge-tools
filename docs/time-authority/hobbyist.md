@@ -42,6 +42,15 @@ changes. Do not serve public NTP from a home node; if serving a private LAN,
 restrict `allow` to the exact private subnet and disable the remote command
 port.
 
+This profile needs no GPS, PPS device, PHC, or hardware-timestamping NIC.
+“Two sources” here means two usable Internet NTP sources. In
+`chronyc sources -v`, expect one selected source (`^*`) and at least one
+additional combined source (`^+`).
+
+Do not confuse that with `temporal_getConsensusTime.peerCount`. That value
+counts mapped ROKO `/roko/timesync/1` peers. Chrony can be healthy while the
+ROKO temporal peer count is zero; diagnose the two layers independently.
+
 ---
 
 Pagenbar: [← Choose sources](choose-sources.md) · [Index](README.md) · [Next: Professional design →](professional.md)
