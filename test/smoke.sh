@@ -8,6 +8,8 @@ bash -n bin/roko-node-tail
 bash -n bin/roko-edge-report
 bash -n bin/roko-seed-refresh
 bash -n bin/roko-guided-install
+python3 -m py_compile bin/roko-validator-enroll lib/validator_enrollment.py test/validator_enrollment.py
+python3 test/validator_enrollment.py
 for installer_script in installer/scripts/*.sh; do
   bash -n "$installer_script"
 done
@@ -25,6 +27,9 @@ grep -F "Do not include secrets" installer/AGENT-INSTALL.md >/dev/null
 grep -F "ROKO chain P2P: enabled via the public bootnode" bin/roko-guided-install >/dev/null
 grep -F "temporal_getMeshState" installer/scripts/start-and-verify.sh >/dev/null
 grep -F "roko_ptp2_mode=" installer/scripts/write-readiness-report.sh >/dev/null
+grep -F "roko-validator-enroll" installer/scripts/write-readiness-report.sh >/dev/null
+grep -F "author_hasSessionKeys" lib/validator_enrollment.py >/dev/null
+grep -F "roko.validator-enrollment.v1" contracts/validator-enrollment-v1.schema.json >/dev/null
 grep -F "schema: aiwg.pagenbar.docset/v1" docs/time-authority/docset.yaml >/dev/null
 for page in docs/time-authority/*.md; do
   grep -F "Pagenbar:" "$page" >/dev/null

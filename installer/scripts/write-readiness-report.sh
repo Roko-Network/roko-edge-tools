@@ -35,7 +35,7 @@ umask 077
   fi
   printf 'next_step=%s\n' "$(
     if [[ "$NODE_ROLE" == validator-candidate ]]; then
-      printf 'operator-reviewed validator key provisioning and enrollment'
+      printf 'run roko-validator-enroll locally and import the public package into Agora'
     else
       printf 'routine monitoring'
     fi

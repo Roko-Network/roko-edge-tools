@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://roko.network/contracts/validator-enrollment-v1.schema.json",
+  "title": "ROKO validator enrollment package v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "enrollmentId", "generatedAt", "expiresAt", "network", "node", "session", "integrity"],
+  "properties": {
+    "schema": { "const": "roko.validator-enrollment.v1" },
+    "enrollmentId": { "$ref": "#/$defs/hash" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chainName", "genesisHash", "specName", "specVersion", "transactionVersion", "metadataHash"],
+      "properties": {
+        "chainName": { "type": "string" },
+        "genesisHash": { "$ref": "#/$defs/hash" },
+        "specName": { "type": "string" },
+        "specVersion": { "type": "integer", "minimum": 1 },
+        "transactionVersion": { "type": "integer", "minimum": 1 },
+        "metadataHash": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["peerId", "publicAddresses", "binaryVersion", "binarySha256", "role", "rpcExposure", "health"],
+      "properties": {
+        "peerId": { "type": "string" },
+        "publicAddresses": { "type": "array", "items": { "type": "string" } },
+        "binaryVersion": { "type": "string" },
+        "binarySha256": { "$ref": "#/$defs/hash" },
+        "role": { "const": "non-authoring" },
+        "rpcExposure": { "const": "loopback-only" },
+        "health": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["isSyncing", "peers", "bestHeight", "finalizedHeight", "finalityAdvancing", "clockSynchronized", "p2pReachable"],
+          "properties": {
+            "isSyncing": { "const": false },
+            "peers": { "type": "integer", "minimum": 1 },
+            "bestHeight": { "$ref": "#/$defs/decimal" },
+            "finalizedHeight": { "$ref": "#/$defs/decimal" },
+            "finalityAdvancing": { "const": true },
+            "clockSynchronized": { "const": true },
+            "p2pReachable": { "const": true }
+          }
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["encodedKeys", "keyTypes", "proofMode", "proof", "hasSessionKeys"],
+      "properties": {
+        "encodedKeys": { "type": "string", "pattern": "^0x(?:[0-9a-fA-F]{2}){32,1024}$" },
+        "keyTypes": { "const": ["grandpa", "babe", "imOnline", "authorityDiscovery", "mixnet", "beefy", "temporal"] },
+        "proofMode": { "const": "legacy-empty" },
+        "proof": { "const": "0x" },
+        "hasSessionKeys": { "const": true }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "digest"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+    "decimal": { "type": "string", "pattern": "^(?:0|[1-9][0-9]*)$" }
+  }
+}
