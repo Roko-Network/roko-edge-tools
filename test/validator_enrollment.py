@@ -153,6 +153,41 @@ class ValidatorEnrollmentTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
         self.assertEqual(json.loads(output.read_text())["integrity"], package["integrity"])
 
+    def test_substrate_storage_keys_and_finalized_transition_status(self):
+        self.assertEqual(MODULE.storage_value_key("System", "Account")[:34], "0x26aa394eea5630e07c48ae0c9558cef7")
+        account = f"0x{'22' * 20}"
+        session_keys = f"0x{'55' * 226}"
+        finalized = f"0x{'aa' * 32}"
+
+        class TransitionRpc:
+            def call(self, method, params=None):
+                arguments = params or []
+                if method == "chain_getFinalizedHead": return finalized
+                if method == "chain_getHeader": return {"number": "0x64"}
+                if method == "author_hasSessionKeys": return arguments == [session_keys]
+                key = arguments[0]
+                if key == MODULE.storage_value_key("Session", "Validators"):
+                    return "0x04" + account[2:]
+                present = {
+                    MODULE.storage_map_key("Staking", "Bonded", account): f"0x{'33' * 20}",
+                    MODULE.storage_map_key("Staking", "Validators", account): "0x0000000000",
+                    MODULE.storage_map_key("Session", "NextKeys", account): session_keys,
+                }
+                return present.get(key)
+
+        status = MODULE.check_transition(TransitionRpc(), account, session_keys)
+        self.assertEqual(status["finalizedHeight"], "100")
+        self.assertEqual(status["state"], "active")
+        self.assertTrue(status["safeToEnableValidatorMode"])
+        self.assertFalse(status["safeToRetireOldKeys"])
+
+    def test_transition_check_fails_closed_on_key_or_runtime_shape_drift(self):
+        account = f"0x{'22' * 20}"
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "canonical"):
+            MODULE.storage_map_key("Session", "NextKeys", "not-an-account")
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "unexpected runtime shape"):
+            MODULE.decode_fixed_vector("0x08" + account[2:], 20)
+
 
 if __name__ == "__main__":
     unittest.main()

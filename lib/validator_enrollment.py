@@ -27,10 +27,123 @@ KEY_TYPES = ["grandpa", "babe", "imOnline", "authorityDiscovery", "mixnet", "bee
 PROHIBITED_KEY = re.compile(r"(?:secret|private|seed|mnemonic|phrase|suri|keystore|vault|openbao|token|password|cookie|approle|nodekey)", re.I)
 HASH = re.compile(r"^0x[0-9a-f]{64}$", re.I)
 ENCODED_KEYS = re.compile(r"^0x(?:[0-9a-f]{2}){32,1024}$", re.I)
+ACCOUNT = re.compile(r"^0x[0-9a-f]{40}$", re.I)
+MASK64 = (1 << 64) - 1
 
 
 class EnrollmentError(RuntimeError):
     """Expected operator-facing enrollment failure."""
+
+
+def _rotate_left(value: int, count: int) -> int:
+    return ((value << count) | (value >> (64 - count))) & MASK64
+
+
+def xxhash64(value: bytes, seed: int = 0) -> int:
+    """Dependency-free xxHash64 used only to derive Substrate storage keys."""
+    p1, p2, p3, p4, p5 = (11400714785074694791, 14029467366897019727, 1609587929392839161, 9650029242287828579, 2870177450012600261)
+    index = 0
+    if len(value) >= 32:
+        lanes = [(seed + p1 + p2) & MASK64, (seed + p2) & MASK64, seed & MASK64, (seed - p1) & MASK64]
+        while index <= len(value) - 32:
+            for lane in range(4):
+                word = int.from_bytes(value[index + lane * 8:index + lane * 8 + 8], "little")
+                lanes[lane] = (_rotate_left((lanes[lane] + word * p2) & MASK64, 31) * p1) & MASK64
+            index += 32
+        result = sum(_rotate_left(lanes[lane], (1, 7, 12, 18)[lane]) for lane in range(4)) & MASK64
+        for lane in lanes:
+            mixed = (_rotate_left((lane * p2) & MASK64, 31) * p1) & MASK64
+            result = ((result ^ mixed) * p1 + p4) & MASK64
+    else:
+        result = (seed + p5) & MASK64
+    result = (result + len(value)) & MASK64
+    while index <= len(value) - 8:
+        word = int.from_bytes(value[index:index + 8], "little")
+        mixed = (_rotate_left((word * p2) & MASK64, 31) * p1) & MASK64
+        result = (_rotate_left(result ^ mixed, 27) * p1 + p4) & MASK64
+        index += 8
+    if index <= len(value) - 4:
+        result = (_rotate_left(result ^ (int.from_bytes(value[index:index + 4], "little") * p1 & MASK64), 23) * p2 + p3) & MASK64
+        index += 4
+    while index < len(value):
+        result = (_rotate_left(result ^ (value[index] * p5 & MASK64), 11) * p1) & MASK64
+        index += 1
+    result ^= result >> 33
+    result = result * p2 & MASK64
+    result ^= result >> 29
+    result = result * p3 & MASK64
+    return (result ^ (result >> 32)) & MASK64
+
+
+def twox128(value: str) -> bytes:
+    encoded = value.encode()
+    return xxhash64(encoded, 0).to_bytes(8, "little") + xxhash64(encoded, 1).to_bytes(8, "little")
+
+
+def storage_value_key(pallet: str, item: str) -> str:
+    return "0x" + (twox128(pallet) + twox128(item)).hex()
+
+
+def storage_map_key(pallet: str, item: str, account: str) -> str:
+    if not ACCOUNT.fullmatch(account):
+        raise EnrollmentError("Transition account must be a canonical 20-byte address")
+    encoded = bytes.fromhex(account[2:])
+    return "0x" + (twox128(pallet) + twox128(item) + xxhash64(encoded).to_bytes(8, "little") + encoded).hex()
+
+
+def decode_compact_length(value: bytes) -> tuple[int, int]:
+    if not value:
+        raise EnrollmentError("Finalized storage returned an empty SCALE vector")
+    mode = value[0] & 3
+    if mode == 0:
+        return value[0] >> 2, 1
+    if mode == 1:
+        if len(value) < 2: raise EnrollmentError("Finalized storage contains a truncated SCALE vector")
+        return int.from_bytes(value[:2], "little") >> 2, 2
+    if mode == 2:
+        if len(value) < 4: raise EnrollmentError("Finalized storage contains a truncated SCALE vector")
+        return int.from_bytes(value[:4], "little") >> 2, 4
+    length = (value[0] >> 2) + 4
+    if len(value) < 1 + length: raise EnrollmentError("Finalized storage contains a truncated SCALE vector")
+    return int.from_bytes(value[1:1 + length], "little"), 1 + length
+
+
+def decode_fixed_vector(raw: str | None, width: int) -> list[bytes]:
+    if not isinstance(raw, str) or not re.fullmatch(r"0x(?:[0-9a-f]{2})*", raw, re.I):
+        raise EnrollmentError("Finalized storage response is missing or malformed")
+    value = bytes.fromhex(raw[2:])
+    count, offset = decode_compact_length(value)
+    if len(value) != offset + count * width:
+        raise EnrollmentError("Finalized storage vector has an unexpected runtime shape")
+    return [value[offset + index * width:offset + (index + 1) * width] for index in range(count)]
+
+
+def check_transition(rpc: "RpcClient", account: str, expected_session_keys: str | None = None) -> dict[str, Any]:
+    if not ACCOUNT.fullmatch(account):
+        raise EnrollmentError("Transition account must be a canonical 20-byte address")
+    if expected_session_keys is not None and not ENCODED_KEYS.fullmatch(expected_session_keys):
+        raise EnrollmentError("Expected public session-key tuple is malformed")
+    finalized = rpc.call("chain_getFinalizedHead")
+    header = rpc.call("chain_getHeader", [finalized])
+    active_raw = rpc.call("state_getStorage", [storage_value_key("Session", "Validators"), finalized])
+    active = ["0x" + entry.hex() for entry in decode_fixed_vector(active_raw, 20)]
+    bonded = rpc.call("state_getStorage", [storage_map_key("Staking", "Bonded", account), finalized]) is not None
+    intent = rpc.call("state_getStorage", [storage_map_key("Staking", "Validators", account), finalized]) is not None
+    next_keys = rpc.call("state_getStorage", [storage_map_key("Session", "NextKeys", account), finalized])
+    keys_present = isinstance(next_keys, str) and next_keys != "0x"
+    keys_match = expected_session_keys is None or (keys_present and next_keys.lower() == expected_session_keys.lower())
+    local_custody = expected_session_keys is None or rpc.call("author_hasSessionKeys", [expected_session_keys]) is True
+    active_member = account.lower() in {entry.lower() for entry in active}
+    state = "active" if active_member else "waiting" if intent and keys_present else "candidate" if intent else "bonded" if bonded else "not-started"
+    return {
+        "schema": "roko.validator-transition-status.v1", "account": account.lower(),
+        "finalizedHash": finalized, "finalizedHeight": str(block_height(header)), "state": state,
+        "bonded": bonded, "validatorIntent": intent, "sessionKeysPresent": keys_present,
+        "sessionKeysMatch": keys_match, "localSessionCustody": local_custody, "active": active_member,
+        "safeToEnableValidatorMode": bonded and intent and keys_present and keys_match and local_custody,
+        "safeToRetireOldKeys": False,
+        "retirementReason": "Retire old keys only after Agora proves replacement activation and finalized authorship.",
+    }
 
 
 def canonical_json(value: Any) -> str:
@@ -350,13 +463,15 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description="Generate a public-only ROKO validator enrollment package")
     result.add_argument("--rpc", default="http://127.0.0.1:9944", help="Loopback node HTTP RPC")
     result.add_argument("--binary", default="/usr/local/bin/roko-node", help="Verified ROKO node binary")
-    result.add_argument("--output", required=True, help="New or replaced public enrollment JSON path")
+    result.add_argument("--output", help="New or replaced public enrollment JSON path")
     result.add_argument("--expected-genesis", default=TESTNET_GENESIS)
     result.add_argument("--public-address", action="append", default=[], help="Intentional public libp2p multiaddress; repeatable")
     result.add_argument("--minimum-peers", type=int, default=1)
     result.add_argument("--observation-seconds", type=float, default=15.0)
     result.add_argument("--expires-minutes", type=int, default=30)
-    session = result.add_mutually_exclusive_group(required=True)
+    result.add_argument("--check-account", help="Read finalized on-chain transition state for a canonical validator account")
+    result.add_argument("--expected-session-keys", help="Public tuple expected both on chain and in this node's local keystore")
+    session = result.add_mutually_exclusive_group()
     session.add_argument("--confirm-new-keys", action="store_true", help="Explicitly generate a fresh session-key tuple in the local keystore")
     session.add_argument("--session-keys", help="Verify an existing public encoded key tuple in the local keystore")
     return result
@@ -364,6 +479,14 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
+    if args.check_account:
+        if args.output or args.confirm_new_keys or args.session_keys:
+            raise EnrollmentError("Transition checks cannot create or replace enrollment output")
+        status = check_transition(RpcClient(args.rpc), args.check_account, args.expected_session_keys)
+        print(json.dumps(status, sort_keys=True, indent=2))
+        return 0 if status["safeToEnableValidatorMode"] else 2
+    if not args.output or (args.confirm_new_keys == bool(args.session_keys)):
+        raise EnrollmentError("Package creation requires --output and exactly one of --confirm-new-keys or --session-keys")
     if args.minimum_peers < 1 or args.observation_seconds < 0 or not 1 <= args.expires_minutes <= 1440:
         raise EnrollmentError("Peer, observation, or expiry bounds are invalid")
     package = build_enrollment(args, RpcClient(args.rpc))

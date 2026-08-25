@@ -59,10 +59,25 @@ connect the staking account, and inspect each transaction preview. A finalized
 reported election, active-session membership, authored finalized blocks, and
 finality evidence.
 
+After the wallet calls finalize, prove that the same public tuple is held by
+this node and registered at a finalized head before enabling validator mode:
+
+```bash
+bin/roko-validator-enroll \
+  --rpc http://127.0.0.1:9944 \
+  --check-account 0xYOUR_STASH_ACCOUNT \
+  --expected-session-keys 0xPUBLIC_ENCODED_KEYS
+```
+
+Exit status `0` means the node has local custody and finalized bond, intent,
+and matching next-session keys. Exit status `2` is a normal not-ready result;
+inspect the value-free JSON fields and wait or correct the missing step. It
+does not mean the validator is elected or authoring. Agora separately proves
+active-session membership and recent finalized authorship.
+
 ## Rotate and exit
 
 Create a fresh package to rotate keys. Do not purge old keys until Agora proves
 the replacement is active and authoring. To exit, chill first, then unbond,
 wait for the finalized bonding period, withdraw matured funds, and stop/purge
 only after the product reports the safe state.
-
