@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+from validator_enrollment import EnrollmentError, main
+
+try:
+    raise SystemExit(main())
+except EnrollmentError as error:
+    print(f"roko-validator-enroll: {error}", file=sys.stderr)
+    raise SystemExit(1)

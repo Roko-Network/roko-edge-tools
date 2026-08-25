@@ -96,6 +96,43 @@ paths and performs the remaining installation and verification steps. See the
 | `bin/roko-edge-report` | Generate a sanitized support bundle |
 | `bin/roko-seed-refresh` | Add current ROKO snapshot/release torrents to Transmission and verify completed payloads |
 | `bin/roko-guided-install` | Run the self-contained AIWG-manifested installer for Chrony or operator-licensed Timebeat deployments |
+| `bin/roko-validator-enroll` | Verify a synced non-authoring validator candidate, generate or verify node-owned session keys over loopback, and export a short-lived public enrollment package for Agora |
+
+## Permissionless validator enrollment
+
+Finish the guided `validator-candidate` installation first. The node must
+remain non-authoring, fully synchronized, peered, finalizing, and
+time-synchronized. Then generate a fresh public enrollment package on the node:
+
+```bash
+./bin/roko-validator-enroll \
+  --rpc http://127.0.0.1:9944 \
+  --binary /usr/local/bin/roko-node \
+  --public-address /dns4/validator.example/tcp/30333/p2p/YOUR_PUBLIC_PEER_ID \
+  --confirm-new-keys \
+  --output ./roko-validator-enrollment.json
+```
+
+`--confirm-new-keys` is deliberately explicit: every invocation creates a new
+session-key tuple in the local node keystore. To verify an already generated
+public tuple without rotating again, use `--session-keys 0x...`.
+
+The command:
+
+- refuses non-loopback or externally bound author RPC;
+- checks genesis, runtime metadata, binary digest, clock, peers, sync,
+  persistent peer ID, non-authoring role, and advancing finality;
+- requires `author_hasSessionKeys` to prove local custody;
+- writes the package with mode `0600` and a canonical SHA-256 digest; and
+- allow-lists public facts so private keys, keystores, seeds, wallet
+  authorization, and OpenBao material cannot enter the package.
+
+Import the resulting file at
+[agora.roko.network/participate/staking](https://agora.roko.network/participate/staking).
+Agora validates the file against the connected chain before asking your wallet
+to review any staking call. Creating the file does not bond funds, register
+keys on chain, declare validator intent, guarantee election, or activate
+authoring.
 
 ## Common environment variables
 
@@ -141,8 +178,10 @@ timer. See the public guide at
 
 - The guided observer flow inserts one ROKO `ptp2` key interactively; it never
   places the secret in argv, a manifest, or a report.
-- The validator-candidate flow does not generate or manage validator session
-  keys and never enables authoring.
+- The guided installer does not generate validator session keys. The separate
+  `roko-validator-enroll` command creates or verifies them only in the local
+  node keystore after an explicit operator action; it never enables authoring
+  or exports private key material.
 - Timebeat software and licences remain vendor/operator supplied and are never
   redistributed by ROKO; the non-secret ROKO mesh profile is bundled here.
 - The installer performs the host, clock, ROKO runtime, service, observer-key,
