@@ -273,6 +273,7 @@ if [[ "$NODE_ROLE" == validator-candidate ]]; then
 Validator onboarding
   Guide: https://docs.roko.network/pages/prepare-validator.html
   Local enrollment: roko-validator-enroll --help
+  New session keys: sudo roko-session-key-window --help
   Wallet journey: https://agora.roko.network/participate/staking
   Claim: https://claim.roko.network
   Lock pwROKO: https://stake.roko.network
@@ -297,9 +298,10 @@ EOF
 3. At https://stake.roko.network, connect that account and Lock 50 ROKO.
    The live runtime does not expose EVM staking precompile 0x0700. A successful
    transaction to that empty address is not a bond.
-4. Run roko-validator-enroll on this host to verify the node and create the
-   short-lived public enrollment file. Import that file into Agora; keep
-   author/key-management RPC loopback-only and time-bounded.
+4. Run roko-session-key-window on this host. The supported service starts with
+   Safe RPC; the helper opens one confirmed loopback-only key-management
+   window, creates the short-lived public enrollment file, restores Safe, and
+   proves key methods are blocked again. Import the file only after that proof.
 5. Verify direct P2P reachability to at least two active ROKO authorities.
    Syncing through boot.roko.network alone does not satisfy the temporal mesh;
    temporal_getConsensusTime.peerCount must show mapped authority peers.

@@ -8,6 +8,7 @@ import stat
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("validator_enrollment", ROOT / "lib" / "validator_enrollment.py")
@@ -42,6 +43,8 @@ class FakeRpc:
         key = (method, tuple(params or []))
         self.calls.append(key)
         value = self.values[key]
+        if isinstance(value, BaseException):
+            raise value
         if isinstance(value, list) and method == "chain_getFinalizedHead":
             return value.pop(0)
         return value
@@ -69,7 +72,11 @@ class ValidatorEnrollmentTests(unittest.TestCase):
             observation_seconds=0,
             expires_minutes=30,
             confirm_new_keys=True,
+            confirm_isolated_unsafe_rpc=True,
             session_keys=None,
+            check_account=None,
+            expected_session_keys=None,
+            check_rpc_policy=False,
         )
         values.update(overrides)
         return argparse.Namespace(**values)
@@ -102,6 +109,72 @@ class ValidatorEnrollmentTests(unittest.TestCase):
         package = self.build(rpc, self.args(confirm_new_keys=False, session_keys=keys))
         self.assertEqual(package["session"]["encodedKeys"], keys)
         self.assertNotIn(("author_rotateKeys", ()), rpc.calls)
+
+    def test_safe_rpc_rejection_is_actionable_and_distinct_from_other_failures(self):
+        disabled = MODULE.RpcRejectedError(
+            "author_rotateKeys", -32601, "RPC call is unsafe to be called externally"
+        )
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "disabled by the node's Safe RPC policy"):
+            self.build(FakeRpc({("author_rotateKeys", ()): disabled}))
+
+        other = MODULE.RpcRejectedError("author_rotateKeys", -32000, "keystore unavailable")
+        with self.assertRaisesRegex(MODULE.RpcRejectedError, "keystore unavailable"):
+            self.build(FakeRpc({("author_rotateKeys", ()): other}))
+
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "confirm-isolated-unsafe-rpc"):
+            self.build(args=self.args(confirm_isolated_unsafe_rpc=False))
+
+    def test_non_mutating_rpc_policy_check_proves_safe_restoration(self):
+        class PolicyRpc:
+            def __init__(self, error=None):
+                self.error = error
+                self.calls = []
+
+            def call(self, method, params=None):
+                self.calls.append((method, tuple(params or [])))
+                if method == "system_health":
+                    return {"isSyncing": False, "peers": 3}
+                if self.error:
+                    raise self.error
+                return False
+
+        safe = PolicyRpc(MODULE.RpcRejectedError(
+            "author_hasSessionKeys", -32601, "RPC call is unsafe to be called externally"
+        ))
+        report = MODULE.rpc_policy_status(safe)
+        self.assertTrue(report["safeForNormalOperation"])
+        self.assertEqual(report["state"], "safe-restored")
+        self.assertEqual(safe.calls[-1], ("author_hasSessionKeys", ("0x",)))
+
+        unsafe = MODULE.rpc_policy_status(PolicyRpc())
+        self.assertFalse(unsafe["safeForNormalOperation"])
+        self.assertEqual(unsafe["state"], "unsafe-key-management-accessible")
+
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "Unable to prove Safe RPC policy"):
+            MODULE.rpc_policy_status(PolicyRpc(MODULE.RpcRejectedError(
+                "author_hasSessionKeys", -32601, "Method not found"
+            )))
+
+    def test_rpc_client_preserves_structured_policy_rejection(self):
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        with mock.patch.object(MODULE.urllib.request, "urlopen", return_value=response), \
+             mock.patch.object(MODULE.json, "load", return_value={
+                 "jsonrpc": "2.0",
+                 "id": 1,
+                 "error": {"code": -32601, "message": "RPC call is unsafe to be called externally"},
+             }):
+            with self.assertRaises(MODULE.RpcRejectedError) as observed:
+                MODULE.RpcClient("http://127.0.0.1:9944").call("author_rotateKeys")
+        self.assertEqual(observed.exception.code, -32601)
+        self.assertTrue(MODULE.key_rpc_policy_disabled(observed.exception))
+
+    def test_listener_classification_rejects_every_non_loopback_address(self):
+        self.assertTrue(MODULE.listener_address_is_loopback("127.0.0.1:9944", 9944))
+        self.assertTrue(MODULE.listener_address_is_loopback("[::1]:9944", 9944))
+        for address in ("0.0.0.0:9944", "[::]:9944", "192.0.2.15:9944", "*:9944"):
+            self.assertFalse(MODULE.listener_address_is_loopback(address, 9944))
 
     def test_rejects_remote_rpc_authority_role_stale_finality_and_missing_custody(self):
         with self.assertRaisesRegex(MODULE.EnrollmentError, "loopback"):

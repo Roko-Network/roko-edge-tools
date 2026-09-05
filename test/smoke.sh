@@ -8,8 +8,10 @@ bash -n bin/roko-node-tail
 bash -n bin/roko-edge-report
 bash -n bin/roko-seed-refresh
 bash -n bin/roko-guided-install
+bash -n bin/roko-session-key-window
 python3 -m py_compile bin/roko-validator-enroll lib/validator_enrollment.py test/validator_enrollment.py
 python3 test/validator_enrollment.py
+test/session_key_window.sh
 for installer_script in installer/scripts/*.sh; do
   bash -n "$installer_script"
 done
@@ -28,7 +30,10 @@ grep -F "ROKO chain P2P: enabled via the public bootnode" bin/roko-guided-instal
 grep -F "temporal_getMeshState" installer/scripts/start-and-verify.sh >/dev/null
 grep -F "roko_ptp2_mode=" installer/scripts/write-readiness-report.sh >/dev/null
 grep -F "roko-validator-enroll" installer/scripts/write-readiness-report.sh >/dev/null
+grep -F "sudo roko-session-key-window --help" bin/roko-guided-install >/dev/null
 grep -F "author_hasSessionKeys" lib/validator_enrollment.py >/dev/null
+grep -F -- "--check-rpc-policy" docs/validator-self-join.md >/dev/null
+grep -F "Safe RPC restored and verified" bin/roko-session-key-window >/dev/null
 grep -F "roko.validator-enrollment.v1" contracts/validator-enrollment-v1.schema.json >/dev/null
 grep -F "schema: aiwg.pagenbar.docset/v1" docs/time-authority/docset.yaml >/dev/null
 for page in docs/time-authority/*.md; do

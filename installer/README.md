@@ -124,6 +124,12 @@ The installer never treats a bond or `--validator` as activation:
 - [Prepare a validator](https://docs.roko.network/pages/prepare-validator.html)
 - [Validator key custody](https://docs.roko.network/pages/validator-key-custody.html)
 
+The installed systemd service defaults its key-management policy to Safe.
+Fresh session keys therefore use `roko-session-key-window`, not an exposed
+author endpoint: it verifies the supported service and loopback listener,
+retains a recovery backup, performs one confirmed local key-generation window,
+and restores and tests Safe mode before the enrollment file may be imported.
+
 ROKO's built-in PTP² observer mode and Timebeat's licensed PTP² Mesh are
 separate layers. The former is authenticated ROKO libp2p observation; the
 latter is the endorsed partner timing product that steers and distributes

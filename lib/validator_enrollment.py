@@ -35,6 +35,65 @@ class EnrollmentError(RuntimeError):
     """Expected operator-facing enrollment failure."""
 
 
+class RpcRejectedError(EnrollmentError):
+    """A structurally valid JSON-RPC rejection, kept distinct from transport errors."""
+
+    def __init__(self, method: str, code: int | None, message: str) -> None:
+        self.method = method
+        self.code = code
+        self.rpc_message = message
+        rendered_code = f" (code {code})" if code is not None else ""
+        super().__init__(f"Local node RPC rejected {method}{rendered_code}: {message}")
+
+
+def bounded_rpc_message(value: Any) -> str:
+    message = re.sub(r"[\x00-\x1f\x7f]+", " ", str(value or "RPC error")).strip()
+    return (message or "RPC error")[:512]
+
+
+def key_rpc_policy_disabled(error: RpcRejectedError) -> bool:
+    """Recognize Substrate's explicit safe-policy rejection without guessing."""
+    if error.code != -32601:
+        return False
+    return bool(re.search(r"\bunsafe\b|\bnot safe\b|\bforbidden\b|\bdenied\b|\bdisabled by.*policy\b", error.rpc_message, re.I))
+
+
+def rpc_policy_status(rpc: "RpcClient") -> dict[str, Any]:
+    """Non-mutating proof that key-management RPC is blocked while health remains usable."""
+    health = rpc.call("system_health")
+    if not isinstance(health, dict) or not isinstance(health.get("isSyncing"), bool):
+        raise EnrollmentError("Safe health RPC returned a malformed system_health response")
+    try:
+        # This is deliberately non-mutating. Under Unsafe it returns false (or an
+        # argument error after crossing the policy gate); under Safe, Substrate
+        # rejects it before dispatch with the explicit unsafe-call error.
+        rpc.call("author_hasSessionKeys", ["0x"])
+    except RpcRejectedError as error:
+        if key_rpc_policy_disabled(error):
+            blocked = True
+        elif error.code == -32602:
+            blocked = False
+        else:
+            raise EnrollmentError(
+                "Unable to prove Safe RPC policy: author_hasSessionKeys was rejected "
+                "without the supported unsafe-policy response"
+            ) from error
+    else:
+        blocked = False
+    return {
+        "schema": "roko.validator-rpc-policy.v1",
+        "safeHealthRpcAvailable": True,
+        "keyManagementMethodsBlocked": blocked,
+        "safeForNormalOperation": blocked,
+        "state": "safe-restored" if blocked else "unsafe-key-management-accessible",
+        "remediation": (
+            "Safe RPC policy is restored."
+            if blocked
+            else "Restore --rpc-methods Safe, restart the node, and repeat this check before importing the enrollment package or enabling validator mode."
+        ),
+    }
+
+
 def _rotate_left(value: int, count: int) -> int:
     return ((value << count) | (value >> (64 - count))) & MASK64
 
@@ -253,8 +312,18 @@ class RpcClient:
                 payload = json.load(response)
         except (OSError, ValueError) as error:
             raise EnrollmentError(f"Local node RPC failed for {method}: {error}") from error
+        if not isinstance(payload, dict):
+            raise EnrollmentError(f"Local node RPC returned malformed JSON for {method}")
         if payload.get("error"):
-            raise EnrollmentError(f"Local node RPC rejected {method}: {payload['error']}")
+            error = payload["error"]
+            if not isinstance(error, dict):
+                raise EnrollmentError(f"Local node RPC returned a malformed error for {method}")
+            code = error.get("code")
+            raise RpcRejectedError(
+                method,
+                code if isinstance(code, int) else None,
+                bounded_rpc_message(error.get("message")),
+            )
         if "result" not in payload:
             raise EnrollmentError(f"Local node RPC returned no result for {method}")
         return payload["result"]
@@ -274,6 +343,19 @@ def loopback_rpc(url: str) -> tuple[str, int]:
     return hostname, parsed.port
 
 
+def listener_address_is_loopback(value: str, port: int) -> bool:
+    if not value.endswith(f":{port}"):
+        return False
+    host = value[: -(len(str(port)) + 1)]
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
+    host = host.split("%", 1)[0]
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 def listener_is_loopback(port: int) -> bool:
     executable = shutil.which("ss")
     if not executable:
@@ -289,7 +371,7 @@ def listener_is_loopback(port: int) -> bool:
             matched.append(local)
     if not matched:
         raise EnrollmentError(f"No TCP listener was found on RPC port {port}")
-    unsafe = [entry for entry in matched if entry.startswith(("0.0.0.0:", "*:", "[::]:", ":::"))]
+    unsafe = [entry for entry in matched if not listener_address_is_loopback(entry, port)]
     if unsafe:
         raise EnrollmentError(f"RPC port {port} is externally bound ({', '.join(unsafe)})")
     return True
@@ -389,7 +471,23 @@ def build_enrollment(
     else:
         if not args.confirm_new_keys:
             raise EnrollmentError("Creating fresh session keys requires --confirm-new-keys")
-        encoded_keys = rpc.call("author_rotateKeys")
+        if not args.confirm_isolated_unsafe_rpc:
+            raise EnrollmentError(
+                "Creating fresh session keys also requires --confirm-isolated-unsafe-rpc "
+                "after proving the author RPC listener is loopback-only and is not forwarded by a proxy or tunnel"
+            )
+        try:
+            encoded_keys = rpc.call("author_rotateKeys")
+        except RpcRejectedError as error:
+            if not key_rpc_policy_disabled(error):
+                raise
+            raise EnrollmentError(
+                "Session-key generation is disabled by the node's Safe RPC policy. "
+                "Either verify a previously generated public tuple with --session-keys, "
+                "or use the documented roko-session-key-window helper to enable Unsafe "
+                "only on the proven loopback listener and restore Safe automatically. "
+                "Never expose or proxy the temporary endpoint."
+            ) from error
     if not ENCODED_KEYS.fullmatch(encoded_keys):
         raise EnrollmentError("Node returned an invalid encoded session-key tuple")
     if rpc.call("author_hasSessionKeys", [encoded_keys]) is not True:
@@ -471,6 +569,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--expires-minutes", type=int, default=30)
     result.add_argument("--check-account", help="Read finalized on-chain transition state for a canonical validator account")
     result.add_argument("--expected-session-keys", help="Public tuple expected both on chain and in this node's local keystore")
+    result.add_argument("--check-rpc-policy", action="store_true", help="Non-mutating proof that key-management RPC is blocked while safe health RPC remains available")
+    result.add_argument("--confirm-isolated-unsafe-rpc", action="store_true", help="Confirm the temporary key-generation endpoint is loopback-only and is not forwarded by a proxy or tunnel")
     session = result.add_mutually_exclusive_group()
     session.add_argument("--confirm-new-keys", action="store_true", help="Explicitly generate a fresh session-key tuple in the local keystore")
     session.add_argument("--session-keys", help="Verify an existing public encoded key tuple in the local keystore")
@@ -479,8 +579,16 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
+    if args.check_rpc_policy:
+        if args.output or args.check_account or args.expected_session_keys or args.confirm_new_keys or args.session_keys or args.confirm_isolated_unsafe_rpc:
+            raise EnrollmentError("RPC policy checks cannot create packages, rotate keys, or inspect an account")
+        _, port = loopback_rpc(args.rpc)
+        listener_is_loopback(port)
+        status = rpc_policy_status(RpcClient(args.rpc))
+        print(json.dumps(status, sort_keys=True, indent=2))
+        return 0 if status["safeForNormalOperation"] else 2
     if args.check_account:
-        if args.output or args.confirm_new_keys or args.session_keys:
+        if args.output or args.confirm_new_keys or args.session_keys or args.confirm_isolated_unsafe_rpc:
             raise EnrollmentError("Transition checks cannot create or replace enrollment output")
         status = check_transition(RpcClient(args.rpc), args.check_account, args.expected_session_keys)
         print(json.dumps(status, sort_keys=True, indent=2))
@@ -494,4 +602,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Validator enrollment package: {args.output}")
     print(f"Canonical digest: {package['integrity']['digest']}")
     print("Contains public node/session facts only. Import it at https://agora.roko.network/participate/staking.")
+    if args.confirm_new_keys:
+        print(
+            "Required next step: restore --rpc-methods Safe, restart the node, and run "
+            "roko-validator-enroll --rpc " + args.rpc + " --check-rpc-policy. "
+            "Do not import the package or enable validator mode until that check exits 0."
+        )
     return 0

@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+set -euo pipefail
+set +x
+umask 077
+
+service=roko-node.service
+policy_file=/etc/roko/node-rpc.env
+rpc=http://127.0.0.1:9944
+enroll_command="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/roko-validator-enroll"
+confirm_window=false
+confirm_no_forwarding=false
+enroll_args=()
+restore_required=false
+backup_file=""
+
+usage() {
+  cat <<'EOF'
+Usage:
+  sudo roko-session-key-window \
+    [--service roko-node.service] \
+    [--policy-file /etc/roko/node-rpc.env] \
+    [--rpc http://127.0.0.1:9944] \
+    [--enroll-command /usr/local/bin/roko-validator-enroll] \
+    --confirm-isolated-window --confirm-no-forwarding -- \
+    --binary /usr/local/bin/roko-node \
+    --public-address /dns4/validator.example/tcp/30333/p2p/PEER_ID \
+    --output ./roko-validator-enrollment.json
+
+Creates one bounded loopback-only session-key generation window for the
+supported ROKO systemd service. It verifies the service starts in Safe mode,
+backs up the policy file, enables Unsafe only long enough to run enrollment,
+then restores Safe and proves key-management RPC is blocked again. The backup
+is retained for recovery.
+
+The service unit must use the supported contract:
+  Environment=ROKO_RPC_METHODS=Safe
+  EnvironmentFile=-/etc/roko/node-rpc.env
+  --rpc-methods ${ROKO_RPC_METHODS}
+
+The helper refuses public RPC flags, symlinked/unowned policy files, an inactive
+service, or a listener that roko-validator-enroll cannot prove loopback-only.
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    --service) service="${2:-}"; shift 2 ;;
+    --policy-file) policy_file="${2:-}"; shift 2 ;;
+    --rpc) rpc="${2:-}"; shift 2 ;;
+    --enroll-command) enroll_command="${2:-}"; shift 2 ;;
+    --confirm-isolated-window) confirm_window=true; shift ;;
+    --confirm-no-forwarding) confirm_no_forwarding=true; shift ;;
+    --) shift; enroll_args=("$@"); break ;;
+    -h|--help) usage; exit 0 ;;
+    *) printf 'Unknown argument: %s\n' "$1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+die() { printf 'roko-session-key-window: %s\n' "$*" >&2; exit 1; }
+[[ "$(id -u)" -eq 0 ]] || die "run as root through the reviewed local sudo path"
+[[ "$service" =~ ^[A-Za-z0-9_.@-]+\.service$ ]] || die "invalid service name"
+[[ "$policy_file" =~ ^/[A-Za-z0-9._/-]+$ && "$policy_file" != *'/../'* ]] || die "policy file must be a canonical absolute path"
+[[ "$enroll_command" =~ ^/[A-Za-z0-9._/-]+$ && "$enroll_command" != *'/../'* ]] || die "enrollment command must be a canonical absolute path"
+"$confirm_window" || die "--confirm-isolated-window is required"
+"$confirm_no_forwarding" || die "--confirm-no-forwarding is required after verifying no proxy or tunnel forwards the RPC listener"
+[[ ${#enroll_args[@]} -gt 0 ]] || die "enrollment arguments are required after --"
+
+case " ${enroll_args[*]} " in
+  *" --confirm-new-keys "*|*" --confirm-isolated-unsafe-rpc "*|*" --rpc "*|*" --check-account "*|*" --check-rpc-policy "*|*" --session-keys "*)
+    die "pass only package fields after --; the helper owns RPC and key-generation mode"
+    ;;
+esac
+case " ${enroll_args[*]} " in
+  *" --output "*) ;;
+  *) die "enrollment arguments must include --output" ;;
+esac
+
+[[ -x "$enroll_command" && -f "$enroll_command" && ! -L "$enroll_command" ]] || die "enrollment command must be an executable regular file, not a symlink"
+[[ -f "$policy_file" && ! -L "$policy_file" ]] || die "policy file must be an existing regular file, not a symlink"
+[[ "$(stat -c '%u' "$policy_file")" == 0 ]] || die "policy file must be owned by root"
+policy_mode="$(stat -c '%a' "$policy_file")"
+(( (8#$policy_mode & 0022) == 0 )) || die "policy file must not be group- or world-writable"
+[[ "$(tr -d '\r' <"$policy_file")" == "ROKO_RPC_METHODS=Safe" ]] || die "policy file must begin in exact Safe state"
+
+unit_text="$(systemctl cat "$service")" || die "unable to read the systemd service"
+grep -F -- "Environment=ROKO_RPC_METHODS=Safe" <<<"$unit_text" >/dev/null || die "service lacks the default Safe policy"
+grep -F -- "EnvironmentFile=-$policy_file" <<<"$unit_text" >/dev/null || die "service does not consume the selected policy file"
+# The unit must contain the literal systemd variable, not a shell expansion.
+# shellcheck disable=SC2016
+grep -F -- '--rpc-methods ${ROKO_RPC_METHODS}' <<<"$unit_text" >/dev/null || die "service does not bind rpc-methods to the policy variable"
+if grep -Eq -- '--(rpc-external|unsafe-rpc-external)|--rpc-listen-address[= ]+(0\.0\.0\.0|::|\*)' <<<"$unit_text"; then
+  die "service contains a public RPC exposure flag"
+fi
+systemctl is-active --quiet "$service" || die "service must be active before opening the key window"
+"$enroll_command" --rpc "$rpc" --check-rpc-policy >/dev/null || die "Safe RPC and loopback-listener preflight failed"
+
+timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+backup_file="${policy_file}.before-session-key-window-${timestamp}"
+[[ ! -e "$backup_file" ]] || die "backup target already exists"
+cp --preserve=mode,ownership,timestamps -- "$policy_file" "$backup_file"
+[[ -f "$backup_file" && ! -L "$backup_file" ]] || die "policy backup failed"
+
+write_policy() {
+  local value="$1" temporary=""
+  temporary="$(mktemp "$(dirname "$policy_file")/.node-rpc.env.XXXXXX")" || return 1
+  if ! printf 'ROKO_RPC_METHODS=%s\n' "$value" >"$temporary" ||
+     ! chown --reference="$policy_file" "$temporary" ||
+     ! chmod --reference="$policy_file" "$temporary" ||
+     ! mv -fT -- "$temporary" "$policy_file"; then
+    rm -f -- "$temporary"
+    return 1
+  fi
+}
+
+wait_for_policy() {
+  local expected="$1" attempts="${ROKO_KEY_WINDOW_WAIT_ATTEMPTS:-30}" rc
+  [[ "$attempts" =~ ^[1-9][0-9]?$ ]] || return 1
+  for ((attempt = 1; attempt <= attempts; attempt += 1)); do
+    set +e
+    "$enroll_command" --rpc "$rpc" --check-rpc-policy >/dev/null 2>&1
+    rc=$?
+    set -e
+    if [[ "$expected" == safe && $rc -eq 0 ]] || [[ "$expected" == unsafe && $rc -eq 2 ]]; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+restore_safe() {
+  local restore_ok=true safe_on_disk=false
+  "$restore_required" || return 0
+  if write_policy Safe && [[ "$(tr -d '\r' <"$policy_file")" == "ROKO_RPC_METHODS=Safe" ]]; then
+    safe_on_disk=true
+  else
+    restore_ok=false
+  fi
+  if "$restore_ok"; then
+    systemctl restart "$service" || restore_ok=false
+  fi
+  if "$restore_ok"; then
+    wait_for_policy safe || restore_ok=false
+  fi
+  restore_required=false
+  if ! "$restore_ok"; then
+    systemctl stop "$service" >/dev/null 2>&1 || true
+    if "$safe_on_disk"; then
+      printf 'roko-session-key-window: CRITICAL: Safe policy is restored on disk but service recovery failed; service was stopped. Backup: %s\n' "$backup_file" >&2
+    else
+      printf 'roko-session-key-window: CRITICAL: Safe policy could not be restored; service was stopped. Repair the policy file before restarting. Backup: %s\n' "$backup_file" >&2
+    fi
+    return 1
+  fi
+  printf 'Safe RPC restored and verified. Recovery backup retained: %s\n' "$backup_file"
+}
+
+on_exit() {
+  local rc=$?
+  trap - EXIT INT TERM
+  if ! restore_safe; then
+    exit 1
+  fi
+  exit "$rc"
+}
+trap on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+restore_required=true
+write_policy Unsafe
+systemctl restart "$service"
+wait_for_policy unsafe || die "temporary Unsafe policy did not become available on the proven loopback listener"
+
+"$enroll_command" --rpc "$rpc" --confirm-new-keys --confirm-isolated-unsafe-rpc "${enroll_args[@]}"
+
+restore_safe
+trap - EXIT INT TERM
+printf '%s\n' "Session-key window completed. Safe RPC is verified; the enrollment package may now be imported into Agora."

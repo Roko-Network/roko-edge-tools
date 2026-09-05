@@ -97,25 +97,44 @@ paths and performs the remaining installation and verification steps. See the
 | `bin/roko-seed-refresh` | Add current ROKO snapshot/release torrents to Transmission and verify completed payloads |
 | `bin/roko-guided-install` | Run the self-contained AIWG-manifested installer for Chrony or operator-licensed Timebeat deployments |
 | `bin/roko-validator-enroll` | Verify a synced non-authoring validator candidate, generate or verify node-owned session keys over loopback, and export a short-lived public enrollment package for Agora |
+| `bin/roko-session-key-window` | Open one guarded loopback-only Unsafe RPC window for session-key generation, then restore and prove Safe policy before handoff |
 
 ## Permissionless validator enrollment
 
 Finish the guided `validator-candidate` installation first. The node must
 remain non-authoring, fully synchronized, peered, finalizing, and
-time-synchronized. Then generate a fresh public enrollment package on the node:
+time-synchronized. The supported service starts with `--rpc-methods Safe`,
+which correctly blocks `author_rotateKeys`. Generate a fresh public enrollment
+package through the guarded local window:
+
+```bash
+sudo ./bin/roko-session-key-window \
+  --confirm-isolated-window \
+  --confirm-no-forwarding -- \
+  --binary /usr/local/bin/roko-node \
+  --public-address /dns4/validator.example/tcp/30333/p2p/YOUR_PUBLIC_PEER_ID \
+  --output ./roko-validator-enrollment.json
+```
+
+The two confirmations attest that the operator reviewed the temporary change
+and that no tunnel, reverse proxy, or port forward publishes the loopback RPC.
+Every invocation creates a new session-key tuple in the local node keystore.
+The helper retains a timestamped recovery backup, fails closed on a public
+listener or unsupported service contract, and stops the service if Safe-mode
+recovery cannot be proven. To verify an already generated public tuple without
+rotating again, use `roko-validator-enroll --session-keys 0x...`.
+
+After any manual policy change, prove restoration independently:
 
 ```bash
 ./bin/roko-validator-enroll \
   --rpc http://127.0.0.1:9944 \
-  --binary /usr/local/bin/roko-node \
-  --public-address /dns4/validator.example/tcp/30333/p2p/YOUR_PUBLIC_PEER_ID \
-  --confirm-new-keys \
-  --output ./roko-validator-enrollment.json
+  --check-rpc-policy
 ```
 
-`--confirm-new-keys` is deliberately explicit: every invocation creates a new
-session-key tuple in the local node keystore. To verify an already generated
-public tuple without rotating again, use `--session-keys 0x...`.
+Exit `0` and state `safe-restored` prove key-management RPC is blocked while
+safe health RPC remains available. Exit `2` means Unsafe remains accessible;
+do not import the package or enable validator mode.
 
 The command:
 
@@ -179,9 +198,9 @@ timer. See the public guide at
 - The guided observer flow inserts one ROKO `ptp2` key interactively; it never
   places the secret in argv, a manifest, or a report.
 - The guided installer does not generate validator session keys. The separate
-  `roko-validator-enroll` command creates or verifies them only in the local
-  node keystore after an explicit operator action; it never enables authoring
-  or exports private key material.
+  guarded session-key window creates them only in the local node keystore after
+  two explicit operator confirmations, restores Safe RPC, and never enables
+  authoring or exports private key material.
 - Timebeat software and licences remain vendor/operator supplied and are never
   redistributed by ROKO; the non-secret ROKO mesh profile is bundled here.
 - The installer performs the host, clock, ROKO runtime, service, observer-key,

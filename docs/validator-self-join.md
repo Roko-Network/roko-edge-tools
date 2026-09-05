@@ -26,16 +26,43 @@ short-lived; discard it after use and generate a fresh package for rotation.
 
 ## Generate or verify keys
 
-Generate fresh keys:
+The installed node correctly defaults to `--rpc-methods Safe`; therefore a
+direct `author_rotateKeys` request is rejected. Do not make RPC public to work
+around that control. For the supported systemd service, use the guarded local
+window:
+
+```bash
+sudo bin/roko-session-key-window \
+  --confirm-isolated-window \
+  --confirm-no-forwarding -- \
+  --binary /usr/local/bin/roko-node \
+  --public-address /dns4/validator.example/tcp/30333/p2p/YOUR_PUBLIC_PEER_ID \
+  --output roko-validator-enrollment.json
+```
+
+Before confirming, prove there is no reverse proxy, SSH tunnel, VPN port
+forward, container publisher, or other relay exposing the local RPC port. The
+helper requires the exact supported unit contract, an active service, an owned
+non-writable policy file initially set to Safe, and a listener that the
+enrollment CLI proves loopback-only. It creates a timestamped backup, switches
+only the policy value, restarts the service, generates keys, and restores Safe
+even when generation fails or the process is interrupted. If restoration or
+health verification fails, it leaves Safe on disk, stops the service, and
+reports the retained recovery backup instead of claiming success.
+
+Verify Safe restoration independently after any manual workflow:
 
 ```bash
 bin/roko-validator-enroll \
   --rpc http://127.0.0.1:9944 \
-  --binary /usr/local/bin/roko-node \
-  --public-address /dns4/validator.example/tcp/30333/p2p/YOUR_PUBLIC_PEER_ID \
-  --confirm-new-keys \
-  --output roko-validator-enrollment.json
+  --check-rpc-policy
 ```
+
+The command performs a non-mutating `author_hasSessionKeys(0x)` policy probe.
+The supported Safe response is distinguished from transport failure, malformed
+JSON, an unavailable health endpoint, and other RPC rejection. Exit `0` with
+`safe-restored` is required before package import. Exit `2` means key-management
+RPC remains accessible.
 
 Verify a known public tuple without rotating:
 
@@ -50,6 +77,12 @@ bin/roko-validator-enroll \
 The v1 contract explicitly uses ROKO's current `legacy-empty` session-key
 proof. The CLI and Agora both metadata-check this boundary. They will reject an
 unsupported proof mode rather than silently reinterpret it.
+
+If direct key generation reports `Session-key generation is disabled by the
+node's Safe RPC policy`, that is the expected security boundary. Use the
+guarded helper above, or verify a public tuple that already exists. Do not
+change the public `rpc.roko.network` service and do not send node keys to a
+wallet, Agora, or support.
 
 ## Join and monitor
 
