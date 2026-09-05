@@ -15,6 +15,32 @@ seed phrase, secret URI, node-key bytes, wallet private key, or OpenBao
 credential. The enrollment JSON is public but integrity-sensitive and
 short-lived; discard it after use and generate a fresh package for rotation.
 
+## Install the enrollment commands
+
+The enrollment CLI is a separate signed edge-tool release, not part of the
+`roko-node` binary. The guided validator-candidate installer installs it. For
+an already-running node, use the canonical checksum-first sequence:
+
+```bash
+mkdir roko-validator-tool && cd roko-validator-tool
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh.sha256
+sha256sum --check --strict install-roko-validator-enroll.sh.sha256
+sudo bash install-roko-validator-enroll.sh
+roko-validator-enroll --version
+```
+
+The signed compatibility manifest binds the installed tool revision to chain
+ID 52370, the exact testnet genesis, the testnet-v1.1 node line, and runtime
+spec versions 285 through 287. The installer rejects signature, checksum,
+revision, network, or compatibility mismatches. For an air-gapped host,
+download the versioned offline bundle and its `.sha256` file on another host,
+verify the bundle, transfer both, extract the bundle, and run:
+
+```bash
+sudo bash install-roko-validator-enroll.sh --bundle-dir "$PWD"
+```
+
 ## Before enrollment
 
 - Verify the downloaded ROKO binary and chain specification.

@@ -1,0 +1,27 @@
+{
+  "schema": "roko.validator-enroll-compatibility.v1",
+  "tool": {
+    "name": "roko-validator-enroll",
+    "version": "@VERSION@",
+    "sourceRepository": "https://github.com/Roko-Network/roko-edge-tools",
+    "sourceRevision": "@SOURCE_REVISION@"
+  },
+  "network": {
+    "name": "roko-testnet-v2",
+    "chainId": "52370",
+    "genesisHash": "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb"
+  },
+  "node": {
+    "releaseChannel": "testnet-v1.1",
+    "minimumVersion": "1.1.0",
+    "maximumExclusiveVersion": "1.2.0"
+  },
+  "runtime": {
+    "minimumSpecVersion": 285,
+    "maximumSpecVersion": 287
+  },
+  "sessionKeys": {
+    "count": 7,
+    "proofMode": "legacy-empty"
+  }
+}

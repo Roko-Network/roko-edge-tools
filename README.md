@@ -35,12 +35,30 @@ For source selection, clock architecture, hobbyist/professional deployment,
 Timebeat, security, verification, and recovery, start with the
 [ROKO Time Authority docset](docs/time-authority/README.md). Its metadata and
 Pagenbar links support deterministic agent traversal without requiring AIWG.
-The recommended setup path is to download the checksum manifest and reviewed
+The recommended node setup path is to download the checksum manifest and reviewed
 one-off scripts and their
 [checksum manifest](https://downloads.roko.network/scripts/SHA256SUMS),
 verify them locally, inspect them, and then run the native or Docker workflow.
 Do not pipe a remote script directly into a shell. Offline Docker archives are
 available by HTTPS and through the official torrent for registry-free setup.
+
+The validator enrollment CLI is also a signed, versioned release artifact. It
+does not require a development clone. Use the canonical installer only after
+downloading and verifying the installer checksum:
+
+```bash
+mkdir roko-validator-tool && cd roko-validator-tool
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh.sha256
+sha256sum --check --strict install-roko-validator-enroll.sh.sha256
+sudo bash install-roko-validator-enroll.sh
+roko-validator-enroll --version
+```
+
+The installer verifies the signed checksum manifest and signed release metadata
+with the pinned ROKO release key before installing anything. The offline bundle
+at the same location contains the archive, signatures, public key, metadata,
+and installer; extract it and pass its directory with `--bundle-dir`.
 
 The tools are intentionally dependency-light:
 
@@ -106,6 +124,11 @@ remain non-authoring, fully synchronized, peered, finalizing, and
 time-synchronized. The supported service starts with `--rpc-methods Safe`,
 which correctly blocks `author_rotateKeys`. Generate a fresh public enrollment
 package through the guarded local window:
+
+The guided installer installs and prints the exact command path and version.
+For a standalone or existing node, use the checksum-verifying command above;
+do not hunt for this tool in the node binary archive or clone a development
+branch.
 
 ```bash
 sudo ./bin/roko-session-key-window \

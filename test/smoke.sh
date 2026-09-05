@@ -9,9 +9,12 @@ bash -n bin/roko-edge-report
 bash -n bin/roko-seed-refresh
 bash -n bin/roko-guided-install
 bash -n bin/roko-session-key-window
+bash -n scripts/build-validator-enroll-release.sh
+bash -n scripts/install-roko-validator-enroll.sh
 python3 -m py_compile bin/roko-validator-enroll lib/validator_enrollment.py test/validator_enrollment.py
 python3 test/validator_enrollment.py
 test/session_key_window.sh
+test/validator_enroll_release.sh
 for installer_script in installer/scripts/*.sh; do
   bash -n "$installer_script"
 done
@@ -31,6 +34,9 @@ grep -F "temporal_getMeshState" installer/scripts/start-and-verify.sh >/dev/null
 grep -F "roko_ptp2_mode=" installer/scripts/write-readiness-report.sh >/dev/null
 grep -F "roko-validator-enroll" installer/scripts/write-readiness-report.sh >/dev/null
 grep -F "sudo roko-session-key-window --help" bin/roko-guided-install >/dev/null
+grep -F "install-validator-enroll" bin/roko-guided-install >/dev/null
+grep -F "Installed command:" bin/roko-guided-install >/dev/null
+grep -F "https://downloads.roko.network/validator-tools/current/" bin/roko-guided-install >/dev/null
 grep -F "author_hasSessionKeys" lib/validator_enrollment.py >/dev/null
 grep -F -- "--check-rpc-policy" docs/validator-self-join.md >/dev/null
 grep -F "Safe RPC restored and verified" bin/roko-session-key-window >/dev/null

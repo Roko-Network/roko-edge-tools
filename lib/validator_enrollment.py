@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 SCHEMA = "roko.validator-enrollment.v1"
+TOOL_VERSION = "1.1.0"
 TESTNET_GENESIS = "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb"
 KEY_TYPES = ["grandpa", "babe", "imOnline", "authorityDiscovery", "mixnet", "beefy", "temporal"]
 PROHIBITED_KEY = re.compile(r"(?:secret|private|seed|mnemonic|phrase|suri|keystore|vault|openbao|token|password|cookie|approle|nodekey)", re.I)
@@ -559,6 +560,7 @@ def atomic_write(path: Path, package: dict[str, Any]) -> None:
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description="Generate a public-only ROKO validator enrollment package")
+    result.add_argument("--version", action="version", version=f"%(prog)s {TOOL_VERSION}")
     result.add_argument("--rpc", default="http://127.0.0.1:9944", help="Loopback node HTTP RPC")
     result.add_argument("--binary", default="/usr/local/bin/roko-node", help="Verified ROKO node binary")
     result.add_argument("--output", help="New or replaced public enrollment JSON path")

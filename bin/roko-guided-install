@@ -192,10 +192,11 @@ Steps
   1. Preflight the supported Linux host and storage
   2. $clock_step
   3. Download, checksum, and install the ROKO runtime and testnet chain spec
-  4. Configure a hardened non-authoring service
-  5. Insert a dedicated ROKO observer key when the observer role is selected
-  6. Require matching genesis, ROKO peers, time-mesh RPC, full sync, stable identity, and finality
-  7. Write a value-free readiness report
+  4. Install the signed validator enrollment CLI when validator-candidate is selected
+  5. Configure a hardened non-authoring service
+  6. Insert a dedicated ROKO observer key when the observer role is selected
+  7. Require matching genesis, ROKO peers, time-mesh RPC, full sync, stable identity, and finality
+  8. Write a value-free readiness report
 EOF
 
 if [[ "$NODE_ROLE" == validator-candidate ]]; then
@@ -261,6 +262,7 @@ else
 fi
 run_step install-node "$scripts_dir/install-roko-node.sh"
 node_installed=true
+run_step install-validator-enroll "$scripts_dir/install-validator-enroll.sh"
 run_step configure-observer "$scripts_dir/configure-roko-observer.sh"
 run_step start-and-verify "$scripts_dir/start-and-verify.sh"
 run_step readiness-report "$scripts_dir/write-readiness-report.sh"
@@ -268,11 +270,19 @@ run_step readiness-report "$scripts_dir/write-readiness-report.sh"
 printf '\nROKO installation is ready. Review: %s\n' "$REPORT_PATH"
 
 if [[ "$NODE_ROLE" == validator-candidate ]]; then
-  cat <<'EOF'
+  enrollment_path="$(command -v roko-validator-enroll || true)"
+  [[ -n "$enrollment_path" ]] || {
+    printf 'Validator enrollment command is missing after installation. Reinstall from https://downloads.roko.network/validator-tools/current/\n' >&2
+    exit 1
+  }
+  enrollment_version="$(roko-validator-enroll --version)"
+  cat <<EOF
 
 Validator onboarding
   Guide: https://docs.roko.network/pages/prepare-validator.html
-  Local enrollment: roko-validator-enroll --help
+  Installed command: $enrollment_path
+  Installed version: $enrollment_version
+  Verified installer: https://downloads.roko.network/validator-tools/current/
   New session keys: sudo roko-session-key-window --help
   Wallet journey: https://agora.roko.network/participate/staking
   Claim: https://claim.roko.network
