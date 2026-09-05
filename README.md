@@ -43,19 +43,25 @@ Do not pipe a remote script directly into a shell. Offline Docker archives are
 available by HTTPS and through the official torrent for registry-free setup.
 
 The validator enrollment CLI is also a signed, versioned release artifact. It
-does not require a development clone. Use the canonical installer only after
-downloading and verifying the installer checksum:
+does not require a development clone. Verify the pinned release key and signed
+checksum manifest before executing the canonical installer:
 
 ```bash
 mkdir roko-validator-tool && cd roko-validator-tool
 curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh.sha256
-sha256sum --check --strict install-roko-validator-enroll.sh.sha256
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/SHA256SUMS
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/SHA256SUMS.asc
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/roko-release-signing-key.asc
+export ROKO_VERIFY_GNUPGHOME="$(mktemp -d)"
+test "$(GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --with-colons --import-options show-only --import roko-release-signing-key.asc 2>/dev/null | awk -F: '$1=="fpr"{print toupper($10);exit}')" = 62297562B1C7053088F405DB0117DAAA677A5BF2
+GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --import roko-release-signing-key.asc
+GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --verify SHA256SUMS.asc SHA256SUMS
+awk '$2=="install-roko-validator-enroll.sh"{print}' SHA256SUMS | sha256sum --check --strict
 sudo bash install-roko-validator-enroll.sh
 roko-validator-enroll --version
 ```
 
-The installer verifies the signed checksum manifest and signed release metadata
+The command sequence and installer verify the signed checksum manifest and signed release metadata
 with the pinned ROKO release key before installing anything. The offline bundle
 at the same location contains the archive, signatures, public key, metadata,
 and installer; extract it and pass its directory with `--bundle-dir`.

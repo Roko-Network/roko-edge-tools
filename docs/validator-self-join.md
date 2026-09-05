@@ -19,13 +19,19 @@ short-lived; discard it after use and generate a fresh package for rotation.
 
 The enrollment CLI is a separate signed edge-tool release, not part of the
 `roko-node` binary. The guided validator-candidate installer installs it. For
-an already-running node, use the canonical checksum-first sequence:
+an already-running node, use the canonical signed-manifest-first sequence:
 
 ```bash
 mkdir roko-validator-tool && cd roko-validator-tool
 curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh.sha256
-sha256sum --check --strict install-roko-validator-enroll.sh.sha256
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/SHA256SUMS
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/SHA256SUMS.asc
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/roko-release-signing-key.asc
+export ROKO_VERIFY_GNUPGHOME="$(mktemp -d)"
+test "$(GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --with-colons --import-options show-only --import roko-release-signing-key.asc 2>/dev/null | awk -F: '$1=="fpr"{print toupper($10);exit}')" = 62297562B1C7053088F405DB0117DAAA677A5BF2
+GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --import roko-release-signing-key.asc
+GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --verify SHA256SUMS.asc SHA256SUMS
+awk '$2=="install-roko-validator-enroll.sh"{print}' SHA256SUMS | sha256sum --check --strict
 sudo bash install-roko-validator-enroll.sh
 roko-validator-enroll --version
 ```
@@ -35,7 +41,8 @@ ID 52370, the exact testnet genesis, the testnet-v1.1 node line, and runtime
 spec versions 285 through 287. The installer rejects signature, checksum,
 revision, network, or compatibility mismatches. For an air-gapped host,
 download the versioned offline bundle and its `.sha256` file on another host,
-verify the bundle, transfer both, extract the bundle, and run:
+verify the bundle over a separately authenticated channel, transfer both,
+extract the bundle, verify its pinned key plus `SHA256SUMS.asc`, and run:
 
 ```bash
 sudo bash install-roko-validator-enroll.sh --bundle-dir "$PWD"
