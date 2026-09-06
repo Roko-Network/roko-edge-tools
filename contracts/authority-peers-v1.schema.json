@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nodes.roko.network/contracts/authority-peers-v1.schema.json",
+  "title": "ROKO active authority peer manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "network", "generatedAt", "expiresAt", "finalized", "minimumMappedPeers", "authorities"],
+  "properties": {
+    "schema": {"const": "roko.authority-peers.v1"},
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "chainId", "genesisHash"],
+      "properties": {
+        "name": {"const": "roko-testnet-v2"},
+        "chainId": {"const": "52370"},
+        "genesisHash": {"const": "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb"}
+      }
+    },
+    "generatedAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "finalized": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockNumber", "blockHash", "sessionIndex"],
+      "properties": {
+        "blockNumber": {"type": "integer", "minimum": 1},
+        "blockHash": {"type": "string", "pattern": "^0x[0-9a-f]{64}$"},
+        "sessionIndex": {"type": "integer", "minimum": 0}
+      }
+    },
+    "minimumMappedPeers": {"const": 2},
+    "authorities": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["account", "peerId", "addresses"],
+        "properties": {
+          "account": {"type": "string", "pattern": "^0x[0-9a-f]{40}$"},
+          "peerId": {"type": "string", "pattern": "^12D3KooW[1-9A-HJ-NP-Za-km-z]{44}$"},
+          "addresses": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": {"type": "string", "pattern": "^/(?:ip4|dns4)/[^/]+/tcp/[0-9]{1,5}/p2p/12D3KooW[1-9A-HJ-NP-Za-km-z]{44}$"}
+          }
+        }
+      }
+    }
+  }
+}

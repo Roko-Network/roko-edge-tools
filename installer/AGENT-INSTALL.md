@@ -100,6 +100,12 @@ liquid ROKO for fees. The live runtime does not expose EVM staking precompile
 `0x0700`; require a native staking ledger rather than an EVM success receipt as
 bond proof. Do not confuse lock, bond, session-key registration,
 validate intent, candidacy, queued selection, and active-session membership.
+The installer must also verify the detached signature, freshness, exact
+network and public-only addresses in the active-authority manifest. It must
+configure at least two listed authorities as reserved peers and require the
+Safe readiness RPC to report that many mapped temporal peers. Do not replace
+this with generic peer count, the bootnode, NTP source count, or private fleet
+addresses.
 
 ## Completion response
 

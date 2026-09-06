@@ -5,6 +5,7 @@ runtime=""
 node_name=""
 archive=false
 observer=false
+validator_candidate=false
 clock_provider=chrony
 start_service=false
 dry_run=false
@@ -14,7 +15,7 @@ usage() {
   cat <<'EOF'
 Usage:
   install-roko-service.sh --runtime native|docker --node-name NAME
-                          [--archive] [--observer]
+                          [--archive] [--observer] [--validator-candidate]
                           [--clock-provider chrony|timebeat]
                           [--start] [--dry-run] [--render-unit]
 
@@ -33,6 +34,7 @@ while (($#)); do
     --node-name) node_name="${2:-}"; shift ;;
     --archive) archive=true ;;
     --observer) observer=true ;;
+    --validator-candidate) validator_candidate=true ;;
     --clock-provider) clock_provider="${2:-}"; shift ;;
     --start) start_service=true ;;
     --dry-run) dry_run=true ;;
@@ -62,6 +64,39 @@ pruning_line=""
 "$archive" && pruning_line=$'  --pruning archive \\\n'
 observer_line=""
 "$observer" && observer_line=$'  --timesync-advertise-observer \\\n'
+
+authority_lines=""
+if "$validator_candidate"; then
+  authority_manifest="${ROKO_AUTHORITY_MANIFEST_PATH:-/etc/roko/authority-peers.json}"
+  if "$render_unit" || "$dry_run"; then
+    authority_values="${ROKO_AUTHORITY_ADDRESSES:-}"
+  else
+    [[ -r "$authority_manifest" ]] || {
+      echo "Missing verified active-authority manifest: $authority_manifest" >&2; exit 1;
+    }
+    authority_values="$(python3 - "$authority_manifest" <<'PY'
+import json, sys
+value = json.load(open(sys.argv[1], encoding="utf-8"))
+for authority in value["authorities"]:
+    for address in authority["addresses"]:
+        print(address)
+PY
+)"
+  fi
+  authority_count=0
+  while IFS= read -r address; do
+    [[ -n "$address" ]] || continue
+    [[ "$address" =~ ^/(ip4|dns4)/[A-Za-z0-9.-]+/tcp/[0-9]{1,5}/p2p/12D3KooW[1-9A-HJ-NP-Za-km-z]{44}$ ]] || {
+      echo "Verified authority manifest yielded an unsafe multiaddress." >&2; exit 1;
+    }
+    authority_lines+="  --reserved-nodes $address \\"
+    authority_lines+=$'\n'
+    authority_count=$((authority_count + 1))
+  done <<<"$authority_values"
+  (( authority_count >= 2 )) || {
+    echo "Validator-candidate service requires at least two published authority addresses." >&2; exit 1;
+  }
+fi
 
 clock_unit=""
 clock_gate=""
@@ -111,7 +146,7 @@ ExecStart=/usr/local/bin/roko-node \\
   --base-path $data_path \\
   --name $node_name \\
   --bootnodes $bootnode \\
-  --port 30333 \\
+${authority_lines}  --port 30333 \\
   --rpc-port 9944 \\
 ${pruning_line}${time_lines}${observer_line}  --rpc-methods Safe
 Restart=on-failure
@@ -150,7 +185,7 @@ ${docker_chrony_lines}  --mount type=bind,src=$data_path,dst=/data \\
   --base-path /data \\
   --name $node_name \\
   --bootnodes $bootnode \\
-  --port 30333 \\
+${authority_lines}  --port 30333 \\
   --rpc-port 9944 \\
 ${pruning_line}${time_lines}${observer_line}  --rpc-methods Safe
 ExecStop=/usr/bin/docker stop --time 60 roko-node

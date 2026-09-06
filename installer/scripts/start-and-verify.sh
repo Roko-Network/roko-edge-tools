@@ -19,14 +19,15 @@ while (( SECONDS < deadline )); do
         {"jsonrpc":"2.0","id":3,"method":"system_localPeerId","params":[]},
         {"jsonrpc":"2.0","id":4,"method":"chain_getFinalizedHead","params":[]},
         {"jsonrpc":"2.0","id":5,"method":"temporal_getMeshState","params":[]},
-        {"jsonrpc":"2.0","id":6,"method":"system_nodeRoles","params":[]}
+        {"jsonrpc":"2.0","id":6,"method":"system_nodeRoles","params":[]},
+        {"jsonrpc":"2.0","id":7,"method":"temporal_getValidatorReadiness","params":[]}
       ]' 2>/dev/null || true
   )"
-  if [[ -n "$response" ]] && python3 - "$expected_genesis" "$response" <<'PY'
+  if [[ -n "$response" ]] && python3 - "$expected_genesis" "$NODE_ROLE" "$response" <<'PY'
 import json
 import sys
 
-expected, raw = sys.argv[1], sys.argv[2]
+expected, role, raw = sys.argv[1], sys.argv[2], sys.argv[3]
 items = {item.get("id"): item for item in json.loads(raw)}
 if items.get(1, {}).get("result") != expected:
     raise SystemExit(1)
@@ -41,6 +42,20 @@ if not isinstance(mesh.get("peerCount"), int):
 roles = items.get(6, {}).get("result") or []
 if "Authority" in roles:
     raise SystemExit(1)
+if role == "validator-candidate":
+    readiness = items.get(7, {}).get("result") or {}
+    minimum = readiness.get("minimumTemporalSources")
+    mapped = readiness.get("mappedTemporalPeers")
+    transport = readiness.get("temporalTransportPeers")
+    if not all(isinstance(value, int) for value in (minimum, mapped, transport)):
+        raise SystemExit(1)
+    if minimum < 2 or health.get("peers", 0) < minimum:
+        raise SystemExit(1)
+    # A newly installed candidate intentionally remains non-authoring. Once
+    # validator mode is enabled, the same Safe RPC becomes the hard temporal
+    # gate and both published authorities must be mapped and sampled.
+    if readiness.get("validatorRoleConfigured") is True and (mapped < minimum or transport < minimum):
+        raise SystemExit(1)
 PY
   then
     first_peer="$(python3 - "$response" <<'PY'
@@ -75,7 +90,7 @@ PY
       fail "The node local peer identity changed across observations."
     [[ "$first_finalized" != "$second_finalized" ]] ||
       fail "The node is synchronized but finalized head did not advance across observations."
-    log "Genesis, ROKO peer connectivity, ROKO time-mesh RPC, non-authoring role, full synchronization, persistent peer identity, and advancing finality verified."
+    log "Genesis, ROKO connectivity, two configured authority transports for validator candidates, non-authoring role, full synchronization, persistent peer identity, and advancing finality verified."
     exit 0
   fi
   log "Waiting for P2P synchronization and advancing finality..."

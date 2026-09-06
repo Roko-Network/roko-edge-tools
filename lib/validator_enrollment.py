@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 SCHEMA = "roko.validator-enrollment.v1"
-TOOL_VERSION = "1.2.0"
+TOOL_VERSION = "1.3.0"
 TESTNET_GENESIS = "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb"
 KEY_TYPES = ["grandpa", "babe", "imOnline", "authorityDiscovery", "mixnet", "beefy", "temporal"]
 READINESS_STATES = {

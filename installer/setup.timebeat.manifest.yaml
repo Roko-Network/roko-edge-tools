@@ -2,7 +2,7 @@ apiVersion: setup.aiwg.io/v1
 kind: SetupManifest
 metadata:
   name: roko-node-timebeat-guided
-  version: 1.2.0
+  version: 1.3.0
   description: Guided ROKO validator timing preparation using the endorsed partner Timebeat Agent and reviewed PTP² Mesh configuration.
   install_type: user
 
@@ -67,6 +67,9 @@ spec:
     - name: python3
       detect: command -v python3
       install_hint: Install Python 3 using the operating-system package manager.
+    - name: gpg
+      detect: command -v gpg
+      install_hint: Install GnuPG to verify signed validator tools and authority manifests.
 
   steps:
     - id: preflight
@@ -79,10 +82,15 @@ spec:
       depends_on: [preflight]
       params: [TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_CONFIG, TIME_REGION]
       verify: systemctl is-active --quiet timebeat.service
+    - id: install-validator-tools
+      type: script
+      script: scripts/install-validator-enroll.sh
+      depends_on: [install-timebeat]
+      params: [NODE_ROLE]
     - id: install-node
       type: script
       script: scripts/install-roko-node.sh
-      depends_on: [install-timebeat]
+      depends_on: [install-validator-tools]
       params: [NODE_NAME, NODE_ROLE, RUNTIME, CLOCK_PROVIDER]
       verify: test -f /etc/systemd/system/roko-node.service
     - id: configure-observer
@@ -125,7 +133,7 @@ spec:
       type: ask
       depends_on: [enrollment-handoff]
       when: NODE_ROLE == "validator-candidate"
-      message: Confirm temporal_getConsensusTime reports at least two mapped ROKO authority peers. Ordinary chain sync through the public boot/full node is not sufficient; if peerCount is zero, publish the candidate P2P multiaddress and arrange direct P2P reachability to two active authorities before enabling authoring.
+      message: Confirm temporal_getValidatorReadiness reports at least two mapped ROKO authority peers from the verified signed manifest. Ordinary chain sync through the public boot/full node is not sufficient; do not enable authoring when the mapped-peer gate fails.
       on_deny: skip
 
   recovery:

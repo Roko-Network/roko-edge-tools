@@ -9,6 +9,9 @@ require_command curl
 require_command python3
 require_command sha256sum
 require_command systemctl
+if [[ "$NODE_ROLE" == validator-candidate ]]; then
+  require_command gpg
+fi
 
 case "$(uname -m)" in
   x86_64|aarch64|arm64) ;;

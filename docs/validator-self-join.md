@@ -54,7 +54,9 @@ sudo bash install-roko-validator-enroll.sh --bundle-dir "$PWD"
 - Finish synchronization and require advancing finalized heads.
 - Confirm the node is not reporting the Authority role.
 - Keep HTTP RPC on loopback. Never make author methods publicly reachable.
-- Establish at least one peer and the documented time policy.
+- Establish the public boot peer for synchronization and, for validator
+  candidates, the two mapped active-authority peers from the signed public
+  authority manifest. Generic peers do not satisfy temporal quorum.
 - Intentionally publish the P2P multiaddress other nodes should dial.
 
 ### Docker time-source contract
@@ -147,6 +149,14 @@ change the public `rpc.roko.network` service and do not send node keys to a
 wallet, Agora, or support.
 
 ## Join and monitor
+
+The guided installer verifies and consumes the short-lived signed manifest at
+<https://nodes.roko.network/authority-peers.json>. Each listed multiaddress is
+publicly routable, ends in the advertised active authority's libp2p peer ID,
+and is configured as a reserved peer. The manifest contains only public
+account, peer and finalized-session facts; internal addresses are prohibited.
+If it expires or its signature, genesis, active accounts, peer IDs, or minimum
+gate do not validate, stop and refresh it before candidacy.
 
 Open <https://agora.roko.network/participate/staking>, import the package,
 connect the staking account, and inspect each transaction preview. A finalized

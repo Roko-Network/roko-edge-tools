@@ -193,10 +193,11 @@ Steps
   2. $clock_step
   3. Download, checksum, and install the ROKO runtime and testnet chain spec
   4. Install the signed validator enrollment CLI when validator-candidate is selected
-  5. Configure a hardened non-authoring service
-  6. Insert a dedicated ROKO observer key when the observer role is selected
-  7. Require matching genesis, ROKO peers, time-mesh RPC, full sync, stable identity, and finality
-  8. Write a value-free readiness report
+  5. Verify the signed active-authority transport manifest for validator candidates
+  6. Configure a hardened non-authoring service
+  7. Insert a dedicated ROKO observer key when the observer role is selected
+  8. Require matching genesis, mapped authority peers, full sync, stable identity, and finality
+  9. Write a value-free readiness report
 EOF
 
 if [[ "$NODE_ROLE" == validator-candidate ]]; then
@@ -260,9 +261,9 @@ if [[ "$time_stack" == timebeat ]]; then
 else
   run_step install-chrony "$scripts_dir/install-chrony.sh"
 fi
+run_step install-validator-enroll "$scripts_dir/install-validator-enroll.sh"
 run_step install-node "$scripts_dir/install-roko-node.sh"
 node_installed=true
-run_step install-validator-enroll "$scripts_dir/install-validator-enroll.sh"
 run_step configure-observer "$scripts_dir/configure-roko-observer.sh"
 run_step start-and-verify "$scripts_dir/start-and-verify.sh"
 run_step readiness-report "$scripts_dir/write-readiness-report.sh"

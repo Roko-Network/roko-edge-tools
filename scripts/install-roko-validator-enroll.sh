@@ -117,8 +117,8 @@ extract_dir="$task_dir/extract"
 mkdir "$extract_dir"
 tar -xzf "$task_dir/$archive_name" -C "$extract_dir" --no-same-owner
 package_root="$extract_dir/roko-validator-enroll-$version"
-[[ -x "$package_root/bin/roko-validator-enroll" && -x "$package_root/bin/roko-session-key-window" ]] || {
-  printf 'Release archive does not contain both enrollment commands\n' >&2
+[[ -x "$package_root/bin/roko-validator-enroll" && -x "$package_root/bin/roko-session-key-window" && -x "$package_root/bin/roko-authority-peers" ]] || {
+  printf 'Release archive does not contain all validator enrollment commands\n' >&2
   exit 1
 }
 printf '%s  %s\n' "$compatibility_sha" "$package_root/compatibility/validator-enroll-compatibility.json" | sha256sum --check --strict
@@ -146,6 +146,7 @@ rm -rf -- "$destination"
 mv "$destination.new" "$destination"
 ln -sfn "$destination/bin/roko-validator-enroll" "$bin_dir/roko-validator-enroll"
 ln -sfn "$destination/bin/roko-session-key-window" "$bin_dir/roko-session-key-window"
+ln -sfn "$destination/bin/roko-authority-peers" "$bin_dir/roko-authority-peers"
 
 version_output="$("$bin_dir/roko-validator-enroll" --version)"
 [[ "$version_output" == "roko-validator-enroll $version" ]] || {
@@ -153,6 +154,7 @@ version_output="$("$bin_dir/roko-validator-enroll" --version)"
   exit 1
 }
 "$bin_dir/roko-validator-enroll" --help | grep -F 'Generate a public-only ROKO validator enrollment package' >/dev/null
+"$bin_dir/roko-authority-peers" --help | grep -F 'Verify a signed ROKO active-authority peer manifest' >/dev/null
 printf 'Installed: %s\n' "$(readlink -f "$bin_dir/roko-validator-enroll")"
 printf 'Version: %s\n' "$version_output"
 printf 'Compatibility: %s\n' "$destination/compatibility/validator-enroll-compatibility.json"

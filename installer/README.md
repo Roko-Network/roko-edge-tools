@@ -43,6 +43,12 @@ UDP/320. Timebeat PTP² is a separate timing product and network. Selecting
 `observer` does not enroll a validator, and selecting Timebeat does not enable
 ROKO observer advertisement.
 
+`validator-candidate` additionally consumes the ROKO-signed, short-lived
+active-authority manifest from `nodes.roko.network`. The manifest publishes at
+least two active authority accounts, peer IDs, and public relay addresses.
+Those endpoints become reserved peers; the bootnode remains a separate sync
+path and never counts as mapped authority quorum.
+
 ## Choose the clock stack
 
 Chrony bootstrap/testing/edge installation:
@@ -102,7 +108,10 @@ selectable sources before continuing.
 - hardened, non-authoring full/archive/observer service;
 - interactive ROKO `ptp2` observer-key insertion when that role is selected;
 - matching genesis, ROKO peers, ROKO time-mesh RPC, non-authoring role, full
-  sync, stable peer identity, and advancing finalized-head verification; and
+  sync, stable peer identity, and advancing finalized-head verification;
+- for validator candidates, a valid signed public authority manifest and at
+  least two mapped temporal authority peers reported by the Safe readiness RPC;
+  and
 - a value-free readiness report.
 
 For Docker, "immutable container image" means the checksum-verified offline

@@ -81,8 +81,11 @@ mkdir -p "$package_root/bin" "$package_root/lib" "$package_root/contracts" \
 
 install -m 0755 "$repo_root/bin/roko-validator-enroll" "$package_root/bin/"
 install -m 0755 "$repo_root/bin/roko-session-key-window" "$package_root/bin/"
+install -m 0755 "$repo_root/bin/roko-authority-peers" "$package_root/bin/"
 install -m 0644 "$repo_root/lib/validator_enrollment.py" "$package_root/lib/"
+install -m 0644 "$repo_root/lib/authority_peers.py" "$package_root/lib/"
 install -m 0644 "$repo_root/contracts/validator-enrollment-v1.schema.json" "$package_root/contracts/"
+install -m 0644 "$repo_root/contracts/authority-peers-v1.schema.json" "$package_root/contracts/"
 install -m 0755 "$repo_root/scripts/install-roko-validator-enroll.sh" "$package_root/scripts/"
 install -m 0644 "$repo_root/VERSION" "$package_root/"
 install -m 0644 "$public_key" "$package_root/roko-release-signing-key.asc"

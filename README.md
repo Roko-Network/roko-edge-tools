@@ -196,6 +196,23 @@ and writes only the redacted inner result that Agora imports. If the Safe
 method is absent, update to the current checksum-verified node release; do not
 hand-author the JSON or enable unsafe RPC.
 
+Validator-candidate installation also downloads
+`https://nodes.roko.network/authority-peers.json` and its detached signature.
+The bundled verifier pins the ROKO release-signing fingerprint, exact testnet
+genesis and chain ID, a maximum 14-day validity window, public routable
+multiaddresses, unique active accounts and peer IDs, and a minimum of two
+mapped authorities. The service installs every verified address as a reserved
+peer while retaining the public bootnode for sync. It never publishes or
+accepts private fleet addresses.
+
+Initial non-authoring startup fails closed unless at least two authority
+transports are configured and connected. After validator mode is enabled, the
+Safe readiness RPC becomes the strict gate and must report at least the
+manifest's two mapped temporal peers. Generic P2P count, NTP sources, a
+non-authority sentry, and the bootnode cannot satisfy that activation gate. An
+expired or invalidly signed manifest pauses installation rather than leaving a
+candidate eligible to occupy a seat it cannot author from.
+
 ## Common environment variables
 
 ```bash
