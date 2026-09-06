@@ -170,6 +170,23 @@ inspect the value-free JSON fields and wait or correct the missing step. It
 does not mean the validator is elected or authoring. Agora separately proves
 active-session membership and recent finalized authorship.
 
+Capture the node-local proof requested by Agora with the installed command:
+
+```bash
+roko-validator-enroll \
+  --rpc http://127.0.0.1:9944 \
+  --save-readiness ./roko-validator-readiness.json
+```
+
+This uses the Safe `temporal_getValidatorReadiness` method and writes its
+validated redacted result, not a JSON-RPC wrapper. Import that file in Agora's
+**Import validator readiness** panel. It contains public session identifiers,
+finalized lifecycle facts, aggregate peer classes, convergence, remediation,
+and optional finalized authorship evidence. It cannot contain seeds, private
+key bytes, peer addresses, or secret paths. Never assemble or edit this proof
+by hand. If the command reports that the method is absent, install the current
+checksum-verified ROKO node release and confirm `rpc_methods` lists it.
+
 ## Rotate and exit
 
 Create a fresh package to rotate keys. Do not purge old keys until Agora proves

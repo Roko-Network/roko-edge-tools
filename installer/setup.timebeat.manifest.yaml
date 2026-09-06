@@ -2,7 +2,7 @@ apiVersion: setup.aiwg.io/v1
 kind: SetupManifest
 metadata:
   name: roko-node-timebeat-guided
-  version: 1.1.0
+  version: 1.2.0
   description: Guided ROKO validator timing preparation using the endorsed partner Timebeat Agent and reviewed PTP² Mesh configuration.
   install_type: user
 

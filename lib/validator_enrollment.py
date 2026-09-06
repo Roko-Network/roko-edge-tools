@@ -22,9 +22,15 @@ from pathlib import Path
 from typing import Any, Callable
 
 SCHEMA = "roko.validator-enrollment.v1"
-TOOL_VERSION = "1.1.0"
+TOOL_VERSION = "1.2.0"
 TESTNET_GENESIS = "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb"
 KEY_TYPES = ["grandpa", "babe", "imOnline", "authorityDiscovery", "mixnet", "beefy", "temporal"]
+READINESS_STATES = {
+    "NON_AUTHORING_NODE", "SYNCING", "SESSION_KEYS_UNRESOLVED",
+    "SESSION_KEYS_MISMATCH", "SESSION_KEYS_REGISTERED", "CANDIDATE", "QUEUED",
+    "ACTIVE_BABE_KEY_MISMATCH", "ACTIVE_TEMPORAL_KEY_MISMATCH",
+    "ACTIVE_INITIALIZING", "CONVERGED", "AUTHORED",
+}
 PROHIBITED_KEY = re.compile(r"(?:secret|private|seed|mnemonic|phrase|suri|keystore|vault|openbao|token|password|cookie|approle|nodekey)", re.I)
 HASH = re.compile(r"^0x[0-9a-f]{64}$", re.I)
 ENCODED_KEYS = re.compile(r"^0x(?:[0-9a-f]{2}){32,1024}$", re.I)
@@ -224,6 +230,114 @@ def scan_prohibited(value: Any, path: str = "$") -> None:
             if PROHIBITED_KEY.search(key) and key != "hasSessionKeys":
                 raise EnrollmentError(f'{path} contains prohibited field "{key}"')
             scan_prohibited(entry, f"{path}.{key}")
+
+
+def validate_readiness(report: Any) -> dict[str, Any]:
+    """Validate the redacted node RPC result before handing it to Agora."""
+    if not isinstance(report, dict):
+        raise EnrollmentError("Validator readiness RPC returned a non-object result")
+    scan_prohibited(report)
+    required = {
+        "lifecycleState", "validatorRoleConfigured", "majorSyncing",
+        "genericP2pPeers", "finalizedBlock", "sessionIndex", "candidateAccount",
+        "matchedSessionKeyCount", "requiredSessionKeyCount", "sessionKeys",
+        "candidateIntent", "nextKeysMatch", "queuedKeysMatch", "activeSessionMatch",
+        "activeBabeAuthorityIndex", "activeTemporalAuthorityIndex",
+        "producerAuthorityIndex", "expectedTemporalPublic", "observedTemporalPublic",
+        "convergenceState", "minimumTemporalSources", "temporalTransportPeers",
+        "mappedTemporalPeers", "contributingTemporalPeers", "peerExclusions",
+        "readyToAuthor", "authorshipProof", "remediation",
+    }
+    if set(report) != required:
+        raise EnrollmentError("Validator readiness result has missing or unsupported fields")
+    if report["lifecycleState"] not in READINESS_STATES:
+        raise EnrollmentError("Validator readiness lifecycle state is unsupported")
+    optional_ints = ("genericP2pPeers", "activeBabeAuthorityIndex", "activeTemporalAuthorityIndex", "producerAuthorityIndex")
+    for field in optional_ints:
+        if report[field] is not None and (not isinstance(report[field], int) or isinstance(report[field], bool) or report[field] < 0):
+            raise EnrollmentError(f"Validator readiness field {field} is malformed")
+    required_ints = (
+        "finalizedBlock", "sessionIndex", "matchedSessionKeyCount",
+        "requiredSessionKeyCount", "minimumTemporalSources", "temporalTransportPeers",
+        "mappedTemporalPeers", "contributingTemporalPeers",
+    )
+    for field in required_ints:
+        if not isinstance(report[field], int) or isinstance(report[field], bool) or report[field] < 0:
+            raise EnrollmentError(f"Validator readiness field {field} is malformed")
+    if report["requiredSessionKeyCount"] != 7 or not 0 <= report["matchedSessionKeyCount"] <= 7:
+        raise EnrollmentError("Validator readiness seven-key count is invalid")
+    for field in ("validatorRoleConfigured", "candidateIntent", "nextKeysMatch", "queuedKeysMatch", "activeSessionMatch", "readyToAuthor"):
+        if not isinstance(report[field], bool):
+            raise EnrollmentError(f"Validator readiness field {field} is malformed")
+    if report["majorSyncing"] is not None and not isinstance(report["majorSyncing"], bool):
+        raise EnrollmentError("Validator readiness field majorSyncing is malformed")
+    if report["candidateAccount"] is not None and not ACCOUNT.fullmatch(report["candidateAccount"]):
+        raise EnrollmentError("Validator readiness candidate account is malformed")
+    public_key = re.compile(r"^0x(?:[0-9a-f]{64}|[0-9a-f]{66})$", re.I)
+    if report["expectedTemporalPublic"] is not None and not public_key.fullmatch(report["expectedTemporalPublic"]):
+        raise EnrollmentError("Validator readiness expected temporal public key is malformed")
+    observed_temporal = report["observedTemporalPublic"]
+    if not isinstance(observed_temporal, list) or len(observed_temporal) > 64 or not all(isinstance(value, str) and public_key.fullmatch(value) for value in observed_temporal):
+        raise EnrollmentError("Validator readiness observed temporal public keys are malformed")
+    session_keys = report["sessionKeys"]
+    if not isinstance(session_keys, list) or len(session_keys) != 7:
+        raise EnrollmentError("Validator readiness must contain exactly seven session-key records")
+    expected_crypto = dict(zip(KEY_TYPES, ["ed25519", "sr25519", "sr25519", "sr25519", "sr25519", "ecdsa", "ecdsa"]))
+    for index, entry in enumerate(session_keys):
+        if not isinstance(entry, dict) or set(entry) != {"name", "keyType", "cryptography", "expectedPublic", "observedPublic", "matchesExpected"}:
+            raise EnrollmentError("Validator readiness session-key record is malformed")
+        name = KEY_TYPES[index]
+        if entry["name"] != name or entry["cryptography"] != expected_crypto[name]:
+            raise EnrollmentError("Validator readiness session-key ordering or cryptography is invalid")
+        if not isinstance(entry["keyType"], str) or len(entry["keyType"]) != 4:
+            raise EnrollmentError("Validator readiness session key type is malformed")
+        if entry["expectedPublic"] is not None and not public_key.fullmatch(entry["expectedPublic"]):
+            raise EnrollmentError("Validator readiness expected session public key is malformed")
+        observed = entry["observedPublic"]
+        if not isinstance(observed, list) or len(observed) > 64 or not all(isinstance(value, str) and public_key.fullmatch(value) for value in observed):
+            raise EnrollmentError("Validator readiness observed session public keys are malformed")
+        if not isinstance(entry["matchesExpected"], bool):
+            raise EnrollmentError("Validator readiness session-key match flag is malformed")
+    exclusions = report["peerExclusions"]
+    if not isinstance(exclusions, list) or len(exclusions) > 64:
+        raise EnrollmentError("Validator readiness peer exclusions are malformed")
+    for entry in exclusions:
+        if not isinstance(entry, dict) or set(entry) != {"reason", "count", "explanation"}:
+            raise EnrollmentError("Validator readiness peer exclusion is malformed")
+        if not isinstance(entry["reason"], str) or not re.fullmatch(r"[A-Z0-9_]{1,64}", entry["reason"]):
+            raise EnrollmentError("Validator readiness peer exclusion reason is malformed")
+        if not isinstance(entry["count"], int) or isinstance(entry["count"], bool) or entry["count"] < 0:
+            raise EnrollmentError("Validator readiness peer exclusion count is malformed")
+        if not isinstance(entry["explanation"], str) or not 1 <= len(entry["explanation"]) <= 1024:
+            raise EnrollmentError("Validator readiness peer exclusion explanation is malformed")
+    proof = report["authorshipProof"]
+    if proof is not None:
+        if not isinstance(proof, dict) or set(proof) != {"blockNumber", "blockHash", "authorityIndex"}:
+            raise EnrollmentError("Validator readiness authorship proof is malformed")
+        if not isinstance(proof["blockNumber"], int) or proof["blockNumber"] < 0:
+            raise EnrollmentError("Validator readiness authorship block is malformed")
+        if not HASH.fullmatch(proof["blockHash"]):
+            raise EnrollmentError("Validator readiness authorship hash is malformed")
+        if not isinstance(proof["authorityIndex"], int) or proof["authorityIndex"] < 0:
+            raise EnrollmentError("Validator readiness authorship authority is malformed")
+    if not isinstance(report["convergenceState"], str) or not 1 <= len(report["convergenceState"]) <= 64:
+        raise EnrollmentError("Validator readiness convergence state is malformed")
+    if not isinstance(report["remediation"], str) or not 1 <= len(report["remediation"]) <= 2048:
+        raise EnrollmentError("Validator readiness remediation is malformed")
+    return report
+
+
+def capture_readiness(rpc: "RpcClient") -> dict[str, Any]:
+    try:
+        return validate_readiness(rpc.call("temporal_getValidatorReadiness"))
+    except RpcRejectedError as error:
+        if error.code == -32601:
+            raise EnrollmentError(
+                "Installed node does not provide temporal_getValidatorReadiness. "
+                "Install the current checksum-verified ROKO testnet release, restart, "
+                "and confirm rpc_methods lists the Safe readiness method."
+            ) from error
+        raise
 
 
 def parse_utc(value: str) -> dt.datetime:
@@ -572,6 +686,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--check-account", help="Read finalized on-chain transition state for a canonical validator account")
     result.add_argument("--expected-session-keys", help="Public tuple expected both on chain and in this node's local keystore")
     result.add_argument("--check-rpc-policy", action="store_true", help="Non-mutating proof that key-management RPC is blocked while safe health RPC remains available")
+    result.add_argument("--save-readiness", help="Write the validated redacted Safe RPC readiness result for Agora")
     result.add_argument("--confirm-isolated-unsafe-rpc", action="store_true", help="Confirm the temporary key-generation endpoint is loopback-only and is not forwarded by a proxy or tunnel")
     session = result.add_mutually_exclusive_group()
     session.add_argument("--confirm-new-keys", action="store_true", help="Explicitly generate a fresh session-key tuple in the local keystore")
@@ -581,6 +696,17 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
+    if args.save_readiness:
+        if args.output or args.check_account or args.expected_session_keys or args.check_rpc_policy or args.confirm_new_keys or args.session_keys or args.confirm_isolated_unsafe_rpc:
+            raise EnrollmentError("Readiness capture cannot create packages, rotate keys, or inspect an account")
+        _, port = loopback_rpc(args.rpc)
+        listener_is_loopback(port)
+        report = capture_readiness(RpcClient(args.rpc))
+        atomic_write(Path(args.save_readiness), report)
+        print(f"Validator readiness report: {args.save_readiness}")
+        print(f"Lifecycle: {report['lifecycleState']}")
+        print("Validated redacted node-local result; import this file into Agora.")
+        return 0
     if args.check_rpc_policy:
         if args.output or args.check_account or args.expected_session_keys or args.confirm_new_keys or args.session_keys or args.confirm_isolated_unsafe_rpc:
             raise EnrollmentError("RPC policy checks cannot create packages, rotate keys, or inspect an account")

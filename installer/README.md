@@ -138,6 +138,9 @@ Fresh session keys therefore use `roko-session-key-window`, not an exposed
 author endpoint: it verifies the supported service and loopback listener,
 retains a recovery backup, performs one confirmed local key-generation window,
 and restores and tests Safe mode before the enrollment file may be imported.
+The same installed CLI later captures the redacted node-local operational
+proof with `roko-validator-enroll --save-readiness FILE`; no unsafe window is
+needed for that Safe RPC.
 
 ROKO's built-in PTP² observer mode and Timebeat's licensed PTP² Mesh are
 separate layers. The former is authenticated ROKO libp2p observation; the

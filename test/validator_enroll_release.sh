@@ -24,10 +24,10 @@ GNUPGHOME="$gpg_home" "$repo_root/scripts/build-validator-enroll-release.sh" \
   --signing-key "$fingerprint" \
   --public-key "$task_dir/test-key.asc"
 
-cmp "$task_dir/release-a/roko-validator-enroll-1.1.0.tar.gz" \
-  "$task_dir/release-b/roko-validator-enroll-1.1.0.tar.gz"
-cmp "$task_dir/release-a/roko-validator-enroll-1.1.0.metadata.json" \
-  "$task_dir/release-b/roko-validator-enroll-1.1.0.metadata.json"
+cmp "$task_dir/release-a/roko-validator-enroll-1.2.0.tar.gz" \
+  "$task_dir/release-b/roko-validator-enroll-1.2.0.tar.gz"
+cmp "$task_dir/release-a/roko-validator-enroll-1.2.0.metadata.json" \
+  "$task_dir/release-b/roko-validator-enroll-1.2.0.metadata.json"
 grep -F 'install-roko-validator-enroll.sh' "$task_dir/release-a/SHA256SUMS" >/dev/null
 (
   cd "$task_dir/release-a"
@@ -42,8 +42,8 @@ mv "$task_dir/install-release/installer.new" "$task_dir/install-release/install-
 chmod 0755 "$task_dir/install-release/install-roko-validator-enroll.sh"
 (
   cd "$task_dir/install-release"
-  sha256sum roko-validator-enroll-1.1.0.tar.gz \
-    roko-validator-enroll-1.1.0.metadata.json \
+  sha256sum roko-validator-enroll-1.2.0.tar.gz \
+    roko-validator-enroll-1.2.0.metadata.json \
     install-roko-validator-enroll.sh roko-release-signing-key.asc >SHA256SUMS
 )
 GNUPGHOME="$gpg_home" gpg --batch --yes --local-user "$fingerprint" --armor \
@@ -56,9 +56,9 @@ ROKO_VALIDATOR_ENROLL_ROOT="$install_root" \
   "$task_dir/install-release/install-roko-validator-enroll.sh" \
   --bundle-dir "$task_dir/install-release"
 
-[[ "$("$bin_dir/roko-validator-enroll" --version)" == 'roko-validator-enroll 1.1.0' ]]
+[[ "$("$bin_dir/roko-validator-enroll" --version)" == 'roko-validator-enroll 1.2.0' ]]
 "$bin_dir/roko-validator-enroll" --help | grep -F 'Generate a public-only ROKO validator enrollment package' >/dev/null
-python3 - "$install_root/1.1.0/compatibility/validator-enroll-compatibility.json" <<'PY'
+python3 - "$install_root/1.2.0/compatibility/validator-enroll-compatibility.json" <<'PY'
 import json
 import sys
 value = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -69,7 +69,7 @@ PY
 
 tampered_archive="$task_dir/tampered-archive"
 cp -a "$task_dir/install-release" "$tampered_archive"
-printf 'tamper' >>"$tampered_archive/roko-validator-enroll-1.1.0.tar.gz"
+printf 'tamper' >>"$tampered_archive/roko-validator-enroll-1.2.0.tar.gz"
 if ROKO_VALIDATOR_ENROLL_ROOT="$task_dir/tampered-archive-root" \
   ROKO_VALIDATOR_ENROLL_BIN_DIR="$task_dir/tampered-archive-bin" \
   "$tampered_archive/install-roko-validator-enroll.sh" --bundle-dir "$tampered_archive" \
@@ -81,7 +81,7 @@ grep -Eq 'FAILED|did NOT verify|does NOT verify' "$task_dir/tampered-archive.log
 
 tampered_metadata="$task_dir/tampered-metadata"
 cp -a "$task_dir/install-release" "$tampered_metadata"
-printf ' ' >>"$tampered_metadata/roko-validator-enroll-1.1.0.metadata.json"
+printf ' ' >>"$tampered_metadata/roko-validator-enroll-1.2.0.metadata.json"
 if ROKO_VALIDATOR_ENROLL_ROOT="$task_dir/tampered-metadata-root" \
   ROKO_VALIDATOR_ENROLL_BIN_DIR="$task_dir/tampered-metadata-bin" \
   "$tampered_metadata/install-roko-validator-enroll.sh" --bundle-dir "$tampered_metadata" \
@@ -91,6 +91,6 @@ if ROKO_VALIDATOR_ENROLL_ROOT="$task_dir/tampered-metadata-root" \
 fi
 grep -Eq 'BAD signature|did NOT verify|does NOT verify' "$task_dir/tampered-metadata.log"
 
-offline="$task_dir/release-a/roko-validator-enroll-offline-1.1.0.tar.gz"
+offline="$task_dir/release-a/roko-validator-enroll-offline-1.2.0.tar.gz"
 (cd "$task_dir/release-a" && sha256sum --check --strict "$(basename "$offline").sha256")
 printf 'validator enrollment release test ok\n'

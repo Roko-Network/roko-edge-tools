@@ -77,6 +77,7 @@ class ValidatorEnrollmentTests(unittest.TestCase):
             check_account=None,
             expected_session_keys=None,
             check_rpc_policy=False,
+            save_readiness=None,
         )
         values.update(overrides)
         return argparse.Namespace(**values)
@@ -225,6 +226,82 @@ class ValidatorEnrollmentTests(unittest.TestCase):
         MODULE.atomic_write(output, package)
         self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
         self.assertEqual(json.loads(output.read_text())["integrity"], package["integrity"])
+
+    def readiness(self):
+        names = MODULE.KEY_TYPES
+        key_types = ["gran", "babe", "imon", "audi", "mixn", "beef", "temp"]
+        cryptography = ["ed25519", "sr25519", "sr25519", "sr25519", "sr25519", "ecdsa", "ecdsa"]
+        session_keys = []
+        for index, name in enumerate(names):
+            width = 33 if name in {"beefy", "temporal"} else 32
+            public = "0x" + f"{index + 1:02x}" * width
+            session_keys.append({
+                "name": name,
+                "keyType": key_types[index],
+                "cryptography": cryptography[index],
+                "expectedPublic": public,
+                "observedPublic": [public],
+                "matchesExpected": True,
+            })
+        return {
+            "lifecycleState": "CONVERGED",
+            "validatorRoleConfigured": True,
+            "majorSyncing": False,
+            "genericP2pPeers": 8,
+            "finalizedBlock": 1036236,
+            "sessionIndex": 965,
+            "candidateAccount": "0x" + "12" * 20,
+            "matchedSessionKeyCount": 7,
+            "requiredSessionKeyCount": 7,
+            "sessionKeys": session_keys,
+            "candidateIntent": True,
+            "nextKeysMatch": True,
+            "queuedKeysMatch": True,
+            "activeSessionMatch": True,
+            "activeBabeAuthorityIndex": 3,
+            "activeTemporalAuthorityIndex": 3,
+            "producerAuthorityIndex": 3,
+            "expectedTemporalPublic": session_keys[-1]["expectedPublic"],
+            "observedTemporalPublic": [session_keys[-1]["expectedPublic"]],
+            "convergenceState": "Converged",
+            "minimumTemporalSources": 2,
+            "temporalTransportPeers": 3,
+            "mappedTemporalPeers": 2,
+            "contributingTemporalPeers": 2,
+            "peerExclusions": [{
+                "reason": "UNMAPPED_AUTHORITY",
+                "count": 1,
+                "explanation": "Peer is not mapped to the active authority set.",
+            }],
+            "readyToAuthor": True,
+            "authorshipProof": None,
+            "remediation": "Wait for finalized authorship evidence.",
+        }
+
+    def test_captures_complete_redacted_readiness_result(self):
+        report = self.readiness()
+        rpc = FakeRpc({("temporal_getValidatorReadiness", ()): report})
+        self.assertEqual(MODULE.capture_readiness(rpc), report)
+        self.assertEqual(rpc.calls, [("temporal_getValidatorReadiness", ())])
+
+    def test_readiness_rejects_method_absence_secret_fields_and_bad_tuple(self):
+        missing = FakeRpc({
+            ("temporal_getValidatorReadiness", ()): MODULE.RpcRejectedError(
+                "temporal_getValidatorReadiness", -32601, "Method not found"
+            )
+        })
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "current checksum-verified"):
+            MODULE.capture_readiness(missing)
+
+        leaked = self.readiness()
+        leaked["walletSeed"] = "not-a-real-secret"
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "prohibited"):
+            MODULE.validate_readiness(leaked)
+
+        malformed = self.readiness()
+        malformed["sessionKeys"] = malformed["sessionKeys"][:-1]
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "exactly seven"):
+            MODULE.validate_readiness(malformed)
 
     def test_substrate_storage_keys_and_finalized_transition_status(self):
         self.assertEqual(MODULE.storage_value_key("System", "Account")[:34], "0x26aa394eea5630e07c48ae0c9558cef7")

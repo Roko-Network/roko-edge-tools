@@ -119,7 +119,7 @@ paths and performs the remaining installation and verification steps. See the
 | `bin/roko-edge-report` | Generate a sanitized support bundle |
 | `bin/roko-seed-refresh` | Add current ROKO snapshot/release torrents to Transmission and verify completed payloads |
 | `bin/roko-guided-install` | Run the self-contained AIWG-manifested installer for Chrony or operator-licensed Timebeat deployments |
-| `bin/roko-validator-enroll` | Verify a synced non-authoring validator candidate, generate or verify node-owned session keys over loopback, and export a short-lived public enrollment package for Agora |
+| `bin/roko-validator-enroll` | Generate/verify a public enrollment package and capture the node's validated redacted Safe-RPC readiness result for Agora |
 | `bin/roko-session-key-window` | Open one guarded loopback-only Unsafe RPC window for session-key generation, then restore and prove Safe policy before handoff |
 
 ## Permissionless validator enrollment
@@ -180,6 +180,21 @@ Agora validates the file against the connected chain before asking your wallet
 to review any staking call. Creating the file does not bond funds, register
 keys on chain, declare validator intent, guarantee election, or activate
 authoring.
+
+After session registration, election, or any connectivity correction, capture
+the node-local operational proof without opening unsafe RPC:
+
+```bash
+./bin/roko-validator-enroll \
+  --rpc http://127.0.0.1:9944 \
+  --save-readiness ./roko-validator-readiness.json
+```
+
+The command calls `temporal_getValidatorReadiness`, validates the complete
+seven-key and peer-class schema, rejects secret-shaped or malformed fields,
+and writes only the redacted inner result that Agora imports. If the Safe
+method is absent, update to the current checksum-verified node release; do not
+hand-author the JSON or enable unsafe RPC.
 
 ## Common environment variables
 

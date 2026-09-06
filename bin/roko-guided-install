@@ -284,6 +284,7 @@ Validator onboarding
   Installed version: $enrollment_version
   Verified installer: https://downloads.roko.network/validator-tools/current/
   New session keys: sudo roko-session-key-window --help
+  Node readiness: roko-validator-enroll --save-readiness ./roko-validator-readiness.json
   Wallet journey: https://agora.roko.network/participate/staking
   Claim: https://claim.roko.network
   Lock pwROKO: https://stake.roko.network
@@ -315,6 +316,9 @@ EOF
 5. Verify direct P2P reachability to at least two active ROKO authorities.
    Syncing through boot.roko.network alone does not satisfy the temporal mesh;
    temporal_getConsensusTime.peerCount must show mapped authority peers.
+6. After registration or any connectivity change, run
+   roko-validator-enroll --save-readiness ./roko-validator-readiness.json and
+   import the validated redacted file into Agora. This uses Safe RPC.
 EOF
       read -r -p "Has the lock finalized and has native staking storage confirmed the bond? [y/N]: " answer
       if [[ ! "$answer" =~ ^[Yy]$ ]]; then
