@@ -15,6 +15,7 @@ python3 -m py_compile bin/roko-validator-enroll lib/validator_enrollment.py test
 python3 test/validator_enrollment.py
 test/session_key_window.sh
 test/validator_enroll_release.sh
+test/docker_time_source_contract.sh
 for installer_script in installer/scripts/*.sh; do
   bash -n "$installer_script"
 done
@@ -31,6 +32,8 @@ grep -F "wait for explicit operator approval" installer/AGENT-INSTALL.md >/dev/n
 grep -F "Do not include secrets" installer/AGENT-INSTALL.md >/dev/null
 grep -F "ROKO chain P2P: enabled via the public bootnode" bin/roko-guided-install >/dev/null
 grep -F "temporal_getMeshState" installer/scripts/start-and-verify.sh >/dev/null
+grep -F -- "--timesync-chrony-socket /run/chrony/chronyd.sock" installer/scripts/install-roko-service.sh >/dev/null
+grep -F "roko-node-testnet-docker-\${roko_arch}.tar.gz" installer/scripts/install-roko-docker.sh >/dev/null
 grep -F "roko_ptp2_mode=" installer/scripts/write-readiness-report.sh >/dev/null
 grep -F "roko-validator-enroll" installer/scripts/write-readiness-report.sh >/dev/null
 grep -F "sudo roko-session-key-window --help" bin/roko-guided-install >/dev/null

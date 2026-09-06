@@ -57,6 +57,35 @@ sudo bash install-roko-validator-enroll.sh --bundle-dir "$PWD"
 - Establish at least one peer and the documented time policy.
 - Intentionally publish the P2P multiaddress other nodes should dial.
 
+### Docker time-source contract
+
+The supported guided Docker path downloads the architecture-specific offline
+image from `downloads.roko.network/releases/current`, verifies both the release
+checksum and the image's source-revision label, and records the immutable local
+image ID. It does not depend on a moving registry tag.
+
+The installed service requires the host Chrony command socket at
+`/run/chrony/chronyd.sock`. It mounts `/run/chrony` read/write because
+`chronyc` creates its client datagram socket in that directory, adds the host
+socket's numeric group to container uid 1000, and passes both
+`--timesync-time-source auto` and
+`--timesync-chrony-socket /run/chrony/chronyd.sock`. Before every start it
+proves the image contains `chronyc` and `ethtool` but no independent
+`chronyd`; the host remains the only system-clock owner.
+
+Inspect the installed contract without changing the host:
+
+```bash
+ROKO_CHRONY_GID="$(stat -c %g /run/chrony/chronyd.sock)" \
+  installer/scripts/install-roko-service.sh \
+  --runtime docker --node-name preview --clock-provider chrony --render-unit
+```
+
+`No chrony or PPS device detected` after installing this contract is a hard
+failure. Confirm the service still contains the mount, group and explicit
+flags; confirm the socket exists; and reinstall the current image rather than
+adding `chronyd` inside the container.
+
 ## Generate or verify keys
 
 The installed node correctly defaults to `--rpc-methods Safe`; therefore a

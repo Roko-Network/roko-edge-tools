@@ -105,6 +105,15 @@ selectable sources before continuing.
   sync, stable peer identity, and advancing finalized-head verification; and
 - a value-free readiness report.
 
+For Docker, "immutable container image" means the checksum-verified offline
+image named by the current release metadata. The installer rejects a source
+revision mismatch and rejects images without the supported host-Chrony tools.
+The service mounts the host Chrony command-socket directory read/write, grants
+container uid 1000 only the socket's numeric group, and explicitly selects the
+host Chrony socket. It never starts a second clock daemon in the container.
+Use `install-roko-service.sh --render-unit` to audit the exact unit before an
+installation.
+
 Before any change, the launcher shows the resolved node name, role, runtime,
 clock owner, timeout, report location, and ordered steps. Use `--dry-run` to
 review this plan. For automated lab provisioning, supply all documented

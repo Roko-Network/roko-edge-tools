@@ -9,9 +9,7 @@ trap 'rm -rf -- "$task_dir"' EXIT
 
 script_names=(
   install-roko-native.sh
-  install-roko-docker.sh
   bootstrap-roko-chain-spec.sh
-  install-roko-service.sh
 )
 for filename in SHA256SUMS "${script_names[@]}"; do
   curl --fail --location --silent --show-error "$scripts_base/$filename" --output "$task_dir/$filename"
@@ -25,12 +23,12 @@ done
 if [[ "$RUNTIME" == native ]]; then
   bash "$task_dir/install-roko-native.sh"
 else
-  bash "$task_dir/install-roko-docker.sh"
+  bash "$(dirname "${BASH_SOURCE[0]}")/install-roko-docker.sh"
 fi
 bash "$task_dir/bootstrap-roko-chain-spec.sh"
 
 service_args=(--runtime "$RUNTIME" --node-name "$NODE_NAME" --clock-provider "${CLOCK_PROVIDER:-chrony}")
 [[ "$NODE_ROLE" == archive ]] && service_args+=(--archive)
 [[ "$NODE_ROLE" == observer ]] && service_args+=(--observer)
-bash "$task_dir/install-roko-service.sh" "${service_args[@]}"
+bash "$(dirname "${BASH_SOURCE[0]}")/install-roko-service.sh" "${service_args[@]}"
 log "Installed the verified ROKO node and non-authoring service profile."
