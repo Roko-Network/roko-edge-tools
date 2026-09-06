@@ -7,6 +7,7 @@ source_revision=""
 source_epoch=""
 signing_key=""
 public_key="$repo_root/release/roko-release-signing-key.asc"
+gpg_program="${GPG_PROGRAM:-gpg}"
 unsigned_test_only=false
 
 usage() {
@@ -64,7 +65,7 @@ source_epoch="${source_epoch:-$(git -C "$repo_root" show -s --format=%ct "$sourc
   exit 1
 }
 if ! "$unsigned_test_only"; then
-  command -v gpg >/dev/null 2>&1 || { printf 'gpg is required for a publishable build\n' >&2; exit 1; }
+  command -v "$gpg_program" >/dev/null 2>&1 || { printf 'gpg is required for a publishable build\n' >&2; exit 1; }
   [[ "$signing_key" =~ ^[0-9A-Fa-f]{40}$ ]] || {
     printf 'A full --signing-key fingerprint is required for a publishable build\n' >&2
     exit 1
@@ -160,8 +161,8 @@ checksums="$output_dir/SHA256SUMS"
 )
 
 if ! "$unsigned_test_only"; then
-  gpg --batch --yes --local-user "$signing_key" --armor --detach-sign --output "$metadata.asc" "$metadata"
-  gpg --batch --yes --local-user "$signing_key" --armor --detach-sign --output "$checksums.asc" "$checksums"
+  "$gpg_program" --batch --yes --local-user "$signing_key" --armor --detach-sign --output "$metadata.asc" "$metadata"
+  "$gpg_program" --batch --yes --local-user "$signing_key" --armor --detach-sign --output "$checksums.asc" "$checksums"
 fi
 
 offline_stage="$stage/offline"
