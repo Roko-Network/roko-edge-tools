@@ -672,6 +672,56 @@ def atomic_write(path: Path, package: dict[str, Any]) -> None:
         raise
 
 
+def wallet_setup(rpc: "RpcClient", account: str) -> dict[str, Any]:
+    """Read public chain facts for a wallet-owned browser handoff; never sign."""
+    if not ACCOUNT.fullmatch(account):
+        raise EnrollmentError("Wallet setup requires only a public 20-byte 0x account address")
+    if rpc.call("chain_getBlockHash", [0]) != TESTNET_GENESIS:
+        raise EnrollmentError("Wallet setup RPC is not the configured ROKO testnet")
+    if rpc.call("eth_chainId") != "0xcc92":
+        raise EnrollmentError("Wallet setup EVM chain ID does not match 52370")
+    finalized = rpc.call("chain_getFinalizedHead")
+    if not isinstance(finalized, str) or not HASH.fullmatch(finalized):
+        raise EnrollmentError("Wallet setup requires a valid finalized block hash")
+    runtime = rpc.call("state_getRuntimeVersion", [finalized])
+    if not isinstance(runtime, dict) or any(
+        type(runtime.get(key)) is not int or runtime[key] < 0
+        for key in ("specVersion", "transactionVersion")
+    ):
+        raise EnrollmentError("Wallet setup runtime response is malformed")
+    return {
+        "schema": "roko.wallet-setup.v1",
+        "toolVersion": TOOL_VERSION,
+        "account": account,
+        "network": {"name": "ROKO Testnet", "chainType": "substrate",
+                    "rpcWss": "wss://rpc.roko.network", "chainId": 52370,
+                    "genesisHash": TESTNET_GENESIS, "finalizedHash": finalized,
+                    "specVersion": runtime["specVersion"],
+                    "transactionVersion": runtime["transactionVersion"]},
+        "signingInterface": "substrate-signPayload",
+        "accountType": "ethereum-account-id20",
+        "walletConnectionVerified": False,
+        "metadataVerified": False,
+        "packageAcceptanceVerified": False,
+        "readyToSign": False,
+        "links": {"agora": "https://agora.roko.network/participate/staking/",
+                  "guide": "https://docs.roko.network/pages/wallets-faucet.html",
+                  "talisman": "https://www.talisman.xyz/download",
+                  "toolCatalog": "https://downloads.roko.network/validator-tools/current/"},
+        "nextActions": [
+            "Use a desktop browser with a Substrate-signing extension. Ordinary MetaMask/EVM mode cannot sign Agora staking/session calls.",
+            "Talisman is the documented path with reported enrollment success; verify support for your intended account and network.",
+            "If moving an account between wallets, perform any import only inside the official wallet UI. Never give this tool or an agent a private key or recovery phrase.",
+            f"Verify the wallet and Agora both display the exact intended account {account}; a watch-only account cannot sign.",
+            "Add ROKO as a custom Substrate network using the public WSS above. Verify genesis and current metadata in Agora; these observed RPC facts alone do not prove wallet compatibility.",
+            "Only after the wallet network is verified, prepare a release-compatible enrollment package on the non-authoring node. Confirm Safe RPC restoration and Package verified in Agora before wallet actions.",
+            "Compare installed tool identity with the signed catalog and actual Agora importer contract. Version labels alone do not prove package acceptance.",
+            "If the package expires, use the supported refresh/reissue path without editing expiry or tuple. Expiry alone does not require new keys.",
+            "Review each exact transaction and fee in the wallet; retain finalized transaction hashes. This handoff neither signs nor proves enrollment.",
+        ],
+    }
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description="Generate a public-only ROKO validator enrollment package")
     result.add_argument("--version", action="version", version=f"%(prog)s {TOOL_VERSION}")
@@ -687,6 +737,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--expected-session-keys", help="Public tuple expected both on chain and in this node's local keystore")
     result.add_argument("--check-rpc-policy", action="store_true", help="Non-mutating proof that key-management RPC is blocked while safe health RPC remains available")
     result.add_argument("--save-readiness", help="Write the validated redacted Safe RPC readiness result for Agora")
+    result.add_argument("--wallet-setup", metavar="PUBLIC_ACCOUNT", help="Read-only wallet setup handoff; optionally save public JSON with --output. Does not generate keys or an enrollment package")
     result.add_argument("--confirm-isolated-unsafe-rpc", action="store_true", help="Confirm the temporary key-generation endpoint is loopback-only and is not forwarded by a proxy or tunnel")
     session = result.add_mutually_exclusive_group()
     session.add_argument("--confirm-new-keys", action="store_true", help="Explicitly generate a fresh session-key tuple in the local keystore")
@@ -696,6 +747,21 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
+    if args.wallet_setup:
+        if args.check_account or args.expected_session_keys or args.check_rpc_policy or args.save_readiness or args.confirm_new_keys or args.session_keys or args.confirm_isolated_unsafe_rpc or args.public_address:
+            raise EnrollmentError("Wallet setup cannot be combined with enrollment, key generation, readiness or key RPC operations")
+        loopback_rpc(args.rpc)
+        handoff = wallet_setup(RpcClient(args.rpc), args.wallet_setup)
+        if args.output:
+            output = Path(args.output)
+            if output.exists() or output.is_symlink():
+                raise EnrollmentError("Wallet setup output must be a new file; do not overwrite an enrollment package")
+            # Exclusive creation avoids clobbering a package if another process races us.
+            with output.open("x", encoding="utf-8") as handle:
+                json.dump(handoff, handle, indent=2)
+                handle.write("\n")
+        print(json.dumps(handoff, indent=2))
+        return 0
     if args.save_readiness:
         if args.output or args.check_account or args.expected_session_keys or args.check_rpc_policy or args.confirm_new_keys or args.session_keys or args.confirm_isolated_unsafe_rpc:
             raise EnrollmentError("Readiness capture cannot create packages, rotate keys, or inspect an account")

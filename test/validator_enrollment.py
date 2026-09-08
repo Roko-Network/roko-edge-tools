@@ -339,5 +339,52 @@ class ValidatorEnrollmentTests(unittest.TestCase):
             MODULE.decode_fixed_vector("0x08" + account[2:], 20)
 
 
+class WalletSetupTests(unittest.TestCase):
+    account = "0x" + "12" * 20
+
+    def rpc(self, **changes):
+        finalized = "0x" + "ab" * 32
+        values = {
+            ("chain_getBlockHash", (0,)): MODULE.TESTNET_GENESIS,
+            ("eth_chainId", ()): "0xcc92",
+            ("chain_getFinalizedHead", ()): finalized,
+            ("state_getRuntimeVersion", (finalized,)): {"specVersion": 286, "transactionVersion": 4},
+        }
+        calls = []
+        class Rpc:
+            def call(self, method, params=None):
+                calls.append(method)
+                return changes.get(method, values[(method, tuple(params or []))])
+        return Rpc(), calls
+
+    def test_handoff_never_calls_key_or_signing_rpc_or_claims_ready(self):
+        rpc, calls = self.rpc()
+        result = MODULE.wallet_setup(rpc, self.account)
+        self.assertEqual(result["account"], self.account)
+        self.assertEqual(result["network"]["specVersion"], 286)
+        for field in ["readyToSign", "walletConnectionVerified", "metadataVerified", "packageAcceptanceVerified"]:
+            self.assertFalse(result[field])
+        self.assertEqual(calls, ["chain_getBlockHash", "eth_chainId", "chain_getFinalizedHead", "state_getRuntimeVersion"])
+
+    def test_bad_identity_and_runtime_fail(self):
+        for account in ["seed words", "0x" + "12" * 32, "not-an-address"]:
+            with self.assertRaises(MODULE.EnrollmentError):
+                MODULE.wallet_setup(self.rpc()[0], account)
+        for changes in [{"chain_getBlockHash": "0x" + "00" * 32}, {"eth_chainId": "0x1"}, {"chain_getFinalizedHead": "bad"}, {"state_getRuntimeVersion": {"specVersion": True, "transactionVersion": 4}}]:
+            with self.assertRaises(MODULE.EnrollmentError):
+                MODULE.wallet_setup(self.rpc(**changes)[0], self.account)
+
+    def test_cli_rejects_rotation_and_existing_output(self):
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "cannot be combined"):
+            MODULE.main(["--wallet-setup", self.account, "--confirm-new-keys"])
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "existing.json"
+            output.write_text("preserve package")
+            with mock.patch.object(MODULE, "RpcClient", return_value=self.rpc()[0]):
+                with self.assertRaisesRegex(MODULE.EnrollmentError, "new file"):
+                    MODULE.main(["--wallet-setup", self.account, "--output", str(output)])
+            self.assertEqual(output.read_text(), "preserve package")
+
+
 if __name__ == "__main__":
     unittest.main()

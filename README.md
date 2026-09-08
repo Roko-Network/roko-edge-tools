@@ -276,3 +276,38 @@ Use it to observe and report; make operational changes deliberately.
 
 - Primary: [github.com/Roko-Network/roko-edge-tools](https://github.com/Roko-Network/roko-edge-tools)
 - Mirror: [git.integrolabs.net/roctinam/roko-edge-tools](https://git.integrolabs.net/roctinam/roko-edge-tools)
+
+## Wallet setup before enrollment
+
+Agora uses Substrate signing with an Ethereum-format AccountId20 account.
+Ordinary MetaMask/EVM mode cannot sign this flow. Talisman is the documented
+path with reported enrollment success; confirm the intended account and exact
+network/metadata in Agora. A web-only wallet is not a verified substitute.
+
+In a build whose `roko-validator-enroll --help` lists `--wallet-setup`, run:
+
+```sh
+roko-validator-enroll --wallet-setup YOUR_PUBLIC_0x_ACCOUNT --output ./roko-wallet-setup.json
+```
+
+Replace the placeholder with only the intended public 20-byte address. This
+read-only command checks configured-testnet genesis/chain ID and reads runtime
+version at a finalized hash through loopback RPC. It emits a public agent-readable
+handoff, official setup links and ordered browser steps. It never opens Unsafe
+RPC, changes keys, signs, or claims the browser wallet is ready. Existing output
+files are not overwritten. The JSON is a setup checklist, **not an enrollment
+package** to import into Agora.
+
+Wallet import, permission approval and signing remain owner-controlled in the
+official wallet UI. Never give tools/agents an account private key or recovery
+phrase. Verify the exact same account after any wallet migration. A watch-only
+account cannot sign. Use a desktop browser extension and custom Substrate
+network; adding an EVM network alone is insufficient.
+
+Complete the browser wallet/network check before generating the short-lived
+node package. Compare the installed CLI and signed catalog with the actual
+Agora importer contract; version labels do not prove acceptance. If a package
+expires, use the supported refresh/reissue procedure without editing its tuple
+or expiry and without assuming another key rotation is necessary. Existing
+signed releases may lack this new option; use the [public wallet guide](https://docs.roko.network/pages/wallets-faucet.html)
+until a signed release containing it is published.
