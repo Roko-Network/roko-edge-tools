@@ -22,8 +22,6 @@ and your verified `roko-node` binary:
 ```bash
 git clone https://github.com/Roko-Network/roko-edge-tools.git
 cd roko-edge-tools
-# Until this change is merged:
-git switch --track origin/feat/node-wallet-validator-20260913
 npm ci --ignore-scripts --prefix wallet
 npm test --prefix wallet
 bin/roko-validator-wallet --help
