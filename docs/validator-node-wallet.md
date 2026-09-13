@@ -12,27 +12,87 @@ captures the exact raw node seed in memory, checks its public key, and saves
 only password-encrypted keyring JSON. It does not print a seed or mnemonic.
 Never substitute a session key, node key, or Ethereum-derived mnemonic.
 
-## Install from source
+## Addresses you will use
 
-This optional command is available in the source checkout; the existing
-signed enrollment bundle does not install its Node.js dependencies. Use a
-reviewed revision of the public repository, Python 3, Node.js 22 or newer,
-and your verified `roko-node` binary:
+Use testnet chain ID **52370**. Your wallet's public account is `0x` followed
+by 40 hexadecimal characters. Copy it from the `account` field printed by
+`create`; use that same value when funding the wallet and for every `--account`
+argument below. The tool checks that it matches the encrypted wallet.
+
+For reference, pwROKO is `0x0000000000000000000000000000000000000500`
+(symbol `pwROKO`, 18 decimals), and the EVM staking precompile is
+`0x0000000000000000000000000000000000000700`.
+**Do not put either precompile in `--account` or send funds to it.**
+This command uses native runtime calls and has no contract-address option.
+You do not need to import a token, enter an ABI, or approve an EVM spender to
+use this workflow. See the [address and function reference](https://docs.roko.network/pages/prepare-validator.html#which-address-goes-where).
+
+## Verification status
+
+Published September 13, 2026. Encryption/recovery tests, the existing installer
+smoke suite, and read-only call encoding against testnet runtime 286 passed.
+A funded end-to-end enrollment with this new command remains unverified.
+Browser-wallet failures remain under investigation; this is a separate local
+signing path, not a claim that Talisman has been repaired.
+
+## 1. Open the validator terminal and check software
+
+First complete the [guided validator-candidate installation](https://docs.roko.network/pages/install-node.html).
+Use your hosting provider's SSH login to open a terminal **on the validator
+host**. Keep this terminal open for the steps below. Commands run as your
+normal Linux user unless a step explicitly says `sudo`.
+
+Check the tools before installing the optional wallet command:
 
 ```bash
-git clone https://github.com/Roko-Network/roko-edge-tools.git
-cd roko-edge-tools
+python3 --version
+node --version
+npm --version
+git --version
+/usr/local/bin/roko-node --version
+```
+
+Expect Python `3.x`, Node `v22.x` or newer, version numbers for npm and Git,
+and a ROKO node version. If a command says `command not found`, install that
+prerequisite before continuing. On Ubuntu/Debian, Git and Python are available
+with `sudo apt update` followed by `sudo apt install git python3`.
+For Node.js, use the [official installation instructions](https://nodejs.org/en/download)
+and choose a supported LTS version **22 or newer** with npm. Reopen the SSH
+session if the installer asks, then repeat the version checks. Do not assume
+the distribution's default Node package meets this minimum.
+
+If your verified node binary is somewhere else, replace
+`/usr/local/bin/roko-node` with that absolute path in this guide. A Docker-only
+installation also needs a verified matching host binary for wallet creation;
+follow the node installation guide's binary verification procedure first.
+
+The wallet command is available in the source checkout; the existing signed
+enrollment bundle does not install its Node.js dependencies. Use a dedicated
+checkout pinned to the reviewed wallet release:
+
+```bash
+mkdir -p "$HOME/roko-tools"
+git clone https://github.com/Roko-Network/roko-edge-tools.git "$HOME/roko-tools/validator-wallet"
+cd "$HOME/roko-tools/validator-wallet"
+git checkout --detach 12c77a5d6ff276e271e587659946edaefde277a2
 npm ci --ignore-scripts --prefix wallet
 npm test --prefix wallet
 bin/roko-validator-wallet --help
 ```
+
+The tests must pass and help must list `create`, `plan`, and `enroll`. If the
+clone destination already exists, do not delete it or overwrite files: use
+that checkout only after checking `git status` and its revision with
+`git rev-parse HEAD`. Save your own changes before updating a checkout.
+For each later SSH session, return here with
+`cd "$HOME/roko-tools/validator-wallet"` before running a `bin/` command.
 
 Run the command as your normal operator user on the validator host. RPC must
 listen only on loopback, with WebSocket enabled on `127.0.0.1:9944`. Do not
 publish or forward RPC. Signing works with the node's normal Safe RPC policy;
 only session-key generation uses the existing guarded key-management window.
 
-## Create and fund the staking wallet
+## 2. Create and fund the staking wallet
 
 ```bash
 install -d -m 700 "$HOME/.local/share/roko-validator"
@@ -42,7 +102,8 @@ bin/roko-validator-wallet create \
 ```
 
 Enter a unique password of at least 12 characters at the hidden prompt.
-The command prints the public `0x` account address and refuses to overwrite
+The command prints JSON containing `account`, `wallet`, and `encrypted: true`.
+The `account` value is your public `0x` address and refuses to overwrite
 an existing wallet. Back up the encrypted wallet and keep its password
 separately. Losing either prevents future staking transactions and withdrawal.
 Do not commit wallet files or send them to support.
@@ -58,9 +119,9 @@ This first version creates a new staking wallet. It does not migrate funds,
 import Talisman accounts, or replace an existing validator's wallet. Fund the
 new address through your existing funded account or the testnet funding route.
 
-## Generate the public session package
+## 3. Prepare the public session package
 
-Complete the [node readiness and guarded session-key workflow](validator-self-join.md#generate-or-verify-keys)
+Complete the [node readiness and guarded session-key workflow](https://github.com/Roko-Network/roko-edge-tools/blob/main/docs/validator-self-join.md#generate-or-verify-keys)
 on this same node. Restore and verify Safe RPC before proceeding. The public
 `roko-validator-enrollment.json` must be fresh and identify this node, runtime,
 and testnet genesis:
@@ -71,9 +132,24 @@ Keep the node in its non-authoring candidate configuration during enrollment.
 Use the existing session tuple when refreshing an expired package; do not
 rotate keys to retry a transaction.
 
-## Review and execute
+## 4. Review the next transaction
 
-Replace the account placeholder with the public address printed at creation:
+Keep the enrollment file in this checkout, or replace its filename in every
+command with its actual absolute path. Confirm it is present:
+
+```bash
+pwd
+ls -l roko-validator-enrollment.json
+```
+
+`pwd` should end in `/roko-tools/validator-wallet`. If `ls` reports
+`No such file or directory`, find the output path from the session-key workflow
+and use that path. This JSON contains public session facts; it is different
+from the encrypted `staking-wallet.json` and cannot replace it.
+
+Replace `0xYOUR_40_HEX_CHARACTER_ACCOUNT` below with the complete `account`
+value printed at wallet creation. It is a placeholder, not an example account
+to fund. Copy the whole block after replacing it:
 
 ```bash
 bin/roko-validator-wallet plan \
@@ -93,6 +169,18 @@ zero commission and nominations unblocked. Existing validator preferences are
 preserved. Estimates are refreshed before each call; fee reserves are estimates,
 not a guarantee of future network fees.
 
+The JSON fields `nextCall`, `estimatedFeePlanck`, `nativeRequiredPlanck`, and
+`nativeFreePlanck` explain the next step. Amounts here are integer base units:
+`50000000000000000000` is 50 ROKO. `plan` checks one next transaction; rerun it
+after funding if it reports insufficient balance. It does not reserve funds.
+
+## 5. Sign and wait for finalization
+
+This next command **submits transactions**. Continue only after checking the
+account, network, stake amount, and plan. The default is 50 ROKO; if you choose
+a different `--stake-planck` amount, use the same value for both `plan` and
+`enroll`. Keep the SSH session open while it runs.
+
 ```bash
 bin/roko-validator-wallet enroll --execute \
   --wallet "$HOME/.local/share/roko-validator/staking-wallet.json" \
@@ -105,7 +193,7 @@ The hidden password unlocks the wallet locally. Its derived address must match
 prints the finalized block receipt, then rechecks state before the next step. Avoid
 other transactions from this account during enrollment.
 
-## Interruptions and completion
+## 6. Confirm completion or recover from an interruption
 
 - **Insufficient funds:** fund the displayed account, then rerun `plan`.
 - **Pending nonce or timeout:** a transaction may still finalize. Inspect its
@@ -119,9 +207,18 @@ other transactions from this account during enrollment.
   the existing validator. This enrollment command does not rotate keys,
   increase existing bonds, change commissions, unbond, or withdraw.
 
+A successful enrollment prints `"status":"candidate registration finalized"`
+and a `finalizedHash`. Save the public transaction/block hashes so you can
+look them up in the explorer. This does not mean the validator is active.
+
+If your SSH connection drops, reconnect, return to the checkout with `cd`,
+and run `plan` before deciding whether to resume. Do not rerun `create`.
+For support, share the command name, exact error, public account and transaction
+hash; leave out wallet files and passwords.
+
 Rerunning checks finalized state and skips completed steps. A finalized
 candidate registration does not mean the node has been elected or authored a
-block. Continue the [join and monitor procedure](validator-self-join.md#join-and-monitor),
+block. Continue the [join and monitor procedure](https://docs.roko.network/pages/prepare-validator.html),
 verify the session tuple and custody on the node, then enable validator mode
 according to that procedure. Confirm election and authorship separately.
 
