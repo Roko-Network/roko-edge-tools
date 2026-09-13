@@ -60,6 +60,8 @@ def bounded_rpc_message(value: Any) -> str:
 
 def key_rpc_policy_disabled(error: RpcRejectedError) -> bool:
     """Recognize Substrate's explicit safe-policy rejection without guessing."""
+    if error.code == 1040:
+        return error.rpc_message.strip().rstrip(".").lower() == "rpc call is unsafe to be called externally"
     if error.code != -32601:
         return False
     return bool(re.search(r"\bunsafe\b|\bnot safe\b|\bforbidden\b|\bdenied\b|\bdisabled by.*policy\b", error.rpc_message, re.I))
@@ -184,6 +186,33 @@ def decode_fixed_vector(raw: str | None, width: int) -> list[bytes]:
     return [value[offset + index * width:offset + (index + 1) * width] for index in range(count)]
 
 
+def transition_local_custody(rpc: "RpcClient", account: str, encoded_keys: str) -> bool:
+    """Prove custody without opening an Unsafe RPC window on a running node."""
+    try:
+        return rpc.call("author_hasSessionKeys", [encoded_keys]) is True
+    except RpcRejectedError as error:
+        if not key_rpc_policy_disabled(error):
+            raise
+    report = capture_readiness(rpc)
+    candidate = report["candidateAccount"]
+    if candidate is not None and candidate.lower() != account.lower():
+        return False
+    # Readiness can precede account discovery: its observed public keys still
+    # prove custody, while check_transition separately binds the entire tuple
+    # to this account's finalized Session.NextKeys. Never trust aggregate flags
+    # or a tuple belonging to some other candidate.
+    offset = 2
+    for entry, width in zip(report["sessionKeys"], (32, 32, 32, 32, 32, 33, 33)):
+        public = "0x" + encoded_keys[offset:offset + width * 2].lower()
+        offset += width * 2
+        if public not in {value.lower() for value in entry["observedPublic"]}:
+            return False
+        expected = entry["expectedPublic"]
+        if expected is not None and (expected.lower() != public or not entry["matchesExpected"]):
+            return False
+    return True
+
+
 def check_transition(rpc: "RpcClient", account: str, expected_session_keys: str | None = None) -> dict[str, Any]:
     if not ACCOUNT.fullmatch(account):
         raise EnrollmentError("Transition account must be a canonical 20-byte address")
@@ -198,7 +227,7 @@ def check_transition(rpc: "RpcClient", account: str, expected_session_keys: str 
     next_keys = rpc.call("state_getStorage", [storage_map_key("Session", "NextKeys", account), finalized])
     keys_present = isinstance(next_keys, str) and next_keys != "0x"
     keys_match = expected_session_keys is None or (keys_present and next_keys.lower() == expected_session_keys.lower())
-    local_custody = expected_session_keys is None or rpc.call("author_hasSessionKeys", [expected_session_keys]) is True
+    local_custody = expected_session_keys is not None and transition_local_custody(rpc, account, expected_session_keys)
     active_member = account.lower() in {entry.lower() for entry in active}
     state = "active" if active_member else "waiting" if intent and keys_present else "candidate" if intent else "bonded" if bonded else "not-started"
     return {
