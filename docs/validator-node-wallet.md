@@ -82,7 +82,7 @@ bin/roko-validator-wallet plan \
   --enrollment roko-validator-enrollment.json
 ```
 
-`plan` never opens the wallet or asks for its password. It checks chain,
+`plan` never opens the wallet or asks for its password. It checks the current loopback listener, chain,
 runtime metadata, node identity, synchronization, advancing finality, live
 minimum bond, pending nonce, and finalized staking state. It prints the next
 needed call, encoded call data, estimated fee, and native balance requirement.
@@ -101,8 +101,8 @@ bin/roko-validator-wallet enroll --execute \
 ```
 
 The hidden password unlocks the wallet locally. Its derived address must match
-`--account`. Each submitted call waits for finalization, prints a public
-transaction/block receipt, then rechecks state before the next step. Avoid
+`--account`. Each submission reports its public transaction hash, waits for finalization,
+prints the finalized block receipt, then rechecks state before the next step. Avoid
 other transactions from this account during enrollment.
 
 ## Interruptions and completion
@@ -124,3 +124,18 @@ candidate registration does not mean the node has been elected or authored a
 block. Continue the [join and monitor procedure](validator-self-join.md#join-and-monitor),
 verify the session tuple and custody on the node, then enable validator mode
 according to that procedure. Confirm election and authorship separately.
+
+Before enabling validator mode, use the enrollment command from this updated
+source checkout to verify finalized state and local custody under Safe RPC:
+
+```bash
+bin/roko-validator-enroll \
+  --rpc http://127.0.0.1:9944 \
+  --check-account 0xYOUR_40_HEX_CHARACTER_ACCOUNT \
+  --expected-session-keys "$(python3 -c 'import json; print(json.load(open("roko-validator-enrollment.json"))["session"]["encodedKeys"])')"
+```
+
+The tuple is public. Require `safeToEnableValidatorMode: true`; keep Safe RPC
+enabled. A not-ready result is not permission to skip custody verification.
+Older signed tool bundles may lack the Safe readiness fallback; use the source
+command above until a new signed bundle includes it.

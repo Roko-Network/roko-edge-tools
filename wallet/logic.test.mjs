@@ -23,13 +23,15 @@ test('partial completion resumes each step and never rotates keys', () => {
 });
 test('finalization handles callbacks before subscription resolves', async () => {
   let unsubscribed = false;
+  const receipts = [];
   const tx = { hash: { toHex: () => '0xtx' }, signAndSend: async (_s, _o, callback) => {
     callback({ status: { isFinalized: true, asFinalized: { toHex: () => '0xblock' } }, events: [] });
     return () => { unsubscribed = true; };
   } };
-  assert.deepEqual(await finalized(tx, {}), { transactionHash: '0xtx', finalizedHash: '0xblock' });
+  assert.deepEqual(await finalized(tx, {}, 180000, receipt => receipts.push(receipt)), { transactionHash: '0xtx', finalizedHash: '0xblock' });
   await Promise.resolve();
   assert.equal(unsubscribed, true);
+  assert.deepEqual(receipts, [{ transactionHash: '0xtx', status: 'submitted; awaiting finalization' }]);
 });
 test('dispatch errors and timeouts never report success', async () => {
   const failed = { hash: { toHex: () => '0xtx' }, signAndSend: async (_s, _o, cb) => { cb({ status: { isFinalized: true, asFinalized: { toHex: () => '0xblock' } }, dispatchError: {}, events: [] }); return () => {}; } };

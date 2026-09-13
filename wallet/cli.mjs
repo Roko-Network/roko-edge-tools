@@ -79,7 +79,7 @@ async function main() {
       console.log(JSON.stringify({ account: args.account, nextCall: step[0], callData: tx.method.toHex(), estimatedFeePlanck: fee.toString(), nativeRequiredPlanck: required.toString(), nativeFreePlanck: account.data.free.toString(), remainingSequence: ['lock if needed', 'bond if needed', 'setKeys if needed', 'validate if needed'] }));
       if (account.data.free.toBigInt() - frozen < required) throw new Error('Insufficient spendable native ROKO for this step and fee reserve; fund the displayed account');
       if (args.command === 'plan') return;
-      console.log(JSON.stringify({ call: step[0], ...await finalized(tx, signer) }));
+      console.log(JSON.stringify({ call: step[0], ...await finalized(tx, signer, 180000, receipt => console.log(JSON.stringify({ call: step[0], ...receipt }))) }));
     }
     throw new Error('State did not converge after four enrollment calls; review receipts');
   } finally { clearTimeout(deadline); signer?.lock(); if (api) await api.disconnect(); else await provider.disconnect(); }

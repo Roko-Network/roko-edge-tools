@@ -16,9 +16,9 @@ export function nextStep(state, stake, keys) {
   if (!state.intent) return ['validate'];
   return null;
 }
-export async function finalized(tx, signer, timeoutMs = 180000) {
+export async function finalized(tx, signer, timeoutMs = 180000, onSubmitted = () => {}) {
   return new Promise((resolve, reject) => {
-    let unsubscribe, done = false;
+    let unsubscribe, done = false, reported = false;
     const finish = (error, value) => {
       if (done) return;
       done = true;
@@ -28,6 +28,10 @@ export async function finalized(tx, signer, timeoutMs = 180000) {
     };
     const timer = setTimeout(() => finish(new Error('Finalization timed out; transaction outcome unknown. Check finalized state and pending nonce before retrying.')), timeoutMs);
     tx.signAndSend(signer, { nonce: -1 }, result => {
+      if (!reported) {
+        reported = true;
+        onSubmitted({ transactionHash: tx.hash.toHex(), status: 'submitted; awaiting finalization' });
+      }
       if (result.status.isInvalid || result.status.isDropped || result.status.isUsurped) return finish(new Error('Transaction rejected or replaced; inspect account activity before retrying'));
       if (!result.status.isFinalized) return;
       if (result.dispatchError || result.events.some(({ event }) => event.section === 'system' && event.method === 'ExtrinsicFailed')) return finish(new Error(`Transaction ${tx.hash.toHex()} finalized in ${result.status.asFinalized.toHex()} with a dispatch failure; inspect the explorer before retrying`));

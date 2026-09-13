@@ -6,10 +6,11 @@ import json
 import pathlib
 import subprocess
 import sys
+from urllib.parse import urlparse
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'lib'))
-from validator_enrollment import validate_enrollment, EnrollmentError
+from validator_enrollment import validate_enrollment, EnrollmentError, listener_is_loopback
 
 
 def main():
@@ -28,6 +29,10 @@ def main():
         if not args.account or not args.enrollment:
             parser.error('--account and --enrollment are required')
         data['package'] = validate_enrollment(json.loads(pathlib.Path(args.enrollment).read_text()))
+        rpc = urlparse(args.rpc)
+        if rpc.scheme != 'ws' or rpc.hostname not in ('127.0.0.1', '::1') or not rpc.port:
+            parser.error('--rpc must be a literal loopback WebSocket URL with an explicit port')
+        listener_is_loopback(rpc.port)
     if args.command == 'enroll' and not args.execute:
         parser.error('Use plan to review, then enroll --execute to sign')
     if args.command == 'create' or args.command == 'enroll':
