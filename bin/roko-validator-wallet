@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Optional local staking wallet. Private input crosses only anonymous pipes."""
+import argparse
+import getpass
+import json
+import pathlib
+import subprocess
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'lib'))
+from validator_enrollment import validate_enrollment, EnrollmentError
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('command', choices=['create', 'plan', 'enroll'])
+    parser.add_argument('--wallet', required=True, help='Encrypted wallet JSON path')
+    parser.add_argument('--binary', default='roko-node')
+    parser.add_argument('--enrollment', help='Fresh public roko-validator-enroll package')
+    parser.add_argument('--account', help='Expected staking address (required for plan/enroll)')
+    parser.add_argument('--rpc', default='ws://127.0.0.1:9944')
+    parser.add_argument('--stake-planck', default='50000000000000000000')
+    parser.add_argument('--execute', action='store_true', help='Required to sign enrollment transactions')
+    args = parser.parse_args()
+    data = vars(args)
+    if args.command != 'create':
+        if not args.account or not args.enrollment:
+            parser.error('--account and --enrollment are required')
+        data['package'] = validate_enrollment(json.loads(pathlib.Path(args.enrollment).read_text()))
+    if args.command == 'enroll' and not args.execute:
+        parser.error('Use plan to review, then enroll --execute to sign')
+    if args.command == 'create' or args.command == 'enroll':
+        if not sys.stdin.isatty():
+            parser.error('Run in an interactive terminal for a hidden wallet password prompt')
+        password = getpass.getpass('Wallet encryption password: ')
+        if len(password) < 12:
+            parser.error('Use a password of at least 12 characters')
+        if args.command == 'create':
+            if password != getpass.getpass('Repeat password: '):
+                parser.error('Passwords do not match')
+            result = subprocess.run([args.binary, 'key', 'generate', '--scheme', 'ecdsa', '--output-type', 'json'], capture_output=True, text=True)
+            if result.returncode:
+                raise EnrollmentError('Node key generation failed; private output suppressed')
+            key = json.loads(result.stdout)
+            data['seed'] = key['secretSeed']
+            data['nodePublicKey'] = key['publicKey']
+        data['password'] = password
+    result = subprocess.run(['node', str(ROOT / 'wallet' / 'cli.mjs')], input=json.dumps(data), text=True)
+    return result.returncode
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (EnrollmentError, OSError, ValueError, KeyError):
+        print('roko-validator-wallet: input, enrollment validation, or local process failed; no transaction submitted by the launcher', file=sys.stderr)
+        sys.exit(1)

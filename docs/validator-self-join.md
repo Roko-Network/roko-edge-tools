@@ -10,6 +10,10 @@ The permissionless path is a two-system handoff:
 4. Agora follows finalized candidate, waiting, queued, active, authoring,
    maintenance, rotation, and exit state.
 
+If a browser wallet cannot complete enrollment, follow the
+[local node-wallet alternative](validator-node-wallet.md). It performs the same
+lock, bond, set-keys, and validate sequence from the validator host.
+
 The node and wallet remain separate security domains. Never upload a keystore,
 seed phrase, secret URI, node-key bytes, wallet private key, or OpenBao
 credential. The enrollment JSON is public but integrity-sensitive and

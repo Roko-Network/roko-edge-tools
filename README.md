@@ -69,8 +69,8 @@ The tools are intentionally dependency-light:
 
 - Bash for host/service/time checks
 - Python 3 standard library for JSON-RPC probes
-- No secrets
-- No writes unless you explicitly copy example config into your host
+- Diagnostic tools do not read secrets. The optional [local validator wallet](docs/validator-node-wallet.md) encrypts a node-generated staking key locally.
+- Diagnostic tools do not change chain state. Local wallet enrollment requires an explicit `enroll --execute` command and signs with your own funded account.
 
 ## Quick start
 
