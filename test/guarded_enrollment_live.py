@@ -57,7 +57,7 @@ def wait_rpc(rpc_port, alive):
     raise TimeoutError("RPC startup deadline")
 
 
-def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_spec):
+def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_spec, agora_module=None, agora_sha256=None):
     with binary.open("rb") as stream:
         digest = hashlib.file_digest(stream, "sha256").hexdigest()
     if digest != expected:
@@ -67,6 +67,10 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
         raise ValueError("runtime digest mismatch")
     if receipt.exists():
         raise ValueError("receipt already exists")
+    if bool(agora_module) != bool(agora_sha256):
+        raise ValueError("Agora module path and digest must be supplied together")
+    if agora_module and hashlib.sha256(agora_module.read_bytes()).hexdigest() != agora_sha256:
+        raise ValueError("Agora module digest mismatch")
     run("sudo", "-n", "true")
     if run("timedatectl", "show", "-p", "NTPSynchronized", "--value").stdout.strip() != "yes":
         raise ValueError("host clock is not synchronized")
@@ -214,6 +218,54 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                 report["policyBytesRestored"] = run("sudo", "-n", "cat", str(policy)).stdout == initial.read_text()
                 if not report["policyBytesRestored"]:
                     raise ValueError("policy bytes not restored")
+                baseline_keys = {p.name: p.read_bytes() for p in (root / "candidate").rglob("keystore/*") if p.is_file()}
+                reuse_output = root / "reused-package.json"
+                reuse_args = ["sudo", "-n", str(ROOT / "bin/roko-session-key-window"),
+                              "--service", unit, "--policy-file", str(policy),
+                              "--rpc", f"http://127.0.0.1:{rpc_port}",
+                              "--enroll-command", str(ROOT / "bin/roko-validator-enroll"),
+                              "--reuse-session-keys", package["session"]["encodedKeys"],
+                              "--confirm-isolated-window", "--confirm-no-forwarding", "--",
+                              "--binary", str(binary), "--expected-genesis", genesis,
+                              "--minimum-peers", "2", "--observation-seconds", "8",
+                              "--public-address", f"/ip4/127.0.0.1/tcp/{p2p_port}/p2p/{peer}",
+                              "--output", str(reuse_output)]
+                reused_result = run(*reuse_args, timeout=180)
+                reused = json.loads(run("sudo", "-n", "cat", str(reuse_output)).stdout)
+                keys_after = {p.name: p.read_bytes() for p in (root / "candidate").rglob("keystore/*") if p.is_file()}
+                safe = run(str(ROOT / "bin/roko-validator-enroll"), "--rpc",
+                           f"http://127.0.0.1:{rpc_port}", "--check-rpc-policy")
+                report["reuse"] = {
+                    "helperExit": reused_result.returncode,
+                    "sameTuple": reused["session"]["encodedKeys"] == package["session"]["encodedKeys"],
+                    "freshPackage": reused["enrollmentId"] != package["enrollmentId"],
+                    "existingKeyFilesPreserved": keys_after == baseline_keys,
+                    "existingKeyCount": len(baseline_keys),
+                    "safeAfter": json.loads(safe.stdout)["safeForNormalOperation"],
+                    "policyBytesRestored": run("sudo", "-n", "cat", str(policy)).stdout == initial.read_text(),
+                }
+                del baseline_keys, keys_after
+                if not all(report["reuse"][k] for k in ("sameTuple", "freshPackage", "existingKeyFilesPreserved", "safeAfter", "policyBytesRestored")):
+                    raise ValueError("reuse failed")
+                if agora_module:
+                    # Independent local RPC observations bind importer expectations;
+                    # do not derive expected network identity from the package itself.
+                    observed_runtime = rpc(rpc_port, "state_getRuntimeVersion")
+                    observed_metadata = rpc(rpc_port, "state_getMetadata")
+                    expected_network = {
+                        "chainName": rpc(rpc_port, "system_chain"),
+                        "genesisHash": rpc(rpc_port, "chain_getBlockHash", [0]),
+                        "specName": observed_runtime["specName"],
+                        "specVersion": observed_runtime["specVersion"],
+                        "transactionVersion": observed_runtime["transactionVersion"],
+                        "metadataHash": "0x" + hashlib.sha256(bytes.fromhex(observed_metadata[2:])).hexdigest(),
+                    }
+                    report["agoraImport"] = {}
+                    for label, candidate in (("generated", package), ("reused", reused)):
+                        result = run("node", str(ROOT / "test/agora_enrollment_contract.mjs"),
+                                     str(agora_module), agora_sha256,
+                                     input=json.dumps({"package": candidate, "expected": expected_network}))
+                        report["agoraImport"][label] = json.loads(result.stdout)
                 report["faultCases"] = []
                 for fault in ("unsafe-restart-failure", "term-interruption", "rpc-failure"):
                     # A successful window has already proved real generation.
@@ -323,10 +375,13 @@ if __name__ == "__main__":
     parser.add_argument("--runtime-wasm", type=Path, required=True)
     parser.add_argument("--expected-runtime-sha256", required=True)
     parser.add_argument("--expected-runtime-spec", type=int, required=True)
+    parser.add_argument("--agora-module", type=Path)
+    parser.add_argument("--agora-sha256")
     args = parser.parse_args()
     def interrupted(*_):
         raise KeyboardInterrupt("qualification interrupted")
 
     signal.signal(signal.SIGTERM, interrupted)
     qualify(args.binary.resolve(), args.expected_sha256, args.receipt.resolve(),
-            args.runtime_wasm.resolve(), args.expected_runtime_sha256, args.expected_runtime_spec)
+            args.runtime_wasm.resolve(), args.expected_runtime_sha256, args.expected_runtime_spec,
+            args.agora_module.resolve() if args.agora_module else None, args.agora_sha256)

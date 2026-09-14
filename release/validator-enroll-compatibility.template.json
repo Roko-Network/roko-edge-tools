@@ -23,7 +23,8 @@
         "platform": "linux-amd64",
         "binarySha256": "8b2a403b2fe047882098d232690a6eda3fe82133baa01f6a0fb3924ed9d5bdc6",
         "runtimeSpecVersion": 286,
-        "evidenceUrl": "https://github.com/Roko-Network/roko-edge-tools/blob/@SOURCE_REVISION@/docs/evidence/guarded-nightly086-runtime286.json"
+        "evidenceUrl": "https://github.com/Roko-Network/roko-edge-tools/blob/@SOURCE_REVISION@/docs/evidence/guarded-nightly086-runtime286.json",
+        "reuseEvidenceUrl": "https://github.com/Roko-Network/roko-edge-tools/blob/@SOURCE_REVISION@/docs/evidence/guarded-reuse-agora086-20260914.json"
       },
       {
         "releaseId": "v1.1.0",
@@ -32,7 +33,8 @@
         "platform": "linux-amd64",
         "binarySha256": "1643b8a4416efcef8fe3fc7d56a562dc2ab93b7a3446ff531c1d302680c2ff5a",
         "runtimeSpecVersion": 286,
-        "evidenceUrl": "https://github.com/Roko-Network/roko-edge-tools/blob/@SOURCE_REVISION@/docs/evidence/guarded-v110-runtime286.json"
+        "evidenceUrl": "https://github.com/Roko-Network/roko-edge-tools/blob/@SOURCE_REVISION@/docs/evidence/guarded-v110-runtime286.json",
+        "reuseEvidenceUrl": "https://github.com/Roko-Network/roko-edge-tools/blob/@SOURCE_REVISION@/docs/evidence/guarded-reuse-agora-v110-20260914.json"
       }
     ]
   },
