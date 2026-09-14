@@ -175,7 +175,10 @@ fi
 offline="$output_dir/roko-validator-enroll-offline-$version.tar.gz"
 tar --sort=name --mtime="@$source_epoch" --owner=0 --group=0 --numeric-owner \
   --pax-option=delete=atime,delete=ctime -C "$offline_stage" -cf - . | gzip -n >"$offline"
-sha256sum "$offline" >"$offline.sha256"
+(
+  cd "$output_dir"
+  sha256sum "$(basename "$offline")" >"$(basename "$offline").sha256"
+)
 
 printf 'Release archive: %s\n' "$archive"
 printf 'Release metadata: %s\n' "$metadata"
