@@ -14,7 +14,27 @@
   "node": {
     "releaseChannel": "testnet-v1.1",
     "minimumVersion": "1.1.0",
-    "maximumExclusiveVersion": "1.2.0"
+    "maximumExclusiveVersion": "1.2.0",
+    "qualifiedBuilds": [
+      {
+        "releaseId": "nightly-086baf26-20260913",
+        "sourceRevision": "086baf26c0e0db666526b8f649269facd1c37da7",
+        "displayVersion": "3.0.0-dev-086baf26c0e",
+        "platform": "linux-amd64",
+        "binarySha256": "8b2a403b2fe047882098d232690a6eda3fe82133baa01f6a0fb3924ed9d5bdc6",
+        "runtimeSpecVersion": 286,
+        "evidence": "docs/evidence/guarded-nightly086-runtime286.json"
+      },
+      {
+        "releaseId": "v1.1.0",
+        "sourceRevision": "be8920f47d282da73297c17875791c4e3d444625",
+        "displayVersion": "3.0.0-dev-be8920f47d2",
+        "platform": "linux-amd64",
+        "binarySha256": "1643b8a4416efcef8fe3fc7d56a562dc2ab93b7a3446ff531c1d302680c2ff5a",
+        "runtimeSpecVersion": 286,
+        "evidence": "docs/evidence/guarded-v110-runtime286.json"
+      }
+    ]
   },
   "runtime": {
     "minimumSpecVersion": 285,
