@@ -27,16 +27,16 @@ an already-running node, use the canonical signed-manifest-first sequence:
 
 ```bash
 mkdir roko-validator-tool && cd roko-validator-tool
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.0/install-roko-validator-enroll.sh
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.0/SHA256SUMS
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.0/SHA256SUMS.asc
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.0/roko-release-signing-key.asc
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.1/install-roko-validator-enroll.sh
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.1/SHA256SUMS
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.1/SHA256SUMS.asc
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.1/roko-release-signing-key.asc
 export ROKO_VERIFY_GNUPGHOME="$(mktemp -d)"
 test "$(GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --with-colons --import-options show-only --import roko-release-signing-key.asc 2>/dev/null | awk -F: '$1=="fpr"{print toupper($10);exit}')" = 62297562B1C7053088F405DB0117DAAA677A5BF2
 GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --import roko-release-signing-key.asc
 GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --verify SHA256SUMS.asc SHA256SUMS
 awk '$2=="install-roko-validator-enroll.sh"{print}' SHA256SUMS | sha256sum --check --strict
-sudo bash install-roko-validator-enroll.sh --release-base https://downloads.roko.network/validator-tools/1.4.0
+sudo bash install-roko-validator-enroll.sh --release-base https://downloads.roko.network/validator-tools/1.4.1
 roko-validator-enroll --version
 ```
 
@@ -170,10 +170,10 @@ The CLI's `--session-keys` mode verifies custody without calling
 qualified builds; a direct command against a Safe node is not a complete
 refresh procedure. Never rotate solely because a package expired.
 
-The [qualified source candidate](guarded-reuse-qualification.md) adds the helper option below. **It is not included in
-signed tooling 1.4.0; wait for its signed release before using it on an operator
-host.** The helper keeps the same non-authoring, isolation, backup and exact
-Safe restoration controls:
+Tooling **1.4.1** adds the [qualified guarded reuse option](guarded-reuse-qualification.md)
+below. Tooling 1.4.0 supports generation only in the helper. The reuse path
+keeps the same non-authoring, isolation, backup and exact Safe restoration
+controls:
 
 ```bash
 sudo bin/roko-session-key-window \
@@ -196,7 +196,7 @@ unsupported proof mode rather than silently reinterpret it.
 
 If direct key generation reports `Session-key generation is disabled by the
 node's Safe RPC policy`, that is the expected security boundary. Use the
-guarded helper above, or use the qualified guarded reuse path once released. Do not
+guarded helper above, or use the qualified guarded reuse path in tooling 1.4.1. Do not
 change the public `rpc.roko.network` service and do not send node keys to a
 wallet, Agora, or support.
 

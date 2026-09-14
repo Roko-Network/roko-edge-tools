@@ -37,8 +37,8 @@ active membership are separate milestones.
 6. **Choose reuse or rotation.** For an existing tuple, verify its public
    identity and local custody; refresh the package without generating keys.
    Signed tooling 1.4.0 exposes CLI reuse but its helper supports generation
-   only. The guarded reuse option in this source is awaiting a signed release;
-   do not silently substitute a manual Unsafe window. Rotation is a separate
+   only. Tooling 1.4.1 adds the guarded reuse option; verify the installed
+   version before choosing it. Rotation is a separate
    intentional action. Retain old key custody until the replacement is proven
    active, and never edit a package's expiry or tuple to bypass validation.
 7. **Prepare the intended wallet before the short package window.** Agora's
