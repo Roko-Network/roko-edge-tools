@@ -1,0 +1,20 @@
+{
+  "runId": "roko-enrollment-qualification-d8fc38a8a8c1",
+  "status": "failed",
+  "binarySha256": "1643b8a4416efcef8fe3fc7d56a562dc2ab93b7a3446ff531c1d302680c2ff5a",
+  "binaryVersion": "roko-node 3.0.0-dev-be8920f47d2",
+  "startedAt": "2026-09-14T14:07:38.340632+00:00",
+  "service": "roko-enrollment-qualification-d8fc38a8a8c1.service",
+  "liveChainUsed": false,
+  "authorityPolicy": "development log-only",
+  "startupDiagnostic": {
+    "role": "alice",
+    "exit": 1,
+    "logTail": "Error: NetworkKeyNotFound(\"/dev/shm/roko-enrollment-qualification-d8fc38a8a8c1-y91_kzrm/alice/chains/roko-testnet/network/secret_ed25519\")\n"
+  },
+  "processesStopped": true,
+  "serviceRemoved": true,
+  "serviceStopped": true,
+  "error": "owned node exited before RPC startup",
+  "temporaryStateRemoved": true
+}

@@ -1,0 +1,52 @@
+{
+  "runId": "roko-enrollment-qualification-9c824370e3b8",
+  "status": "pass",
+  "binarySha256": "1643b8a4416efcef8fe3fc7d56a562dc2ab93b7a3446ff531c1d302680c2ff5a",
+  "binaryVersion": "roko-node 3.0.0-dev-be8920f47d2",
+  "startedAt": "2026-09-14T14:09:33.795012+00:00",
+  "service": "roko-enrollment-qualification-9c824370e3b8.service",
+  "liveChainUsed": false,
+  "authorityPolicy": "development log-only",
+  "genesis": "0x18a5b38dd57eee3c095b9f1560fe7db16e730a3d7a66234001a96060627f4f88",
+  "before": {
+    "finalizedHeight": 8,
+    "health": {
+      "peers": 3,
+      "isSyncing": false,
+      "shouldHavePeers": false
+    },
+    "roles": [
+      "Full"
+    ]
+  },
+  "helperExit": 0,
+  "package": {
+    "schema": "roko.validator-enrollment.v1",
+    "network": {
+      "chainName": "Roko Network Testnet",
+      "genesisHash": "0x18a5b38dd57eee3c095b9f1560fe7db16e730a3d7a66234001a96060627f4f88",
+      "metadataHash": "0x00db0abf935b3d0d54db71b50a88f2400d625a56ec9861709fd5c8acab712e06",
+      "specName": "mainnet",
+      "specVersion": 282,
+      "transactionVersion": 4
+    },
+    "integrity": {
+      "algorithm": "sha256",
+      "digest": "sha256:0b69cdde7fef2e3d31aac6d60c3a6a769407d421f189c5b873cace25331bf376"
+    },
+    "keyCustodyProved": true
+  },
+  "afterPolicy": {
+    "keyManagementMethodsBlocked": true,
+    "remediation": "Safe RPC policy is restored.",
+    "safeForNormalOperation": true,
+    "safeHealthRpcAvailable": true,
+    "schema": "roko.validator-rpc-policy.v1",
+    "state": "safe-restored"
+  },
+  "policyBytesRestored": true,
+  "processesStopped": true,
+  "serviceRemoved": true,
+  "serviceStopped": true,
+  "temporaryStateRemoved": true
+}

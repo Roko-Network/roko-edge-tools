@@ -59,10 +59,16 @@ an accepted CRLF policy file, then verifies Safe through RPC. It retains the
 backup. Existing loopback/no-forwarding, ownership, non-authoring, and key
 custody gates remain required.
 
+## Real guarded-service qualification
+
+The [guarded-service qualification](guarded-enrollment-qualification.md) now
+covers successful generation and real restart, interruption and RPC failures
+with both v1.1.0 and nightly 086baf26 nodes executing the exact public runtime
+286 in a disposable genesis. Source and cleanup receipts are retained.
+
 ## Delivery limits
 
-This qualifies the probe on the exact binary above and the fixture-based CLI/
-helper contract. It does not qualify successful real guarded key generation,
-package import, owner-signed enrollment, another node build, or a production
-signed tooling release. Those acceptance items remain open. No first fixed
-published node/tool pair is claimed yet.
+This does not qualify owner-signed enrollment, Agora package import, the
+reporter's custom service/PHC configuration, another architecture or a node
+build outside the recorded matrix. Signed release publication remains a
+separate gate; source qualification alone is not a first-fixed-release claim.

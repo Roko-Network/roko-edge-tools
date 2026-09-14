@@ -1,0 +1,14 @@
+{
+  "runId": "roko-enrollment-qualification-3e98c6ae1139",
+  "status": "failed",
+  "binarySha256": "1643b8a4416efcef8fe3fc7d56a562dc2ab93b7a3446ff531c1d302680c2ff5a",
+  "binaryVersion": "roko-node 3.0.0-dev-be8920f47d2",
+  "startedAt": "2026-09-14T14:06:34.832391+00:00",
+  "service": "roko-enrollment-qualification-3e98c6ae1139.service",
+  "liveChainUsed": false,
+  "authorityPolicy": "development log-only",
+  "processesStopped": true,
+  "serviceRemoved": true,
+  "serviceStopped": true,
+  "error": "owned node exited before RPC startup"
+}
