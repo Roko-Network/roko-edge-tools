@@ -20,6 +20,7 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
+TOOL_BIN = ROOT / "bin"
 LIVE_GENESIS = "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb"
 
 
@@ -80,6 +81,9 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
     report = {"runId": name, "status": "incomplete", "binarySha256": digest,
               "harnessSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               "binaryVersion": run(str(binary), "--version").stdout.strip(),
+              "toolVersion": run(str(TOOL_BIN / "roko-validator-enroll"), "--version").stdout.strip(),
+              "installedCommandLinks": (TOOL_BIN / "roko-session-key-window").is_symlink(),
+              "helperSha256": hashlib.sha256((TOOL_BIN / "roko-session-key-window").read_bytes()).hexdigest(),
               "startedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
               "service": unit, "liveChainUsed": False, "authorityPolicy": "development log-only",
               "runtimeCodeSha256": expected_runtime, "expectedRuntimeSpec": runtime_spec}
@@ -198,10 +202,9 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                     raise ValueError("candidate runtime mismatch")
                 output = root / "package.json"
                 peer = rpc(rpc_port, "system_localPeerId")
-                result = run("sudo", "-n", str(ROOT / "bin/roko-session-key-window"),
+                result = run("sudo", "-n", str(TOOL_BIN / "roko-session-key-window"),
                              "--service", unit, "--policy-file", str(policy),
                              "--rpc", f"http://127.0.0.1:{rpc_port}",
-                             "--enroll-command", str(ROOT / "bin/roko-validator-enroll"),
                              "--confirm-isolated-window", "--confirm-no-forwarding", "--",
                              "--binary", str(binary), "--expected-genesis", genesis,
                              "--minimum-peers", "2", "--observation-seconds", "8",
@@ -212,7 +215,7 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                 # Retain only qualification facts, not an importable enrollment package.
                 report["package"] = {"schema": package["schema"], "network": package["network"],
                                      "integrity": package["integrity"], "keyCustodyProved": True}
-                policy_check = run(str(ROOT / "bin/roko-validator-enroll"), "--rpc",
+                policy_check = run(str(TOOL_BIN / "roko-validator-enroll"), "--rpc",
                                    f"http://127.0.0.1:{rpc_port}", "--check-rpc-policy")
                 report["afterPolicy"] = json.loads(policy_check.stdout)
                 report["policyBytesRestored"] = run("sudo", "-n", "cat", str(policy)).stdout == initial.read_text()
@@ -220,11 +223,10 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                     raise ValueError("policy bytes not restored")
                 baseline_keys = {p.name: p.read_bytes() for p in (root / "candidate").rglob("keystore/*") if p.is_file()}
                 reuse_output = root / "reused-package.json"
-                reuse_args = ["sudo", "-n", str(ROOT / "bin/roko-session-key-window"),
+                reuse_args = ["sudo", "-n", str(TOOL_BIN / "roko-session-key-window"),
                               "--service", unit, "--policy-file", str(policy),
                               "--rpc", f"http://127.0.0.1:{rpc_port}",
-                              "--enroll-command", str(ROOT / "bin/roko-validator-enroll"),
-                              "--reuse-session-keys", package["session"]["encodedKeys"],
+                               "--reuse-session-keys", package["session"]["encodedKeys"],
                               "--confirm-isolated-window", "--confirm-no-forwarding", "--",
                               "--binary", str(binary), "--expected-genesis", genesis,
                               "--minimum-peers", "2", "--observation-seconds", "8",
@@ -233,7 +235,7 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                 reused_result = run(*reuse_args, timeout=180)
                 reused = json.loads(run("sudo", "-n", "cat", str(reuse_output)).stdout)
                 keys_after = {p.name: p.read_bytes() for p in (root / "candidate").rglob("keystore/*") if p.is_file()}
-                safe = run(str(ROOT / "bin/roko-validator-enroll"), "--rpc",
+                safe = run(str(TOOL_BIN / "roko-validator-enroll"), "--rpc",
                            f"http://127.0.0.1:{rpc_port}", "--check-rpc-policy")
                 report["reuse"] = {
                     "helperExit": reused_result.returncode,
@@ -274,11 +276,10 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                     fault_output = root / (fault + ".json")
                     if fault == "unsafe-restart-failure":
                         fail_start.touch()
-                    helper_args = ["sudo", "-n", str(ROOT / "bin/roko-session-key-window"),
+                    helper_args = ["sudo", "-n", str(TOOL_BIN / "roko-session-key-window"),
                                    "--service", unit, "--policy-file", str(policy),
                                    "--rpc", f"http://127.0.0.1:{rpc_port}",
-                                   "--enroll-command", str(ROOT / "bin/roko-validator-enroll"),
-                                   "--confirm-isolated-window", "--confirm-no-forwarding", "--",
+                                         "--confirm-isolated-window", "--confirm-no-forwarding", "--",
                                    "--binary", str(binary), "--expected-genesis", genesis,
                                    "--minimum-peers", "2", "--observation-seconds", "20",
                                    "--output", str(fault_output)]
@@ -309,7 +310,7 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                         fail_start.unlink(missing_ok=True)
                     if not injected or helper.returncode == 0:
                         raise ValueError(f"fault not proven: {fault}")
-                    restored = run(str(ROOT / "bin/roko-validator-enroll"), "--rpc",
+                    restored = run(str(TOOL_BIN / "roko-validator-enroll"), "--rpc",
                                    f"http://127.0.0.1:{rpc_port}", "--check-rpc-policy")
                     keys_after = {p.name: p.read_bytes() for p in (root / "candidate").rglob("keystore/*") if p.is_file()}
                     case = {"fault": fault, "helperExit": helper.returncode,
@@ -375,9 +376,12 @@ if __name__ == "__main__":
     parser.add_argument("--runtime-wasm", type=Path, required=True)
     parser.add_argument("--expected-runtime-sha256", required=True)
     parser.add_argument("--expected-runtime-spec", type=int, required=True)
+    parser.add_argument("--tool-bin", type=Path, help="Installed command-link directory; defaults to source bin")
     parser.add_argument("--agora-module", type=Path)
     parser.add_argument("--agora-sha256")
     args = parser.parse_args()
+    if args.tool_bin:
+        TOOL_BIN = args.tool_bin.absolute()
     def interrupted(*_):
         raise KeyboardInterrupt("qualification interrupted")
 

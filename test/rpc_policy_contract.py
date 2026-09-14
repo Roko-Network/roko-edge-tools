@@ -185,6 +185,29 @@ exit "${GENERATION_RC:-0}"
         self.assertEqual(self.events.read_text().splitlines(), ["restart", "generated", "restart"])
         self.assert_restored()
 
+    def test_installer_symlink_uses_cli_from_same_version(self):
+        installed = self.path / "installed" / "1.4.1" / "bin"
+        installed.mkdir(parents=True)
+        helper = installed / "roko-session-key-window"
+        helper.write_bytes((ROOT / "bin/roko-session-key-window").read_bytes())
+        helper.chmod(0o755)
+        cli = installed / "roko-validator-enroll"
+        cli.write_bytes(self.wrapper.read_bytes())
+        cli.chmod(0o755)
+        links = self.path / "links"
+        links.mkdir()
+        (links / helper.name).symlink_to(helper)
+        (links / cli.name).symlink_to(cli)
+        result = subprocess.run([
+            str(links / helper.name), "--rpc", self.url,
+            "--policy-file", str(self.policy),
+            "--confirm-isolated-window", "--confirm-no-forwarding", "--",
+            "--output", str(self.path / "package.json"),
+        ], env=self.env, capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.events.read_text().splitlines(), ["restart", "generated", "restart"])
+        self.assert_restored()
+
     def test_exact_prior_policy_bytes_are_restored(self):
         self.original = b"ROKO_RPC_METHODS=Safe\r\n"
         self.policy.write_bytes(self.original)

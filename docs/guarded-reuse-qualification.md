@@ -57,3 +57,23 @@ The same complete harness also passed on the historical amd64 v1.1.0 node
 reused packages passed the pinned Agora validator and all six rejection cases;
 seven unchanged key files, exact Safe policy and all service-fault recoveries
 were verified. The temporary service and state were removed.
+
+## Installed command links
+
+A final installation check found that the pre-fix helper chose a neighboring
+CLI using the unresolved command-link directory, then rejected that CLI
+symlink. The earlier native tests explicitly selected the CLI and did not
+cover this default installed invocation. The new regression reproduces the
+failure before any key window and passes after resolving the helper's own
+path to select the CLI from the same versioned installation.
+
+The [installed-command receipt](evidence/installed-141-agora086-20260914.json)
+qualifies a signed candidate from source `359c98c4ba47ba4a9913971f54d930c4490f39e5`,
+installed by the actual offline installer and invoked through its command
+links, without `--enroll-command`. Generation, unchanged-key reuse, both Agora
+module acceptances and negative cases, exact Safe restoration, all three
+service-fault cases and complete cleanup passed on nightly 086baf26/runtime
+286. The receipt records the installed helper digest and tool version. This
+complements the two-build source qualification above. Twelve contract cases
+and the full smoke suite passed. The 1.4.1 artifacts built before discovering
+this defect were never tagged or published.
