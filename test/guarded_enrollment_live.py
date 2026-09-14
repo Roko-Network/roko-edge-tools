@@ -214,6 +214,35 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                 report["policyBytesRestored"] = run("sudo", "-n", "cat", str(policy)).stdout == initial.read_text()
                 if not report["policyBytesRestored"]:
                     raise ValueError("policy bytes not restored")
+                baseline_keys = {p.name: p.read_bytes() for p in (root / "candidate").rglob("keystore/*") if p.is_file()}
+                reuse_output = root / "reused-package.json"
+                reuse_args = ["sudo", "-n", str(ROOT / "bin/roko-session-key-window"),
+                              "--service", unit, "--policy-file", str(policy),
+                              "--rpc", f"http://127.0.0.1:{rpc_port}",
+                              "--enroll-command", str(ROOT / "bin/roko-validator-enroll"),
+                              "--reuse-session-keys", package["session"]["encodedKeys"],
+                              "--confirm-isolated-window", "--confirm-no-forwarding", "--",
+                              "--binary", str(binary), "--expected-genesis", genesis,
+                              "--minimum-peers", "2", "--observation-seconds", "8",
+                              "--public-address", f"/ip4/127.0.0.1/tcp/{p2p_port}/p2p/{peer}",
+                              "--output", str(reuse_output)]
+                reused_result = run(*reuse_args, timeout=180)
+                reused = json.loads(run("sudo", "-n", "cat", str(reuse_output)).stdout)
+                keys_after = {p.name: p.read_bytes() for p in (root / "candidate").rglob("keystore/*") if p.is_file()}
+                safe = run(str(ROOT / "bin/roko-validator-enroll"), "--rpc",
+                           f"http://127.0.0.1:{rpc_port}", "--check-rpc-policy")
+                report["reuse"] = {
+                    "helperExit": reused_result.returncode,
+                    "sameTuple": reused["session"]["encodedKeys"] == package["session"]["encodedKeys"],
+                    "freshPackage": reused["enrollmentId"] != package["enrollmentId"],
+                    "existingKeyFilesPreserved": keys_after == baseline_keys,
+                    "existingKeyCount": len(baseline_keys),
+                    "safeAfter": json.loads(safe.stdout)["safeForNormalOperation"],
+                    "policyBytesRestored": run("sudo", "-n", "cat", str(policy)).stdout == initial.read_text(),
+                }
+                del baseline_keys, keys_after
+                if not all(report["reuse"][k] for k in ("sameTuple", "freshPackage", "existingKeyFilesPreserved", "safeAfter", "policyBytesRestored")):
+                    raise ValueError("reuse failed")
                 report["faultCases"] = []
                 for fault in ("unsafe-restart-failure", "term-interruption", "rpc-failure"):
                     # A successful window has already proved real generation.

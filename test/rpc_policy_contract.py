@@ -93,6 +93,7 @@ for arg in "$@"; do
   if [[ $arg == --check-rpc-policy ]]; then exec "$ROOT/bin/roko-validator-enroll" "$@"; fi
 done
 grep -qx 'ROKO_RPC_METHODS=Unsafe' "$POLICY"
+printf '%s\\n' "$@" >"$EVENTS.args"
 printf 'generated\\n' >>"$EVENTS"
 if [[ ${INTERRUPT:-0} == 1 ]]; then kill -TERM "$PPID"; exit 143; fi
 exit "${GENERATION_RC:-0}"
@@ -113,11 +114,11 @@ exit "${GENERATION_RC:-0}"
         return subprocess.run([str(ROOT / "bin/roko-validator-enroll"), "--rpc", self.url,
                                "--check-rpc-policy"], capture_output=True, text=True, timeout=10)
 
-    def window(self, **environment):
+    def window(self, helper_args=(), **environment):
         return subprocess.run([
             str(ROOT / "bin/roko-session-key-window"), "--rpc", self.url,
             "--policy-file", str(self.policy), "--enroll-command", str(self.wrapper),
-            "--confirm-isolated-window", "--confirm-no-forwarding", "--",
+            "--confirm-isolated-window", "--confirm-no-forwarding", *helper_args, "--",
             "--output", str(self.path / "package.json"),
         ], env=self.env | environment, capture_output=True, text=True, timeout=15)
 
@@ -155,6 +156,32 @@ exit "${GENERATION_RC:-0}"
     def test_guarded_success_with_real_cli(self):
         result = self.window()
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.events.read_text().splitlines(), ["restart", "generated", "restart"])
+        self.assert_restored()
+
+    def test_reuse_mode_never_requests_generation(self):
+        public_tuple = "0x" + "ab" * 224
+        result = self.window(helper_args=("--reuse-session-keys", public_tuple))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = Path(str(self.events) + ".args").read_text().splitlines()
+        self.assertIn("--session-keys", arguments)
+        self.assertIn(public_tuple, arguments)
+        self.assertNotIn("--confirm-new-keys", arguments)
+        self.assertNotIn("--confirm-isolated-unsafe-rpc", arguments)
+        self.assert_restored()
+
+    def test_invalid_reuse_tuple_never_restarts(self):
+        result = self.window(helper_args=("--reuse-session-keys", "0x"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.events.read_text(), "")
+        self.assertEqual(self.policy.read_bytes(), self.original)
+        self.assertFalse(list(self.path.glob("*.before-session-key-window-*")))
+
+    def test_reuse_failure_restores_without_generation_fallback(self):
+        result = self.window(helper_args=("--reuse-session-keys", "0x" + "ab" * 224), GENERATION_RC="7")
+        self.assertEqual(result.returncode, 7)
+        arguments = Path(str(self.events) + ".args").read_text().splitlines()
+        self.assertNotIn("--confirm-new-keys", arguments)
         self.assertEqual(self.events.read_text().splitlines(), ["restart", "generated", "restart"])
         self.assert_restored()
 

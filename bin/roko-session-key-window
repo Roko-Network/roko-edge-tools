@@ -10,6 +10,7 @@ enroll_command="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/roko-validator-enr
 confirm_window=false
 confirm_no_forwarding=false
 enroll_args=()
+reuse_session_keys=""
 restore_required=false
 backup_file=""
 
@@ -20,6 +21,7 @@ Usage:
     [--service roko-node.service] \
     [--policy-file /etc/roko/node-rpc.env] \
     [--rpc http://127.0.0.1:9944] \
+    [--reuse-session-keys 0xPUBLIC_ENCODED_KEYS] \
     [--enroll-command /usr/local/bin/roko-validator-enroll] \
     --confirm-isolated-window --confirm-no-forwarding -- \
     --binary /usr/local/bin/roko-node \
@@ -30,7 +32,8 @@ Creates one bounded loopback-only session-key generation window for the
 supported ROKO systemd service. It verifies the service starts in Safe mode,
 backs up the policy file, enables Unsafe only long enough to run enrollment,
 then restores Safe and proves key-management RPC is blocked again. The backup
-is retained for recovery.
+is retained for recovery. With --reuse-session-keys, it verifies local custody
+and issues a fresh package for that public tuple without generating new keys.
 
 The service unit must use the supported contract:
   Environment=ROKO_RPC_METHODS=Safe
@@ -48,6 +51,11 @@ while (($#)); do
     --policy-file) policy_file="${2:-}"; shift 2 ;;
     --rpc) rpc="${2:-}"; shift 2 ;;
     --enroll-command) enroll_command="${2:-}"; shift 2 ;;
+    --reuse-session-keys)
+      [[ -z "$reuse_session_keys" ]] || { printf 'Duplicate reuse mode\n' >&2; exit 2; }
+      reuse_session_keys="${2:-}"
+      [[ "$reuse_session_keys" =~ ^0x([0-9a-fA-F]{2}){32,1024}$ ]] || { printf 'Invalid public session-key tuple\n' >&2; exit 2; }
+      shift 2 ;;
     --confirm-isolated-window) confirm_window=true; shift ;;
     --confirm-no-forwarding) confirm_no_forwarding=true; shift ;;
     --) shift; enroll_args=("$@"); break ;;
@@ -183,7 +191,11 @@ write_policy Unsafe
 systemctl restart "$service"
 wait_for_policy unsafe || die "temporary Unsafe policy did not become available on the proven loopback listener"
 
-"$enroll_command" --rpc "$rpc" --confirm-new-keys --confirm-isolated-unsafe-rpc "${enroll_args[@]}"
+if [[ -n "$reuse_session_keys" ]]; then
+  "$enroll_command" --rpc "$rpc" --session-keys "$reuse_session_keys" "${enroll_args[@]}"
+else
+  "$enroll_command" --rpc "$rpc" --confirm-new-keys --confirm-isolated-unsafe-rpc "${enroll_args[@]}"
+fi
 
 restore_safe
 trap - EXIT INT TERM
