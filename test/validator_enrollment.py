@@ -127,43 +127,59 @@ class ValidatorEnrollmentTests(unittest.TestCase):
 
     def test_non_mutating_rpc_policy_check_proves_safe_restoration(self):
         class PolicyRpc:
-            def __init__(self, error=None):
-                self.error = error
+            def __init__(self, result=False):
+                self.result = result
                 self.calls = []
 
             def call(self, method, params=None):
                 self.calls.append((method, tuple(params or [])))
                 if method == "system_health":
                     return {"isSyncing": False, "peers": 3}
-                if self.error:
-                    raise self.error
-                return False
+                if isinstance(self.result, Exception):
+                    raise self.result
+                return self.result
 
-        safe = PolicyRpc(MODULE.RpcRejectedError(
-            "author_hasSessionKeys", -32601, "RPC call is unsafe to be called externally"
-        ))
-        report = MODULE.rpc_policy_status(safe)
-        self.assertTrue(report["safeForNormalOperation"])
-        self.assertEqual(report["state"], "safe-restored")
-        self.assertEqual(safe.calls[-1], ("author_hasSessionKeys", ("0x",)))
+        for code in (-32601, 1040):
+            with self.subTest(safe_code=code):
+                rpc = PolicyRpc(MODULE.RpcRejectedError(
+                    "author_hasKey", code, "RPC call is unsafe to be called externally"
+                ))
+                report = MODULE.rpc_policy_status(rpc)
+                self.assertTrue(report["safeForNormalOperation"])
+                self.assertEqual(report["state"], "safe-restored")
+                self.assertEqual(rpc.calls, [
+                    ("system_health", ()),
+                    ("author_hasKey", ("0x" + "00" * 32, "babe")),
+                ])
 
-        safe_1040 = PolicyRpc(MODULE.RpcRejectedError(
-            "author_hasSessionKeys", 1040, "RPC call is unsafe to be called externally"
-        ))
-        self.assertTrue(MODULE.rpc_policy_status(safe_1040)["safeForNormalOperation"])
-        with self.assertRaisesRegex(MODULE.EnrollmentError, "Unable to prove Safe RPC policy"):
-            MODULE.rpc_policy_status(PolicyRpc(MODULE.RpcRejectedError(
-                "author_hasSessionKeys", 1040, "Invalid session keys"
-            )))
+        for value in (True, False):
+            with self.subTest(accessible=value):
+                report = MODULE.rpc_policy_status(PolicyRpc(value))
+                self.assertFalse(report["safeForNormalOperation"])
+                self.assertEqual(report["state"], "unsafe-key-management-accessible")
 
-        unsafe = MODULE.rpc_policy_status(PolicyRpc())
-        self.assertFalse(unsafe["safeForNormalOperation"])
-        self.assertEqual(unsafe["state"], "unsafe-key-management-accessible")
-
-        with self.assertRaisesRegex(MODULE.EnrollmentError, "Unable to prove Safe RPC policy"):
-            MODULE.rpc_policy_status(PolicyRpc(MODULE.RpcRejectedError(
-                "author_hasSessionKeys", -32601, "Method not found"
-            )))
+        # Neither the historical empty-tuple error nor argument parsing errors
+        # prove policy when returned for this well-formed lookup.
+        for code, message in [
+            (1040, "Session keys are not encoded correctly"),
+            (1040, "Invalid session keys"),
+            (-32602, "Invalid params"),
+            (-32601, "Method not found"),
+            (-32601, "Access denied by proxy"),
+            (-32601, "Unsafe upstream unavailable"),
+            (-32000, "keystore unavailable"),
+        ]:
+            with self.subTest(code=code, message=message):
+                with self.assertRaisesRegex(MODULE.EnrollmentError, "Unable to prove Safe RPC policy"):
+                    MODULE.rpc_policy_status(PolicyRpc(MODULE.RpcRejectedError(
+                        "author_hasKey", code, message
+                    )))
+        for value in (None, 0, 1, "false", [], {}):
+            with self.subTest(malformed=value):
+                with self.assertRaisesRegex(MODULE.EnrollmentError, "non-boolean"):
+                    MODULE.rpc_policy_status(PolicyRpc(value))
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "connection failed"):
+            MODULE.rpc_policy_status(PolicyRpc(MODULE.EnrollmentError("connection failed")))
 
     def test_rpc_client_preserves_structured_policy_rejection(self):
         response = mock.MagicMock()
@@ -179,6 +195,29 @@ class ValidatorEnrollmentTests(unittest.TestCase):
                 MODULE.RpcClient("http://127.0.0.1:9944").call("author_rotateKeys")
         self.assertEqual(observed.exception.code, -32601)
         self.assertTrue(MODULE.key_rpc_policy_disabled(observed.exception))
+
+    def test_rpc_client_rejects_ambiguous_or_uncorrelated_envelopes(self):
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        valid = {"jsonrpc": "2.0", "id": 1, "result": False}
+        for changes in (
+            {"jsonrpc": "1.0"}, {"id": 2}, {"id": True}, {"id": "1"},
+            {"error": {"code": 1040, "message": "RPC call is unsafe to be called externally"}},
+        ):
+            with self.subTest(changes=changes), \
+                 mock.patch.object(MODULE.urllib.request, "urlopen", return_value=response), \
+                 mock.patch.object(MODULE.json, "load", return_value=valid | changes):
+                with self.assertRaisesRegex(MODULE.EnrollmentError, "malformed"):
+                    MODULE.RpcClient("http://127.0.0.1:9944").call("author_hasKey")
+        for error in (None, {}, {"code": True, "message": "denied"},
+                      {"code": 1040, "message": None}):
+            with self.subTest(error=error), \
+                 mock.patch.object(MODULE.urllib.request, "urlopen", return_value=response), \
+                 mock.patch.object(MODULE.json, "load", return_value={
+                     "jsonrpc": "2.0", "id": 1, "error": error,
+                 }):
+                with self.assertRaisesRegex(MODULE.EnrollmentError, "malformed"):
+                    MODULE.RpcClient("http://127.0.0.1:9944").call("author_hasKey")
 
     def test_listener_classification_rejects_every_non_loopback_address(self):
         self.assertTrue(MODULE.listener_address_is_loopback("127.0.0.1:9944", 9944))

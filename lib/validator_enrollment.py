@@ -60,11 +60,10 @@ def bounded_rpc_message(value: Any) -> str:
 
 def key_rpc_policy_disabled(error: RpcRejectedError) -> bool:
     """Recognize Substrate's explicit safe-policy rejection without guessing."""
-    if error.code == 1040:
-        return error.rpc_message.strip().rstrip(".").lower() == "rpc call is unsafe to be called externally"
-    if error.code != -32601:
-        return False
-    return bool(re.search(r"\bunsafe\b|\bnot safe\b|\bforbidden\b|\bdenied\b|\bdisabled by.*policy\b", error.rpc_message, re.I))
+    return error.code in {1040, -32601} and (
+        error.rpc_message.strip().rstrip(".").lower()
+        == "rpc call is unsafe to be called externally"
+    )
 
 
 def rpc_policy_status(rpc: "RpcClient") -> dict[str, Any]:
@@ -73,21 +72,21 @@ def rpc_policy_status(rpc: "RpcClient") -> dict[str, Any]:
     if not isinstance(health, dict) or not isinstance(health.get("isSyncing"), bool):
         raise EnrollmentError("Safe health RPC returned a malformed system_health response")
     try:
-        # This is deliberately non-mutating. Under Unsafe it returns false (or an
-        # argument error after crossing the policy gate); under Safe, Substrate
-        # rejects it before dispatch with the explicit unsafe-call error.
-        rpc.call("author_hasSessionKeys", ["0x"])
+        # A well-formed lookup crosses the same DenyUnsafe gate as session-key
+        # management without decoding a runtime-specific session tuple or writing
+        # a key. Either boolean proves dispatch; an arbitrary RPC error does not.
+        accessible = rpc.call("author_hasKey", ["0x" + "00" * 32, "babe"])
     except RpcRejectedError as error:
         if key_rpc_policy_disabled(error):
             blocked = True
-        elif error.code == -32602:
-            blocked = False
         else:
             raise EnrollmentError(
-                "Unable to prove Safe RPC policy: author_hasSessionKeys was rejected "
+                "Unable to prove Safe RPC policy: author_hasKey was rejected "
                 "without the supported unsafe-policy response"
             ) from error
     else:
+        if not isinstance(accessible, bool):
+            raise EnrollmentError("Unable to prove Safe RPC policy: author_hasKey returned a non-boolean result")
         blocked = False
     return {
         "schema": "roko.validator-rpc-policy.v1",
@@ -456,16 +455,18 @@ class RpcClient:
                 payload = json.load(response)
         except (OSError, ValueError) as error:
             raise EnrollmentError(f"Local node RPC failed for {method}: {error}") from error
-        if not isinstance(payload, dict):
+        if (not isinstance(payload, dict) or payload.get("jsonrpc") != "2.0"
+                or type(payload.get("id")) is not int or payload["id"] != self.sequence
+                or ("error" in payload) == ("result" in payload)):
             raise EnrollmentError(f"Local node RPC returned malformed JSON for {method}")
-        if payload.get("error"):
+        if "error" in payload:
             error = payload["error"]
-            if not isinstance(error, dict):
+            if (not isinstance(error, dict) or type(error.get("code")) is not int
+                    or not isinstance(error.get("message"), str)):
                 raise EnrollmentError(f"Local node RPC returned a malformed error for {method}")
-            code = error.get("code")
             raise RpcRejectedError(
                 method,
-                code if isinstance(code, int) else None,
+                error["code"],
                 bounded_rpc_message(error.get("message")),
             )
         if "result" not in payload:

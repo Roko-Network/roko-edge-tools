@@ -31,3 +31,23 @@ historical GitHub assets remain unchanged; no first fixed published version is
 claimed. Exact node/tool compatibility, guarded-window qualification (#14),
 existing-install preflight, and wallet/finalized enrollment acceptance remain
 separate unfinished requirements of #13.
+
+## Published 1.3.0 follow-up
+
+The release origin's `validator-tools/current` points to 1.3.0, source
+`79bed61769385a934a611b33fa2e67f290aeddb2`. On 2026-09-14 its offline
+sidecar also embeds an absolute build path. The retrieved offline archive has
+SHA-256 `fff8a7be32a7afaa8ad9650a21ea4778542a01e6ecad72a90bf5e61b0107952c`,
+matching the sidecar digest. Both embedded signatures verify against the same
+pinned release fingerprint and every signed checksum passes. Thus the defect
+also affects the release origin's currently published tooling, not only the
+historical GitHub 1.1.0 asset.
+
+The public versioned paths are
+[the archive](https://downloads.roko.network/validator-tools/1.3.0/roko-validator-enroll-offline-1.3.0.tar.gz)
+and [its sidecar](https://downloads.roko.network/validator-tools/1.3.0/roko-validator-enroll-offline-1.3.0.tar.gz.sha256).
+Direct Python HTTP requests from the qualification workstation returned 403;
+artifact verification used read-only retrieval from the release origin. A
+public HTTPS request from that host independently returned the same current
+1.3.0 metadata. No current public-access conclusion is based on the failed
+workstation requests.
