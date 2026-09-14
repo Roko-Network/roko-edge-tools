@@ -52,6 +52,14 @@ extract the bundle, verify its pinned key plus `SHA256SUMS.asc`, and run:
 sudo bash install-roko-validator-enroll.sh --bundle-dir "$PWD"
 ```
 
+The offline `.sha256` sidecar must name only the archive basename so
+`sha256sum --check --strict` works from the download directory on another host.
+Older builders embedded the build path; that failure does not establish archive
+corruption. Do not skip authentication: the standalone sidecar is not a
+signature, and installation still requires the pinned release key and signed
+manifest checks above. The builder now emits a portable sidecar; this source
+fix does not replace previously published assets or identify a fixed release.
+
 ## Before enrollment
 
 The guarded window requires a proven RPC policy: the enrollment CLI uses a

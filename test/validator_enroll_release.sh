@@ -92,5 +92,19 @@ fi
 grep -Eq 'BAD signature|did NOT verify|does NOT verify' "$task_dir/tampered-metadata.log"
 
 offline="$task_dir/release-a/roko-validator-enroll-offline-1.3.0.tar.gz"
-(cd "$task_dir/release-a" && sha256sum --check --strict "$(basename "$offline").sha256")
+# Simulate a download onto a different host: the build path must not exist.
+download_dir="$task_dir/download with spaces"
+mkdir -p "$download_dir"
+mv "$offline" "$offline.sha256" "$download_dir/"
+(
+  cd "$download_dir"
+  sha256sum --check --strict "$(basename "$offline").sha256"
+)
+printf 'tamper' >>"$download_dir/$(basename "$offline")"
+if (cd "$download_dir" && sha256sum --check --strict "$(basename "$offline").sha256") \
+  >"$task_dir/offline-tamper.log" 2>&1; then
+  printf 'Offline checksum accepted altered archive bytes\n' >&2
+  exit 1
+fi
+grep -F 'FAILED' "$task_dir/offline-tamper.log" >/dev/null
 printf 'validator enrollment release test ok\n'
