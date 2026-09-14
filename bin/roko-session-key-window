@@ -6,7 +6,8 @@ umask 077
 service=roko-node.service
 policy_file=/etc/roko/node-rpc.env
 rpc=http://127.0.0.1:9944
-enroll_command="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/roko-validator-enroll"
+helper_path="$(readlink -f -- "${BASH_SOURCE[0]}")"
+enroll_command="$(dirname "$helper_path")/roko-validator-enroll"
 confirm_window=false
 confirm_no_forwarding=false
 enroll_args=()
