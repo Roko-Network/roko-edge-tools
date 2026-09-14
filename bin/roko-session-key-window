@@ -128,10 +128,21 @@ wait_for_policy() {
   return 1
 }
 
+restore_prior_policy() {
+  local temporary=""
+  temporary="$(mktemp "$(dirname "$policy_file")/.node-rpc.env.XXXXXX")" || return 1
+  if ! cp --preserve=mode,ownership,timestamps -- "$backup_file" "$temporary" ||
+     ! mv -fT -- "$temporary" "$policy_file"; then
+    rm -f -- "$temporary"
+    return 1
+  fi
+  cmp -s -- "$backup_file" "$policy_file"
+}
+
 restore_safe() {
   local restore_ok=true safe_on_disk=false
   "$restore_required" || return 0
-  if write_policy Safe && [[ "$(tr -d '\r' <"$policy_file")" == "ROKO_RPC_METHODS=Safe" ]]; then
+  if restore_prior_policy && [[ "$(tr -d '\r' <"$policy_file")" == "ROKO_RPC_METHODS=Safe" ]]; then
     safe_on_disk=true
   else
     restore_ok=false

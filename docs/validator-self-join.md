@@ -54,6 +54,13 @@ sudo bash install-roko-validator-enroll.sh --bundle-dir "$PWD"
 
 ## Before enrollment
 
+The guarded window requires a proven RPC policy: the enrollment CLI uses a
+well-formed dummy `author_hasKey` lookup and accepts only a boolean response or
+the node's explicit Safe denial. Exit 0 means Safe, exit 2 means accessible key
+RPC, and exit 1 means the check is inconclusive. An arbitrary error must not be
+treated as permission to generate keys. See the [qualification record](rpc-policy-qualification.md)
+for tested builds and remaining signed-release requirements.
+
 - Verify the downloaded ROKO binary and chain specification.
 - Finish synchronization and require advancing finalized heads.
 - Confirm the node is not reporting the Authority role.

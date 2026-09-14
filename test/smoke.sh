@@ -13,6 +13,7 @@ bash -n scripts/build-validator-enroll-release.sh
 bash -n scripts/install-roko-validator-enroll.sh
 python3 -m py_compile bin/roko-validator-enroll bin/roko-authority-peers lib/validator_enrollment.py lib/authority_peers.py test/validator_enrollment.py test/authority_peers.py
 python3 test/validator_enrollment.py
+python3 test/rpc_policy_contract.py
 python3 test/authority_peers.py
 test/session_key_window.sh
 test/validator_enroll_release.sh

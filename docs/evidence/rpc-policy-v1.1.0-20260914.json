@@ -1,0 +1,128 @@
+{
+  "observedAt": "2026-09-14T13:51:40.586703+00:00",
+  "binaryVersion": "roko-node 3.0.0-dev-be8920f47d2",
+  "binarySha256": "1643b8a4416efcef8fe3fc7d56a562dc2ab93b7a3446ff531c1d302680c2ff5a",
+  "scope": "Disposable local_testnet Full node; zero peers; loopback listeners; read-only key probes",
+  "observations": [
+    {
+      "mode": "Safe",
+      "version": {
+        "jsonrpc": "2.0",
+        "result": "3.0.0-dev-be8920f47d2",
+        "id": 1
+      },
+      "roles": {
+        "jsonrpc": "2.0",
+        "result": [
+          "Full"
+        ],
+        "id": 1
+      },
+      "emptyTuple": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32601,
+          "message": "RPC call is unsafe to be called externally"
+        },
+        "id": 1
+      },
+      "dummyKey": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32601,
+          "message": "RPC call is unsafe to be called externally"
+        },
+        "id": 1
+      },
+      "cliExit": 0,
+      "cliOutput": {
+        "keyManagementMethodsBlocked": true,
+        "remediation": "Safe RPC policy is restored.",
+        "safeForNormalOperation": true,
+        "safeHealthRpcAvailable": true,
+        "schema": "roko.validator-rpc-policy.v1",
+        "state": "safe-restored"
+      }
+    },
+    {
+      "mode": "Unsafe",
+      "version": {
+        "jsonrpc": "2.0",
+        "result": "3.0.0-dev-be8920f47d2",
+        "id": 1
+      },
+      "roles": {
+        "jsonrpc": "2.0",
+        "result": [
+          "Full"
+        ],
+        "id": 1
+      },
+      "emptyTuple": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": 1040,
+          "message": "Session keys are not encoded correctly"
+        },
+        "id": 1
+      },
+      "dummyKey": {
+        "jsonrpc": "2.0",
+        "result": false,
+        "id": 1
+      },
+      "cliExit": 2,
+      "cliOutput": {
+        "keyManagementMethodsBlocked": false,
+        "remediation": "Restore --rpc-methods Safe, restart the node, and repeat this check before importing the enrollment package or enabling validator mode.",
+        "safeForNormalOperation": false,
+        "safeHealthRpcAvailable": true,
+        "schema": "roko.validator-rpc-policy.v1",
+        "state": "unsafe-key-management-accessible"
+      }
+    },
+    {
+      "mode": "Safe",
+      "version": {
+        "jsonrpc": "2.0",
+        "result": "3.0.0-dev-be8920f47d2",
+        "id": 1
+      },
+      "roles": {
+        "jsonrpc": "2.0",
+        "result": [
+          "Full"
+        ],
+        "id": 1
+      },
+      "emptyTuple": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32601,
+          "message": "RPC call is unsafe to be called externally"
+        },
+        "id": 1
+      },
+      "dummyKey": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32601,
+          "message": "RPC call is unsafe to be called externally"
+        },
+        "id": 1
+      },
+      "cliExit": 0,
+      "cliOutput": {
+        "keyManagementMethodsBlocked": true,
+        "remediation": "Safe RPC policy is restored.",
+        "safeForNormalOperation": true,
+        "safeHealthRpcAvailable": true,
+        "schema": "roko.validator-rpc-policy.v1",
+        "state": "safe-restored"
+      }
+    }
+  ],
+  "processesStopped": true,
+  "temporaryStateRemoved": true,
+  "guardedGenerationQualified": false
+}
