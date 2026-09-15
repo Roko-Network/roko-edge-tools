@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""Collect bounded, sanitized validator recovery evidence from safe ROKO RPCs."""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import sys
+import time
+import urllib.error
+import urllib.request
+
+METHODS = (
+    ("system_health", []),
+    ("chain_getFinalizedHead", []),
+    ("temporal_getValidatorReadiness", []),
+    ("temporal_getMeshState", []),
+)
+
+
+def rpc_batch(url: str, timeout: float) -> list[dict]:
+    payload = [
+        {"jsonrpc": "2.0", "id": index + 1, "method": method, "params": params}
+        for index, (method, params) in enumerate(METHODS)
+    ]
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode(),
+        headers={"content-type": "application/json", "user-agent": "roko-edge-tools/1"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        decoded = json.loads(response.read().decode())
+    if not isinstance(decoded, list):
+        raise ValueError("batch RPC response is not a list")
+    return decoded
+
+
+def result(batch: list[dict], identifier: int) -> object:
+    item = next((entry for entry in batch if entry.get("id") == identifier), None)
+    if item is None:
+        raise ValueError(f"RPC response {identifier} is missing")
+    if item.get("error") is not None:
+        raise ValueError(f"RPC response {identifier} failed: {item['error']}")
+    return item.get("result")
+
+
+def sample(url: str, timeout: float) -> dict:
+    batch = rpc_batch(url, timeout)
+    health = result(batch, 1) or {}
+    finalized_hash = result(batch, 2)
+    readiness = result(batch, 3) or {}
+    mesh = result(batch, 4) or {}
+    exclusions = {
+        item.get("reason"): item.get("count", 0)
+        for item in readiness.get("peerExclusions", [])
+        if isinstance(item, dict) and item.get("reason")
+    }
+    return {
+        "observedAt": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
+        "finalizedHash": finalized_hash,
+        "finalizedBlock": readiness.get("finalizedBlock"),
+        "sessionIndex": readiness.get("sessionIndex"),
+        "lifecycleState": readiness.get("lifecycleState"),
+        "majorSyncing": readiness.get("majorSyncing", health.get("isSyncing")),
+        "genericP2pPeers": readiness.get("genericP2pPeers", health.get("peers")),
+        "activeSessionMatch": readiness.get("activeSessionMatch"),
+        "convergenceState": readiness.get("convergenceState"),
+        "minimumTemporalSources": readiness.get("minimumTemporalSources"),
+        "temporalTransportPeers": readiness.get("temporalTransportPeers"),
+        "mappedTemporalPeers": readiness.get("mappedTemporalPeers"),
+        "contributingTemporalPeers": readiness.get("contributingTemporalPeers"),
+        "authoringTimeQuality": readiness.get("authoringTimeQuality"),
+        "readyToAuthor": readiness.get("readyToAuthor"),
+        "authorshipProof": readiness.get("authorshipProof"),
+        "peerExclusions": exclusions,
+        "meshPeerCount": mesh.get("peerCount"),
+        "meshTimeQuality": mesh.get("timeQuality"),
+        "meshConvergenceState": mesh.get("convergenceState"),
+        "remediation": readiness.get("remediation"),
+    }
+
+
+def evaluate(samples: list[dict], required_ready: int, require_authorship: bool) -> dict:
+    first = samples[0]
+    last = samples[-1]
+    ready_streak = 0
+    maximum_ready_streak = 0
+    quorum_samples = 0
+    sessions = set()
+    authorship_proofs = {}
+    for item in samples:
+        if item.get("sessionIndex") is not None:
+            sessions.add(item["sessionIndex"])
+        minimum = item.get("minimumTemporalSources")
+        mapped = item.get("mappedTemporalPeers")
+        contributing = item.get("contributingTemporalPeers")
+        quorum = (
+            isinstance(minimum, int)
+            and isinstance(mapped, int)
+            and isinstance(contributing, int)
+            and mapped >= minimum
+            and contributing >= minimum
+        )
+        if quorum:
+            quorum_samples += 1
+        operational = (
+            item.get("majorSyncing") is False
+            and item.get("activeSessionMatch") is True
+            and item.get("readyToAuthor") is True
+            and quorum
+        )
+        ready_streak = ready_streak + 1 if operational else 0
+        maximum_ready_streak = max(maximum_ready_streak, ready_streak)
+        proof = item.get("authorshipProof")
+        if isinstance(proof, dict) and proof.get("blockHash"):
+            authorship_proofs[proof["blockHash"]] = proof
+
+    first_block = first.get("finalizedBlock")
+    last_block = last.get("finalizedBlock")
+    finality_advanced = (
+        isinstance(first_block, int) and isinstance(last_block, int) and last_block > first_block
+    )
+    checks = {
+        "finalityAdvanced": finality_advanced,
+        "requiredConsecutiveReadySamplesMet": maximum_ready_streak >= required_ready,
+        "finalizedAuthorshipObserved": bool(authorship_proofs),
+    }
+    passed = checks["finalityAdvanced"] and checks["requiredConsecutiveReadySamplesMet"]
+    if require_authorship:
+        passed = passed and checks["finalizedAuthorshipObserved"]
+    return {
+        "passed": passed,
+        "checks": checks,
+        "sampleCount": len(samples),
+        "sessionIndexes": sorted(sessions),
+        "quorumSampleCount": quorum_samples,
+        "maximumConsecutiveReadySamples": maximum_ready_streak,
+        "firstFinalizedBlock": first_block,
+        "lastFinalizedBlock": last_block,
+        "authorshipProofs": list(authorship_proofs.values()),
+        "lastLifecycleState": last.get("lifecycleState"),
+        "lastRemediation": last.get("remediation"),
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Verify sustained temporal readiness and finalized authorship without unsafe RPCs"
+    )
+    parser.add_argument("--rpc", default="http://127.0.0.1:9944")
+    parser.add_argument("--samples", type=int, default=12)
+    parser.add_argument("--interval", type=float, default=30.0)
+    parser.add_argument("--timeout", type=float, default=8.0)
+    parser.add_argument("--require-consecutive-ready", type=int, default=3)
+    parser.add_argument("--no-require-authorship", action="store_true")
+    parser.add_argument("--output", help="write sanitized JSON Lines evidence")
+    args = parser.parse_args()
+    if args.samples < 2 or args.interval < 0 or args.require_consecutive_ready < 1:
+        parser.error("samples must be >=2, interval >=0, and required ready samples >=1")
+
+    observations = []
+    output = open(args.output, "a", encoding="utf-8") if args.output else None
+    try:
+        for index in range(args.samples):
+            try:
+                observation = sample(args.rpc, args.timeout)
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError) as exc:
+                print(f"error: sample {index + 1} failed: {exc}", file=sys.stderr)
+                return 2
+            observations.append(observation)
+            if output:
+                output.write(json.dumps({"type": "sample", **observation}, sort_keys=True) + "\n")
+                output.flush()
+            print(
+                "sample={}/{} finalized={} session={} lifecycle={} mapped={}/{} "
+                "contributing={} ready={} authored={}".format(
+                    index + 1,
+                    args.samples,
+                    observation.get("finalizedBlock"),
+                    observation.get("sessionIndex"),
+                    observation.get("lifecycleState"),
+                    observation.get("mappedTemporalPeers"),
+                    observation.get("minimumTemporalSources"),
+                    observation.get("contributingTemporalPeers"),
+                    observation.get("readyToAuthor"),
+                    bool(observation.get("authorshipProof")),
+                )
+            )
+            if index + 1 < args.samples:
+                time.sleep(args.interval)
+
+        summary = evaluate(observations, args.require_consecutive_ready, not args.no_require_authorship)
+        if output:
+            output.write(json.dumps({"type": "summary", **summary}, sort_keys=True) + "\n")
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        return 0 if summary["passed"] else 1
+    finally:
+        if output:
+            output.close()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

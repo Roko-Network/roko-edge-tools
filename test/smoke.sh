@@ -23,6 +23,8 @@ for installer_script in installer/scripts/*.sh; do
   bash -n "$installer_script"
 done
 python3 -m py_compile bin/roko-rpc-health
+python3 -m py_compile bin/roko-validator-watch test/validator_watch.py
+python3 test/validator_watch.py
 python3 test/docset.py
 
 grep -R "ntp01.roko.network" README.md examples docs bin lib >/dev/null

@@ -80,6 +80,7 @@ cd roko-edge-tools
 
 ./bin/roko-edge-doctor
 ./bin/roko-rpc-health --rpc http://127.0.0.1:9944
+./bin/roko-validator-watch --rpc http://127.0.0.1:9944 --output validator-window.jsonl
 ./bin/roko-time-health
 ```
 
@@ -114,6 +115,7 @@ paths and performs the remaining installation and verification steps. See the
 |---|---|
 | `bin/roko-edge-doctor` | One-shot local node, service, RPC, disk, network, and Chrony health summary |
 | `bin/roko-rpc-health` | JSON-RPC health probe for local or public ROKO RPC |
+| `bin/roko-validator-watch` | Bounded Safe-RPC evidence for temporal quorum, readiness, advancing finality, and finalized authorship |
 | `bin/roko-time-health` | Chrony/system clock diagnostics for NTP and edge time hosts |
 | `bin/roko-node-tail` | Convenience log tail for a systemd-managed node |
 | `bin/roko-edge-report` | Generate a sanitized support bundle |
@@ -121,6 +123,28 @@ paths and performs the remaining installation and verification steps. See the
 | `bin/roko-guided-install` | Run the self-contained AIWG-manifested installer for Chrony or operator-licensed Timebeat deployments |
 | `bin/roko-validator-enroll` | Generate/verify a public enrollment package and capture the node's validated redacted Safe-RPC readiness result for Agora |
 | `bin/roko-session-key-window` | Open one guarded loopback-only Unsafe RPC window for session-key generation, then restore and prove Safe policy before handoff |
+
+### Validator recovery verification
+
+After applying a qualified node/runtime correction, capture a bounded public
+acceptance window without enabling unsafe RPC methods:
+
+```bash
+./bin/roko-validator-watch \
+  --rpc http://127.0.0.1:9944 \
+  --samples 12 \
+  --interval 30 \
+  --require-consecutive-ready 3 \
+  --output validator-window.jsonl
+```
+
+Success requires advancing finalized height, the configured mapped and
+contributing temporal quorum for three consecutive samples, `readyToAuthor`,
+and a bounded finalized authorship proof from
+`temporal_getValidatorReadiness`. The JSON Lines artifact contains only
+allow-listed public readiness fields; it excludes session keys, tokens, seeds,
+and unsafe peer RPC output. `--no-require-authorship` is available only for
+diagnostic windows and is not sufficient to close an authoring incident.
 
 ## Permissionless validator enrollment
 
