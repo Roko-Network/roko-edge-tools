@@ -127,34 +127,59 @@ class ValidatorEnrollmentTests(unittest.TestCase):
 
     def test_non_mutating_rpc_policy_check_proves_safe_restoration(self):
         class PolicyRpc:
-            def __init__(self, error=None):
-                self.error = error
+            def __init__(self, result=False):
+                self.result = result
                 self.calls = []
 
             def call(self, method, params=None):
                 self.calls.append((method, tuple(params or [])))
                 if method == "system_health":
                     return {"isSyncing": False, "peers": 3}
-                if self.error:
-                    raise self.error
-                return False
+                if isinstance(self.result, Exception):
+                    raise self.result
+                return self.result
 
-        safe = PolicyRpc(MODULE.RpcRejectedError(
-            "author_hasSessionKeys", -32601, "RPC call is unsafe to be called externally"
-        ))
-        report = MODULE.rpc_policy_status(safe)
-        self.assertTrue(report["safeForNormalOperation"])
-        self.assertEqual(report["state"], "safe-restored")
-        self.assertEqual(safe.calls[-1], ("author_hasSessionKeys", ("0x",)))
+        for code in (-32601, 1040):
+            with self.subTest(safe_code=code):
+                rpc = PolicyRpc(MODULE.RpcRejectedError(
+                    "author_hasKey", code, "RPC call is unsafe to be called externally"
+                ))
+                report = MODULE.rpc_policy_status(rpc)
+                self.assertTrue(report["safeForNormalOperation"])
+                self.assertEqual(report["state"], "safe-restored")
+                self.assertEqual(rpc.calls, [
+                    ("system_health", ()),
+                    ("author_hasKey", ("0x" + "00" * 32, "babe")),
+                ])
 
-        unsafe = MODULE.rpc_policy_status(PolicyRpc())
-        self.assertFalse(unsafe["safeForNormalOperation"])
-        self.assertEqual(unsafe["state"], "unsafe-key-management-accessible")
+        for value in (True, False):
+            with self.subTest(accessible=value):
+                report = MODULE.rpc_policy_status(PolicyRpc(value))
+                self.assertFalse(report["safeForNormalOperation"])
+                self.assertEqual(report["state"], "unsafe-key-management-accessible")
 
-        with self.assertRaisesRegex(MODULE.EnrollmentError, "Unable to prove Safe RPC policy"):
-            MODULE.rpc_policy_status(PolicyRpc(MODULE.RpcRejectedError(
-                "author_hasSessionKeys", -32601, "Method not found"
-            )))
+        # Neither the historical empty-tuple error nor argument parsing errors
+        # prove policy when returned for this well-formed lookup.
+        for code, message in [
+            (1040, "Session keys are not encoded correctly"),
+            (1040, "Invalid session keys"),
+            (-32602, "Invalid params"),
+            (-32601, "Method not found"),
+            (-32601, "Access denied by proxy"),
+            (-32601, "Unsafe upstream unavailable"),
+            (-32000, "keystore unavailable"),
+        ]:
+            with self.subTest(code=code, message=message):
+                with self.assertRaisesRegex(MODULE.EnrollmentError, "Unable to prove Safe RPC policy"):
+                    MODULE.rpc_policy_status(PolicyRpc(MODULE.RpcRejectedError(
+                        "author_hasKey", code, message
+                    )))
+        for value in (None, 0, 1, "false", [], {}):
+            with self.subTest(malformed=value):
+                with self.assertRaisesRegex(MODULE.EnrollmentError, "non-boolean"):
+                    MODULE.rpc_policy_status(PolicyRpc(value))
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "connection failed"):
+            MODULE.rpc_policy_status(PolicyRpc(MODULE.EnrollmentError("connection failed")))
 
     def test_rpc_client_preserves_structured_policy_rejection(self):
         response = mock.MagicMock()
@@ -170,6 +195,29 @@ class ValidatorEnrollmentTests(unittest.TestCase):
                 MODULE.RpcClient("http://127.0.0.1:9944").call("author_rotateKeys")
         self.assertEqual(observed.exception.code, -32601)
         self.assertTrue(MODULE.key_rpc_policy_disabled(observed.exception))
+
+    def test_rpc_client_rejects_ambiguous_or_uncorrelated_envelopes(self):
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        valid = {"jsonrpc": "2.0", "id": 1, "result": False}
+        for changes in (
+            {"jsonrpc": "1.0"}, {"id": 2}, {"id": True}, {"id": "1"},
+            {"error": {"code": 1040, "message": "RPC call is unsafe to be called externally"}},
+        ):
+            with self.subTest(changes=changes), \
+                 mock.patch.object(MODULE.urllib.request, "urlopen", return_value=response), \
+                 mock.patch.object(MODULE.json, "load", return_value=valid | changes):
+                with self.assertRaisesRegex(MODULE.EnrollmentError, "malformed"):
+                    MODULE.RpcClient("http://127.0.0.1:9944").call("author_hasKey")
+        for error in (None, {}, {"code": True, "message": "denied"},
+                      {"code": 1040, "message": None}):
+            with self.subTest(error=error), \
+                 mock.patch.object(MODULE.urllib.request, "urlopen", return_value=response), \
+                 mock.patch.object(MODULE.json, "load", return_value={
+                     "jsonrpc": "2.0", "id": 1, "error": error,
+                 }):
+                with self.assertRaisesRegex(MODULE.EnrollmentError, "malformed"):
+                    MODULE.RpcClient("http://127.0.0.1:9944").call("author_hasKey")
 
     def test_listener_classification_rejects_every_non_loopback_address(self):
         self.assertTrue(MODULE.listener_address_is_loopback("127.0.0.1:9944", 9944))
@@ -331,12 +379,88 @@ class ValidatorEnrollmentTests(unittest.TestCase):
         self.assertTrue(status["safeToEnableValidatorMode"])
         self.assertFalse(status["safeToRetireOldKeys"])
 
+        readiness = self.readiness()
+        readiness["candidateAccount"] = account
+        for entry in readiness["sessionKeys"]:
+            width = 33 if entry["name"] in {"beefy", "temporal"} else 32
+            public = "0x" + "55" * width
+            entry["expectedPublic"] = public
+            entry["observedPublic"] = [public]
+
+        class SafeTransitionRpc(TransitionRpc):
+            def call(self, method, params=None):
+                if method == "author_hasSessionKeys":
+                    raise MODULE.RpcRejectedError(method, -32601, "RPC call is unsafe to be called externally")
+                if method == "temporal_getValidatorReadiness": return readiness
+                return super().call(method, params)
+
+        safe_status = MODULE.check_transition(SafeTransitionRpc(), account, session_keys)
+        self.assertTrue(safe_status["safeToEnableValidatorMode"])
+        readiness["sessionKeys"][-1]["observedPublic"] = []
+        self.assertFalse(MODULE.check_transition(SafeTransitionRpc(), account, session_keys)["safeToEnableValidatorMode"])
+
     def test_transition_check_fails_closed_on_key_or_runtime_shape_drift(self):
         account = f"0x{'22' * 20}"
         with self.assertRaisesRegex(MODULE.EnrollmentError, "canonical"):
             MODULE.storage_map_key("Session", "NextKeys", "not-an-account")
         with self.assertRaisesRegex(MODULE.EnrollmentError, "unexpected runtime shape"):
             MODULE.decode_fixed_vector("0x08" + account[2:], 20)
+
+    def test_safe_transition_custody_requires_exact_observed_tuple_and_account(self):
+        report = self.readiness()
+        account = report["candidateAccount"]
+        keys = "0x" + "".join(entry["expectedPublic"][2:] for entry in report["sessionKeys"])
+
+        def check(value, code=-32601, message="RPC call is unsafe to be called externally"):
+            return MODULE.transition_local_custody(FakeRpc({
+                ("author_hasSessionKeys", (keys,)): MODULE.RpcRejectedError(
+                    "author_hasSessionKeys", code, message
+                ),
+                ("temporal_getValidatorReadiness", ()): value,
+            }), account, keys)
+
+        self.assertTrue(check(report))
+        self.assertTrue(check(report, 1040))
+        for index in range(7):
+            missing = self.readiness()
+            missing["sessionKeys"][index]["observedPublic"] = []
+            self.assertFalse(check(missing), f"missing local key {index}")
+        wrong_account = self.readiness()
+        wrong_account["candidateAccount"] = "0x" + "34" * 20
+        self.assertFalse(check(wrong_account))
+        wrong_expected = self.readiness()
+        wrong_expected["sessionKeys"][0]["expectedPublic"] = "0x" + "aa" * 32
+        self.assertFalse(check(wrong_expected))
+        unbound = self.readiness()
+        unbound["candidateAccount"] = None
+        for entry in unbound["sessionKeys"]:
+            entry["expectedPublic"] = None
+            entry["matchesExpected"] = False
+        self.assertTrue(check(unbound))
+        with self.assertRaises(MODULE.RpcRejectedError):
+            check(report, -32601, "Method not found")
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "current checksum-verified"):
+            check(MODULE.RpcRejectedError("temporal_getValidatorReadiness", -32601, "Method not found"))
+        malformed = self.readiness()
+        malformed["sessionKeys"] = malformed["sessionKeys"][:-1]
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "exactly seven"):
+            check(malformed)
+
+    def test_transition_without_expected_tuple_does_not_prove_custody(self):
+        account = "0x" + "22" * 20
+
+        class StateOnlyRpc:
+            def call(self, method, params=None):
+                if method == "chain_getFinalizedHead": return "0x" + "aa" * 32
+                if method == "chain_getHeader": return {"number": "0x64"}
+                if method != "state_getStorage": raise AssertionError(method)
+                if params[0] == MODULE.storage_value_key("Session", "Validators"):
+                    return "0x00"
+                return "0x" + "55" * 226
+
+        status = MODULE.check_transition(StateOnlyRpc(), account)
+        self.assertFalse(status["localSessionCustody"])
+        self.assertFalse(status["safeToEnableValidatorMode"])
 
 
 if __name__ == "__main__":

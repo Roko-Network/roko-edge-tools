@@ -1,0 +1,200 @@
+{
+  "runId": "roko-enrollment-qualification-fefb297397ea",
+  "status": "pass",
+  "binarySha256": "8b2a403b2fe047882098d232690a6eda3fe82133baa01f6a0fb3924ed9d5bdc6",
+  "harnessSha256": "ecfe5b04bb1311d389bf2fbea3780db98084a918d6908e434bc06b3c8232c4f8",
+  "binaryVersion": "roko-node 3.0.0-dev-086baf26c0e",
+  "startedAt": "2026-09-14T14:39:52.544146+00:00",
+  "service": "roko-enrollment-qualification-fefb297397ea.service",
+  "liveChainUsed": false,
+  "authorityPolicy": "development log-only",
+  "runtimeCodeSha256": "2b2c062997dbe9575305a263656a9fb46dc794108944907eec152a5bee4945d3",
+  "expectedRuntimeSpec": 286,
+  "genesis": "0x91130bc66f05ed358c3be5281f87bff1627cda970c8f409fba56ba84b81de3cb",
+  "before": {
+    "finalizedHeight": 5,
+    "health": {
+      "peers": 3,
+      "isSyncing": false,
+      "shouldHavePeers": false
+    },
+    "roles": [
+      "Full"
+    ],
+    "runtime": {
+      "specName": "mainnet",
+      "implName": "mainnet-node",
+      "authoringVersion": 10,
+      "specVersion": 286,
+      "implVersion": 0,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xbe9fb0c91a8046cf",
+          1
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0x18ef58a3b67ba770",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0x687ad44ad37f03c2",
+          1
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x8453b50b22293977",
+          1
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x8a8047a53a8277ec",
+          1
+        ],
+        [
+          "0xf3ff14d5ab527059",
+          3
+        ],
+        [
+          "0x899a250cbe84f250",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          3
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          2
+        ],
+        [
+          "0x6fd7c327202e4a8d",
+          1
+        ],
+        [
+          "0xab3c0572291feb8b",
+          1
+        ],
+        [
+          "0x582211f65bb14b89",
+          5
+        ],
+        [
+          "0xe65b00e46cedd0aa",
+          2
+        ],
+        [
+          "0x7c78e1f88b7af34e",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 4,
+      "stateVersion": 1
+    }
+  },
+  "helperExit": 0,
+  "package": {
+    "schema": "roko.validator-enrollment.v1",
+    "network": {
+      "chainName": "Roko Network Testnet",
+      "genesisHash": "0x91130bc66f05ed358c3be5281f87bff1627cda970c8f409fba56ba84b81de3cb",
+      "metadataHash": "0xc1efe29c737e55702b0241b7f844e11e6a7cc958ed46941a6da5a66286aa4269",
+      "specName": "mainnet",
+      "specVersion": 286,
+      "transactionVersion": 4
+    },
+    "integrity": {
+      "algorithm": "sha256",
+      "digest": "sha256:0445192d64921e5168dfa1b5996ee1ae9590b602967dc7b76f0f9c912892caba"
+    },
+    "keyCustodyProved": true
+  },
+  "afterPolicy": {
+    "keyManagementMethodsBlocked": true,
+    "remediation": "Safe RPC policy is restored.",
+    "safeForNormalOperation": true,
+    "safeHealthRpcAvailable": true,
+    "schema": "roko.validator-rpc-policy.v1",
+    "state": "safe-restored"
+  },
+  "policyBytesRestored": true,
+  "reuse": {
+    "helperExit": 0,
+    "sameTuple": true,
+    "freshPackage": true,
+    "existingKeyFilesPreserved": true,
+    "existingKeyCount": 7,
+    "safeAfter": true,
+    "policyBytesRestored": true
+  },
+  "faultCases": [
+    {
+      "fault": "unsafe-restart-failure",
+      "helperExit": 1,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    },
+    {
+      "fault": "term-interruption",
+      "helperExit": 143,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    },
+    {
+      "fault": "rpc-failure",
+      "helperExit": 1,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    }
+  ],
+  "processesStopped": true,
+  "serviceRemoved": true,
+  "serviceStopped": true,
+  "temporaryStateRemoved": true
+}

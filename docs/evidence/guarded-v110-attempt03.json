@@ -1,0 +1,15 @@
+{
+  "runId": "roko-enrollment-qualification-f92002049971",
+  "status": "incomplete",
+  "binarySha256": "1643b8a4416efcef8fe3fc7d56a562dc2ab93b7a3446ff531c1d302680c2ff5a",
+  "binaryVersion": "roko-node 3.0.0-dev-be8920f47d2",
+  "startedAt": "2026-09-14T14:08:13.908379+00:00",
+  "service": "roko-enrollment-qualification-f92002049971.service",
+  "liveChainUsed": false,
+  "authorityPolicy": "development log-only",
+  "genesis": "0x18a5b38dd57eee3c095b9f1560fe7db16e730a3d7a66234001a96060627f4f88",
+  "processesStopped": true,
+  "serviceRemoved": true,
+  "serviceStopped": true,
+  "temporaryStateRemoved": true
+}

@@ -117,7 +117,7 @@ extract_dir="$task_dir/extract"
 mkdir "$extract_dir"
 tar -xzf "$task_dir/$archive_name" -C "$extract_dir" --no-same-owner
 package_root="$extract_dir/roko-validator-enroll-$version"
-[[ -x "$package_root/bin/roko-validator-enroll" && -x "$package_root/bin/roko-session-key-window" && -x "$package_root/bin/roko-authority-peers" ]] || {
+[[ -x "$package_root/bin/roko-validator-enroll" && -x "$package_root/bin/roko-session-key-window" && -x "$package_root/bin/roko-authority-peers" && -x "$package_root/bin/roko-validator-watch" ]] || {
   printf 'Release archive does not contain all validator enrollment commands\n' >&2
   exit 1
 }
@@ -147,6 +147,7 @@ mv "$destination.new" "$destination"
 ln -sfn "$destination/bin/roko-validator-enroll" "$bin_dir/roko-validator-enroll"
 ln -sfn "$destination/bin/roko-session-key-window" "$bin_dir/roko-session-key-window"
 ln -sfn "$destination/bin/roko-authority-peers" "$bin_dir/roko-authority-peers"
+ln -sfn "$destination/bin/roko-validator-watch" "$bin_dir/roko-validator-watch"
 
 version_output="$("$bin_dir/roko-validator-enroll" --version)"
 [[ "$version_output" == "roko-validator-enroll $version" ]] || {

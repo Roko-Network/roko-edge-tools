@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 SCHEMA = "roko.validator-enrollment.v1"
-TOOL_VERSION = "1.3.0"
+TOOL_VERSION = "1.4.1"
 TESTNET_GENESIS = "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb"
 KEY_TYPES = ["grandpa", "babe", "imOnline", "authorityDiscovery", "mixnet", "beefy", "temporal"]
 READINESS_STATES = {
@@ -60,9 +60,10 @@ def bounded_rpc_message(value: Any) -> str:
 
 def key_rpc_policy_disabled(error: RpcRejectedError) -> bool:
     """Recognize Substrate's explicit safe-policy rejection without guessing."""
-    if error.code != -32601:
-        return False
-    return bool(re.search(r"\bunsafe\b|\bnot safe\b|\bforbidden\b|\bdenied\b|\bdisabled by.*policy\b", error.rpc_message, re.I))
+    return error.code in {1040, -32601} and (
+        error.rpc_message.strip().rstrip(".").lower()
+        == "rpc call is unsafe to be called externally"
+    )
 
 
 def rpc_policy_status(rpc: "RpcClient") -> dict[str, Any]:
@@ -71,21 +72,21 @@ def rpc_policy_status(rpc: "RpcClient") -> dict[str, Any]:
     if not isinstance(health, dict) or not isinstance(health.get("isSyncing"), bool):
         raise EnrollmentError("Safe health RPC returned a malformed system_health response")
     try:
-        # This is deliberately non-mutating. Under Unsafe it returns false (or an
-        # argument error after crossing the policy gate); under Safe, Substrate
-        # rejects it before dispatch with the explicit unsafe-call error.
-        rpc.call("author_hasSessionKeys", ["0x"])
+        # A well-formed lookup crosses the same DenyUnsafe gate as session-key
+        # management without decoding a runtime-specific session tuple or writing
+        # a key. Either boolean proves dispatch; an arbitrary RPC error does not.
+        accessible = rpc.call("author_hasKey", ["0x" + "00" * 32, "babe"])
     except RpcRejectedError as error:
         if key_rpc_policy_disabled(error):
             blocked = True
-        elif error.code == -32602:
-            blocked = False
         else:
             raise EnrollmentError(
-                "Unable to prove Safe RPC policy: author_hasSessionKeys was rejected "
+                "Unable to prove Safe RPC policy: author_hasKey was rejected "
                 "without the supported unsafe-policy response"
             ) from error
     else:
+        if not isinstance(accessible, bool):
+            raise EnrollmentError("Unable to prove Safe RPC policy: author_hasKey returned a non-boolean result")
         blocked = False
     return {
         "schema": "roko.validator-rpc-policy.v1",
@@ -184,6 +185,33 @@ def decode_fixed_vector(raw: str | None, width: int) -> list[bytes]:
     return [value[offset + index * width:offset + (index + 1) * width] for index in range(count)]
 
 
+def transition_local_custody(rpc: "RpcClient", account: str, encoded_keys: str) -> bool:
+    """Prove custody without opening an Unsafe RPC window on a running node."""
+    try:
+        return rpc.call("author_hasSessionKeys", [encoded_keys]) is True
+    except RpcRejectedError as error:
+        if not key_rpc_policy_disabled(error):
+            raise
+    report = capture_readiness(rpc)
+    candidate = report["candidateAccount"]
+    if candidate is not None and candidate.lower() != account.lower():
+        return False
+    # Readiness can precede account discovery: its observed public keys still
+    # prove custody, while check_transition separately binds the entire tuple
+    # to this account's finalized Session.NextKeys. Never trust aggregate flags
+    # or a tuple belonging to some other candidate.
+    offset = 2
+    for entry, width in zip(report["sessionKeys"], (32, 32, 32, 32, 32, 33, 33)):
+        public = "0x" + encoded_keys[offset:offset + width * 2].lower()
+        offset += width * 2
+        if public not in {value.lower() for value in entry["observedPublic"]}:
+            return False
+        expected = entry["expectedPublic"]
+        if expected is not None and (expected.lower() != public or not entry["matchesExpected"]):
+            return False
+    return True
+
+
 def check_transition(rpc: "RpcClient", account: str, expected_session_keys: str | None = None) -> dict[str, Any]:
     if not ACCOUNT.fullmatch(account):
         raise EnrollmentError("Transition account must be a canonical 20-byte address")
@@ -198,7 +226,7 @@ def check_transition(rpc: "RpcClient", account: str, expected_session_keys: str 
     next_keys = rpc.call("state_getStorage", [storage_map_key("Session", "NextKeys", account), finalized])
     keys_present = isinstance(next_keys, str) and next_keys != "0x"
     keys_match = expected_session_keys is None or (keys_present and next_keys.lower() == expected_session_keys.lower())
-    local_custody = expected_session_keys is None or rpc.call("author_hasSessionKeys", [expected_session_keys]) is True
+    local_custody = expected_session_keys is not None and transition_local_custody(rpc, account, expected_session_keys)
     active_member = account.lower() in {entry.lower() for entry in active}
     state = "active" if active_member else "waiting" if intent and keys_present else "candidate" if intent else "bonded" if bonded else "not-started"
     return {
@@ -427,16 +455,18 @@ class RpcClient:
                 payload = json.load(response)
         except (OSError, ValueError) as error:
             raise EnrollmentError(f"Local node RPC failed for {method}: {error}") from error
-        if not isinstance(payload, dict):
+        if (not isinstance(payload, dict) or payload.get("jsonrpc") != "2.0"
+                or type(payload.get("id")) is not int or payload["id"] != self.sequence
+                or ("error" in payload) == ("result" in payload)):
             raise EnrollmentError(f"Local node RPC returned malformed JSON for {method}")
-        if payload.get("error"):
+        if "error" in payload:
             error = payload["error"]
-            if not isinstance(error, dict):
+            if (not isinstance(error, dict) or type(error.get("code")) is not int
+                    or not isinstance(error.get("message"), str)):
                 raise EnrollmentError(f"Local node RPC returned a malformed error for {method}")
-            code = error.get("code")
             raise RpcRejectedError(
                 method,
-                code if isinstance(code, int) else None,
+                error["code"],
                 bounded_rpc_message(error.get("message")),
             )
         if "result" not in payload:

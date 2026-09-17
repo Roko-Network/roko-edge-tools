@@ -83,6 +83,7 @@ mkdir -p "$package_root/bin" "$package_root/lib" "$package_root/contracts" \
 install -m 0755 "$repo_root/bin/roko-validator-enroll" "$package_root/bin/"
 install -m 0755 "$repo_root/bin/roko-session-key-window" "$package_root/bin/"
 install -m 0755 "$repo_root/bin/roko-authority-peers" "$package_root/bin/"
+install -m 0755 "$repo_root/bin/roko-validator-watch" "$package_root/bin/"
 install -m 0644 "$repo_root/lib/validator_enrollment.py" "$package_root/lib/"
 install -m 0644 "$repo_root/lib/authority_peers.py" "$package_root/lib/"
 install -m 0644 "$repo_root/contracts/validator-enrollment-v1.schema.json" "$package_root/contracts/"
@@ -175,7 +176,10 @@ fi
 offline="$output_dir/roko-validator-enroll-offline-$version.tar.gz"
 tar --sort=name --mtime="@$source_epoch" --owner=0 --group=0 --numeric-owner \
   --pax-option=delete=atime,delete=ctime -C "$offline_stage" -cf - . | gzip -n >"$offline"
-sha256sum "$offline" >"$offline.sha256"
+(
+  cd "$output_dir"
+  sha256sum "$(basename "$offline")" >"$(basename "$offline").sha256"
+)
 
 printf 'Release archive: %s\n' "$archive"
 printf 'Release metadata: %s\n' "$metadata"
