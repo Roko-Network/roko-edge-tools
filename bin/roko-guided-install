@@ -284,7 +284,10 @@ Validator onboarding
   Installed command: $enrollment_path
   Installed version: $enrollment_version
   Verified installer: https://downloads.roko.network/validator-tools/current/
-  New session keys: sudo roko-session-key-window --help
+  Wallet setup first: https://docs.roko.network/pages/wallets-faucet.html
+  Public handoff (when installed CLI --help lists --wallet-setup):
+    roko-validator-enroll --wallet-setup YOUR_PUBLIC_0x_ACCOUNT --output ./roko-wallet-setup.json
+  New session keys, after wallet setup: sudo roko-session-key-window --help
   Node readiness: roko-validator-enroll --save-readiness ./roko-validator-readiness.json
   Wallet journey: https://agora.roko.network/participate/staking
   Claim: https://claim.roko.network
@@ -302,8 +305,14 @@ EOF
     if [[ "$answer" =~ ^[Yy]$ ]]; then
       cat <<'EOF'
 
-1. Create/select a dedicated EVM account in your own wallet and add ROKO chain
-   ID 52370. Record only its public 0x address in your operator notes.
+1. Set up a Substrate-signing browser extension for your intended 20-byte
+   Ethereum-format account. Ordinary MetaMask/EVM mode cannot sign Agora's
+   native staking/session calls. Talisman is the documented setup path.
+   Verify the SAME account in wallet and Agora; add a custom Substrate network
+   using wss://rpc.roko.network and verify current genesis/metadata in Agora.
+   Keep any wallet import entirely inside the official wallet UI. The installer
+   never accepts private keys. A watch-only account cannot sign.
+   Finish wallet setup before starting the enrollment package expiry window.
 2. If the same Ethereum address is snapshot-eligible, claim at
    https://claim.roko.network. Otherwise obtain testnet funding through the
    documented faucet/support path. You need 50 ROKO plus transaction fees.
