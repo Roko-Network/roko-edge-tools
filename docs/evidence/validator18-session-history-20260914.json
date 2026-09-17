@@ -1,0 +1,1136 @@
+{
+  "observedAt": "2026-09-14T13:57:01.732Z",
+  "endpoint": "https://rpc.roko.network",
+  "genesis": "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb",
+  "snapshots": [
+    {
+      "hash": "0x34a4749f94af4e7f58466db620b599e5d636c3abf4c567d7d3247bc3060c4205",
+      "number": 1220028,
+      "session": 1184,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": true,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 202,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 87
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 90
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 49
+        }
+      ]
+    },
+    {
+      "hash": "0xcf3433f86fbfbcea11c2c122994b2afb89fc43e8e8d13d423305e26853aa540b",
+      "number": 1219802,
+      "session": 1184,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": true,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 202,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 0
+        }
+      ],
+      "events": [
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SomeOffline",
+            "section": "imOnline",
+            "index": "0x1702",
+            "data": {
+              "offline": [
+                [
+                  "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+                  {
+                    "total": "18,446,744,073,709,551,615",
+                    "own": "18,446,744,073,709,551,615",
+                    "others": []
+                  }
+                ]
+              ]
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SlashReported",
+            "section": "staking",
+            "index": "0x0b03",
+            "data": {
+              "validator": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+              "fraction": "0.00%",
+              "slashEra": "201"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "Offence",
+            "section": "offences",
+            "index": "0x1900",
+            "data": {
+              "kind": "im-online:offlin",
+              "timeslot": "0x9f040000"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "StakersElected",
+            "section": "staking",
+            "index": "0x0b05",
+            "data": {}
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "NewSession",
+            "section": "session",
+            "index": "0x0c00",
+            "data": {
+              "sessionIndex": "1,184"
+            }
+          },
+          "topics": []
+        }
+      ]
+    },
+    {
+      "hash": "0x992eb5968e7cb9b240e34d5c4b8ff9fa5201b5223402ccd1cba2da62dd5eee1e",
+      "number": 1219801,
+      "session": 1183,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": false,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 309
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 317
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 198
+        }
+      ]
+    },
+    {
+      "hash": "0x1eb67c1d667d406c0a4cdfd68bbcec7795648050166dd1939e4cc5180b15de9c",
+      "number": 1218977,
+      "session": 1183,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": false,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 0
+        }
+      ],
+      "events": [
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SomeOffline",
+            "section": "imOnline",
+            "index": "0x1702",
+            "data": {
+              "offline": [
+                [
+                  "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+                  {
+                    "total": "18,446,744,073,709,551,615",
+                    "own": "18,446,744,073,709,551,615",
+                    "others": []
+                  }
+                ]
+              ]
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SlashReported",
+            "section": "staking",
+            "index": "0x0b03",
+            "data": {
+              "validator": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+              "fraction": "0.00%",
+              "slashEra": "201"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "Offence",
+            "section": "offences",
+            "index": "0x1900",
+            "data": {
+              "kind": "im-online:offlin",
+              "timeslot": "0x9e040000"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "NewSession",
+            "section": "session",
+            "index": "0x0c00",
+            "data": {
+              "sessionIndex": "1,183"
+            }
+          },
+          "topics": []
+        }
+      ]
+    },
+    {
+      "hash": "0x5fc361da3f69d5df8fe98ece11440a53fceed06985e34eb0bd284c09c2381d57",
+      "number": 1218976,
+      "session": 1182,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": false,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 342
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 307
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 216
+        }
+      ]
+    },
+    {
+      "hash": "0xb86e6f986d1f3a26bf629596e24fe7e3213701a468f9e5623930c884fa90c673",
+      "number": 1218111,
+      "session": 1182,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": false,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 0
+        }
+      ],
+      "events": [
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SomeOffline",
+            "section": "imOnline",
+            "index": "0x1702",
+            "data": {
+              "offline": [
+                [
+                  "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+                  {
+                    "total": "18,446,744,073,709,551,615",
+                    "own": "18,446,744,073,709,551,615",
+                    "others": []
+                  }
+                ]
+              ]
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SlashReported",
+            "section": "staking",
+            "index": "0x0b03",
+            "data": {
+              "validator": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+              "fraction": "0.00%",
+              "slashEra": "201"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "Offence",
+            "section": "offences",
+            "index": "0x1900",
+            "data": {
+              "kind": "im-online:offlin",
+              "timeslot": "0x9d040000"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "NewSession",
+            "section": "session",
+            "index": "0x0c00",
+            "data": {
+              "sessionIndex": "1,182"
+            }
+          },
+          "topics": []
+        }
+      ]
+    },
+    {
+      "hash": "0x813bdc817e506a48bedbf2e0b0cca7c72e7530617af68976f5937477388f2947",
+      "number": 1218110,
+      "session": 1181,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": false,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 321
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 336
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 216
+        }
+      ]
+    },
+    {
+      "hash": "0x478ef00029e93068152063925537da06519b611001885245b2c8436a3dafb73d",
+      "number": 1217237,
+      "session": 1181,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": false,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 0
+        }
+      ],
+      "events": [
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SomeOffline",
+            "section": "imOnline",
+            "index": "0x1702",
+            "data": {
+              "offline": [
+                [
+                  "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+                  {
+                    "total": "18,446,744,073,709,551,615",
+                    "own": "18,446,744,073,709,551,615",
+                    "others": []
+                  }
+                ]
+              ]
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SlashReported",
+            "section": "staking",
+            "index": "0x0b03",
+            "data": {
+              "validator": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+              "fraction": "0.00%",
+              "slashEra": "201"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "Offence",
+            "section": "offences",
+            "index": "0x1900",
+            "data": {
+              "kind": "im-online:offlin",
+              "timeslot": "0x9c040000"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "NewSession",
+            "section": "session",
+            "index": "0x0c00",
+            "data": {
+              "sessionIndex": "1,181"
+            }
+          },
+          "topics": []
+        }
+      ]
+    },
+    {
+      "hash": "0xe5b3b4a59dbb3074c1b086b1a9b5dba75b69ef04a2dc413fa2d20c919c06bced",
+      "number": 1217236,
+      "session": 1180,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": false,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 360
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 291
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 202
+        }
+      ]
+    },
+    {
+      "hash": "0x201dce521a105f592fc31069ff331352fd50f6e7314eefec0ce31775ba0128f9",
+      "number": 1216383,
+      "session": 1180,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": false,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 0
+        }
+      ],
+      "events": [
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SomeOffline",
+            "section": "imOnline",
+            "index": "0x1702",
+            "data": {
+              "offline": [
+                [
+                  "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+                  {
+                    "total": "18,446,744,073,709,551,615",
+                    "own": "18,446,744,073,709,551,615",
+                    "others": []
+                  }
+                ]
+              ]
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SlashReported",
+            "section": "staking",
+            "index": "0x0b03",
+            "data": {
+              "validator": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+              "fraction": "0.00%",
+              "slashEra": "201"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "Offence",
+            "section": "offences",
+            "index": "0x1900",
+            "data": {
+              "kind": "im-online:offlin",
+              "timeslot": "0x9b040000"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "NewSession",
+            "section": "session",
+            "index": "0x0c00",
+            "data": {
+              "sessionIndex": "1,180"
+            }
+          },
+          "topics": []
+        }
+      ]
+    },
+    {
+      "hash": "0xd0d4c532bd8871dfda1a0617ad49c01619b1ca6f8802f338c5b22c2384c79e6f",
+      "number": 1216382,
+      "session": 1179,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [],
+      "session.queuedChanged": false,
+      "staking.disabledValidators": [],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 330
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 337
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 200
+        }
+      ]
+    },
+    {
+      "hash": "0x5b0584ff2936c1c1aafd9a01210bfdc8ef9058ea03a3e350387362b286b3773e",
+      "number": 1215515,
+      "session": 1179,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [],
+      "session.queuedChanged": false,
+      "staking.disabledValidators": [],
+      "staking.activeEra": {
+        "index": 201,
+        "start": 1789375206001
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 0
+        }
+      ],
+      "events": [
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SomeOffline",
+            "section": "imOnline",
+            "index": "0x1702",
+            "data": {
+              "offline": [
+                [
+                  "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+                  {
+                    "total": "18,446,744,073,709,551,615",
+                    "own": "18,446,744,073,709,551,615",
+                    "others": []
+                  }
+                ]
+              ]
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "SlashReported",
+            "section": "staking",
+            "index": "0x0b03",
+            "data": {
+              "validator": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+              "fraction": "0.00%",
+              "slashEra": "200"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "Offence",
+            "section": "offences",
+            "index": "0x1900",
+            "data": {
+              "kind": "im-online:offlin",
+              "timeslot": "0x9a040000"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "EraPaid",
+            "section": "staking",
+            "index": "0x0b00",
+            "data": {
+              "eraIndex": "200",
+              "validatorPayout": "131,793,646,655,279,340,378,860",
+              "remainder": "395,380,826,362,523,873,888,139"
+            }
+          },
+          "topics": []
+        },
+        {
+          "phase": "Initialization",
+          "event": {
+            "method": "NewSession",
+            "section": "session",
+            "index": "0x0c00",
+            "data": {
+              "sessionIndex": "1,179"
+            }
+          },
+          "topics": []
+        }
+      ]
+    },
+    {
+      "hash": "0x47b47d6bdc130918d079b08c9fdc33f7fef6ed4f20f123fb3634a65d1c83da59",
+      "number": 1215514,
+      "session": 1178,
+      "validators": [
+        "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+        "0x1eFD476f84b8198123c218710630916FAaf394ec",
+        "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+        "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89"
+      ],
+      "runtime": {
+        "specName": "mainnet",
+        "specVersion": 286,
+        "implName": "mainnet-node",
+        "implVersion": 0,
+        "transactionVersion": 4
+      },
+      "session.disabledValidators": [
+        0
+      ],
+      "session.queuedChanged": true,
+      "staking.disabledValidators": [
+        0
+      ],
+      "staking.activeEra": {
+        "index": 200,
+        "start": 1789353603000
+      },
+      "staking.currentEra": 201,
+      "staking.forceEra": "NotForcing",
+      "online": [
+        {
+          "index": 0,
+          "account": "0x162B8D18097E96d6C754F11396Bb4c9463Dad2d0",
+          "heartbeat": null,
+          "authored": 0
+        },
+        {
+          "index": 1,
+          "account": "0x1eFD476f84b8198123c218710630916FAaf394ec",
+          "heartbeat": null,
+          "authored": 323
+        },
+        {
+          "index": 2,
+          "account": "0x83aa8A030f8367a3dE698C2bD0373D6335995b54",
+          "heartbeat": null,
+          "authored": 325
+        },
+        {
+          "index": 3,
+          "account": "0xc04C98d1cd1FF5f6611A8bd413d09d03bd3F4A89",
+          "heartbeat": null,
+          "authored": 203
+        }
+      ]
+    }
+  ]
+}
