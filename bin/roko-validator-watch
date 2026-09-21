@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
+import re
 import sys
 import time
 import urllib.error
@@ -19,10 +21,10 @@ METHODS = (
 )
 
 
-def rpc_batch(url: str, timeout: float) -> list[dict]:
+def rpc_batch(url: str, timeout: float, methods=METHODS) -> list[dict]:
     payload = [
         {"jsonrpc": "2.0", "id": index + 1, "method": method, "params": params}
-        for index, (method, params) in enumerate(METHODS)
+        for index, (method, params) in enumerate(methods)
     ]
     request = urllib.request.Request(
         url,
@@ -38,29 +40,133 @@ def rpc_batch(url: str, timeout: float) -> list[dict]:
 
 
 def result(batch: list[dict], identifier: int) -> object:
-    item = next((entry for entry in batch if entry.get("id") == identifier), None)
-    if item is None:
-        raise ValueError(f"RPC response {identifier} is missing")
+    if not isinstance(batch, list) or any(not isinstance(entry, dict) for entry in batch):
+        raise ValueError("batch RPC entries must be objects")
+    if any(type(entry.get("id")) is not int for entry in batch):
+        raise ValueError("RPC response IDs must be integers")
+    matches = [entry for entry in batch if entry["id"] == identifier]
+    if len(matches) != 1:
+        raise ValueError(f"RPC response {identifier} is missing or duplicated")
+    item = matches[0]
+    if item.get("jsonrpc") != "2.0":
+        raise ValueError(f"RPC response {identifier} has invalid protocol version")
     if item.get("error") is not None:
-        raise ValueError(f"RPC response {identifier} failed: {item['error']}")
-    return item.get("result")
+        raise ValueError(f"RPC response {identifier} failed")
+    if "result" not in item:
+        raise ValueError(f"RPC response {identifier} has no result")
+    return item["result"]
+
+
+def unsigned(value: object) -> bool:
+    return type(value) is int and value >= 0
+
+
+def block_hash(value: object) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"0x[0-9a-fA-F]{64}", value) is not None
+
+
+def account(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def object_result(batch: list[dict], identifier: int) -> dict:
+    value = result(batch, identifier)
+    if not isinstance(value, dict):
+        raise ValueError(f"RPC response {identifier} must be an object")
+    return value
+
+
+class SnapshotChanged(ValueError):
+    """The independently sampled finalized head and readiness do not agree."""
 
 
 def sample(url: str, timeout: float) -> dict:
+    for _ in range(3):
+        try:
+            return sample_once(url, timeout)
+        except SnapshotChanged:
+            pass
+    raise ValueError("finalized head changed across readiness snapshot on all 3 attempts")
+
+
+def sample_once(url: str, timeout: float) -> dict:
     batch = rpc_batch(url, timeout)
-    health = result(batch, 1) or {}
+    health = object_result(batch, 1)
     finalized_hash = result(batch, 2)
-    readiness = result(batch, 3) or {}
-    mesh = result(batch, 4) or {}
-    exclusions = {
-        item.get("reason"): item.get("count", 0)
-        for item in readiness.get("peerExclusions", [])
-        if isinstance(item, dict) and item.get("reason")
-    }
+    readiness = object_result(batch, 3)
+    mesh = object_result(batch, 4)
+    if not block_hash(finalized_hash):
+        raise ValueError("finalized head must be a block hash")
+    for field in ("finalizedBlock", "sessionIndex", "minimumTemporalSources",
+                  "mappedTemporalPeers", "contributingTemporalPeers", "temporalTransportPeers"):
+        if not unsigned(readiness.get(field)):
+            raise ValueError(f"readiness {field} must be a nonnegative integer")
+    for field in ("majorSyncing", "activeSessionMatch", "readyToAuthor"):
+        if type(readiness.get(field)) is not bool:
+            raise ValueError(f"readiness {field} must be boolean")
+    for source, fields in ((readiness, ("genericP2pPeers", "authoringTimeQuality")),
+                           (health, ("peers",)), (mesh, ("peerCount", "timeQuality"))):
+        for field in fields:
+            if source.get(field) is not None and not unsigned(source[field]):
+                raise ValueError(f"{field} must be a nonnegative integer or null")
+    if health.get("isSyncing") is not None and type(health["isSyncing"]) is not bool:
+        raise ValueError("system health isSyncing must be boolean")
+    for source, fields in ((readiness, ("lifecycleState", "convergenceState", "remediation")),
+                           (mesh, ("convergenceState",))):
+        for field in fields:
+            if source.get(field) is not None and not isinstance(source[field], str):
+                raise ValueError(f"{field} must be a string or null")
+    candidate = readiness.get("candidateAccount")
+    authority = readiness.get("activeBabeAuthorityIndex")
+    if candidate is not None and not account(candidate):
+        raise ValueError("candidateAccount must be a nonempty string or null")
+    if authority is not None and not unsigned(authority):
+        raise ValueError("activeBabeAuthorityIndex must be a nonnegative integer or null")
+    proof = readiness.get("authorshipProof")
+    if proof is not None:
+        if (not isinstance(proof, dict) or not unsigned(proof.get("blockNumber"))
+                or not unsigned(proof.get("authorityIndex")) or not block_hash(proof.get("blockHash"))):
+            raise ValueError("authorshipProof has invalid fields")
+        # Only public, documented fields enter the evidence file.
+        proof = {key: proof[key] for key in ("blockNumber", "blockHash", "authorityIndex")}
+    methods = [("chain_getHeader", [finalized_hash])]
+    if proof is not None:
+        methods.append(("chain_getBlockHash", [proof["blockNumber"]]))
+    verification = rpc_batch(url, timeout, methods)
+    header = object_result(verification, 1)
+    number = header.get("number")
+    if not isinstance(number, str) or re.fullmatch(r"0x[0-9a-fA-F]+", number) is None:
+        raise ValueError("finalized header number must be hexadecimal")
+    finalized_block = int(number, 16)
+    if readiness["finalizedBlock"] != finalized_block:
+        raise SnapshotChanged("readiness and finalized header heights differ")
+    proof_verified = False
+    if proof is not None:
+        canonical_hash = result(verification, 2)
+        if canonical_hash is not None and not block_hash(canonical_hash):
+            raise ValueError("canonical proof hash has invalid shape")
+        proof_verified = (
+            canonical_hash is not None
+            and canonical_hash.lower() == proof["blockHash"].lower()
+            and proof["blockNumber"] <= finalized_block
+            and unsigned(authority) and proof["authorityIndex"] == authority
+            and readiness["activeSessionMatch"] is True and account(candidate)
+        )
+    peer_exclusions = readiness.get("peerExclusions", [])
+    if not isinstance(peer_exclusions, list):
+        raise ValueError("peerExclusions must be a list")
+    exclusions = {}
+    for item in peer_exclusions:
+        if not isinstance(item, dict) or not isinstance(item.get("reason"), str) or not unsigned(item.get("count")):
+            raise ValueError("peer exclusion must have a reason and nonnegative integer count")
+        exclusions[item["reason"]] = item["count"]
     return {
         "observedAt": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
-        "finalizedHash": finalized_hash,
-        "finalizedBlock": readiness.get("finalizedBlock"),
+        "finalizedHash": finalized_hash.lower(),
+        "finalizedBlock": finalized_block,
+        "readinessFinalizedBlock": readiness["finalizedBlock"],
+        "candidateAccount": candidate,
+        "activeBabeAuthorityIndex": authority,
         "sessionIndex": readiness.get("sessionIndex"),
         "lifecycleState": readiness.get("lifecycleState"),
         "majorSyncing": readiness.get("majorSyncing", health.get("isSyncing")),
@@ -73,7 +179,8 @@ def sample(url: str, timeout: float) -> dict:
         "contributingTemporalPeers": readiness.get("contributingTemporalPeers"),
         "authoringTimeQuality": readiness.get("authoringTimeQuality"),
         "readyToAuthor": readiness.get("readyToAuthor"),
-        "authorshipProof": readiness.get("authorshipProof"),
+        "authorshipProof": proof,
+        "authorshipProofCanonical": proof_verified,
         "peerExclusions": exclusions,
         "meshPeerCount": mesh.get("peerCount"),
         "meshTimeQuality": mesh.get("timeQuality"),
@@ -82,66 +189,112 @@ def sample(url: str, timeout: float) -> dict:
     }
 
 
-def evaluate(samples: list[dict], required_ready: int, require_authorship: bool) -> dict:
-    first = samples[0]
-    last = samples[-1]
-    ready_streak = 0
-    maximum_ready_streak = 0
-    quorum_samples = 0
+def evaluate(samples: list[dict], required_ready: int, require_authorship: bool,
+             require_session_boundary: bool = False) -> dict:
+    if not samples or type(required_ready) is not int or required_ready < 1:
+        raise ValueError("nonempty samples and positive required ready count are required")
+    ready_streak = maximum_ready_streak = quorum_samples = 0
     sessions = set()
-    authorship_proofs = {}
+    candidates = set()
+    session_authorities = {}
+    finality_monotonic = session_monotonic = identity_stable = True
+    previous = None
     for item in samples:
-        if item.get("sessionIndex") is not None:
-            sessions.add(item["sessionIndex"])
-        minimum = item.get("minimumTemporalSources")
-        mapped = item.get("mappedTemporalPeers")
-        contributing = item.get("contributingTemporalPeers")
-        quorum = (
-            isinstance(minimum, int)
-            and isinstance(mapped, int)
-            and isinstance(contributing, int)
-            and mapped >= minimum
-            and contributing >= minimum
-        )
-        if quorum:
-            quorum_samples += 1
-        operational = (
-            item.get("majorSyncing") is False
-            and item.get("activeSessionMatch") is True
-            and item.get("readyToAuthor") is True
-            and quorum
-        )
+        minimum, mapped, contributing = (item.get(field) for field in (
+            "minimumTemporalSources", "mappedTemporalPeers", "contributingTemporalPeers"))
+        quorum = (unsigned(minimum) and minimum > 0 and unsigned(mapped)
+                  and unsigned(contributing) and mapped >= minimum and contributing >= minimum)
+        quorum_samples += int(quorum)
+        height, session = item.get("finalizedBlock"), item.get("sessionIndex")
+        readiness_height = item.get("readinessFinalizedBlock", height)
+        valid_height = (unsigned(height) and unsigned(readiness_height) and readiness_height == height
+                        and block_hash(item.get("finalizedHash")))
+        finality_monotonic = finality_monotonic and valid_height
+        session_monotonic = session_monotonic and unsigned(session)
+        if previous is not None:
+            old_height, old_session = previous.get("finalizedBlock"), previous.get("sessionIndex")
+            if unsigned(height) and unsigned(old_height):
+                finality_monotonic = finality_monotonic and height >= old_height
+                if height == old_height:
+                    finality_monotonic = finality_monotonic and item.get("finalizedHash") == previous.get("finalizedHash")
+            old_readiness_height = previous.get("readinessFinalizedBlock", old_height)
+            if unsigned(readiness_height) and unsigned(old_readiness_height):
+                finality_monotonic = finality_monotonic and readiness_height >= old_readiness_height
+                if session != old_session and readiness_height <= old_readiness_height:
+                    session_monotonic = False
+            if unsigned(session) and unsigned(old_session):
+                session_monotonic = session_monotonic and session >= old_session
+        candidate, authority = item.get("candidateAccount"), item.get("activeBabeAuthorityIndex")
+        if candidate is not None:
+            if account(candidate):
+                candidates.add(candidate)
+            else:
+                identity_stable = False
+        if unsigned(session):
+            sessions.add(session)
+            if item.get("activeSessionMatch") is True and unsigned(authority):
+                if session in session_authorities and session_authorities[session] != authority:
+                    identity_stable = False
+                session_authorities[session] = authority
+        operational = (item.get("majorSyncing") is False and item.get("activeSessionMatch") is True
+                       and item.get("readyToAuthor") is True and quorum and valid_height
+                       and unsigned(session) and account(candidate) and unsigned(authority))
         ready_streak = ready_streak + 1 if operational else 0
         maximum_ready_streak = max(maximum_ready_streak, ready_streak)
+        previous = item
+    identity_stable = identity_stable and len(candidates) == 1
+    window = samples[len(samples) - ready_streak:] if ready_streak else []
+    finality_advanced = (len(window) >= 2
+                        and window[-1]["finalizedBlock"] > window[0]["finalizedBlock"])
+    window_sessions = {item["sessionIndex"] for item in window}
+    crossed_session = len(window_sessions) > 1
+    session_baselines = {}
+    proofs = {}
+    for item in window:
+        session = item["sessionIndex"]
+        # A first observation in a session cannot bind an earlier block's index
+        # to that session's local account. Start a new freshness baseline.
+        baseline = session_baselines.setdefault(session, item["finalizedBlock"])
         proof = item.get("authorshipProof")
-        if isinstance(proof, dict) and proof.get("blockHash"):
-            authorship_proofs[proof["blockHash"]] = proof
-
-    first_block = first.get("finalizedBlock")
-    last_block = last.get("finalizedBlock")
-    finality_advanced = (
-        isinstance(first_block, int) and isinstance(last_block, int) and last_block > first_block
-    )
+        if (isinstance(proof, dict) and item.get("authorshipProofCanonical") is True
+                and unsigned(proof.get("blockNumber")) and unsigned(proof.get("authorityIndex"))
+                and block_hash(proof.get("blockHash"))
+                and baseline < proof["blockNumber"] <= item["finalizedBlock"]
+                and proof["authorityIndex"] == item["activeBabeAuthorityIndex"]
+                and (not require_session_boundary or session == window[-1]["sessionIndex"])):
+            proofs[proof["blockHash"]] = proof
     checks = {
         "finalityAdvanced": finality_advanced,
-        "requiredConsecutiveReadySamplesMet": maximum_ready_streak >= required_ready,
-        "finalizedAuthorshipObserved": bool(authorship_proofs),
+        "finalityMonotonic": finality_monotonic,
+        "sessionMonotonic": session_monotonic,
+        "stableCandidateAccount": identity_stable,
+        "requiredConsecutiveReadySamplesMet": ready_streak >= required_ready,
+        "finalizedAuthorshipObserved": bool(proofs),
+        "sessionBoundaryObserved": crossed_session,
     }
-    passed = checks["finalityAdvanced"] and checks["requiredConsecutiveReadySamplesMet"]
-    if require_authorship:
-        passed = passed and checks["finalizedAuthorshipObserved"]
+    diagnostic_passed = (finality_advanced and finality_monotonic and session_monotonic
+                         and identity_stable and ready_streak >= required_ready
+                         and (not require_session_boundary or crossed_session))
+    passed = diagnostic_passed and (bool(proofs) or not require_authorship)
     return {
         "passed": passed,
+        "acceptancePassed": passed and require_authorship,
+        "mode": "acceptance" if require_authorship else "diagnostic-no-authorship",
+        "requireSessionBoundary": require_session_boundary,
         "checks": checks,
         "sampleCount": len(samples),
         "sessionIndexes": sorted(sessions),
         "quorumSampleCount": quorum_samples,
         "maximumConsecutiveReadySamples": maximum_ready_streak,
-        "firstFinalizedBlock": first_block,
-        "lastFinalizedBlock": last_block,
-        "authorshipProofs": list(authorship_proofs.values()),
-        "lastLifecycleState": last.get("lifecycleState"),
-        "lastRemediation": last.get("remediation"),
+        "endingConsecutiveReadySamples": ready_streak,
+        "readyWindowFirstFinalizedBlock": window[0]["finalizedBlock"] if window else None,
+        "firstFinalizedBlock": samples[0].get("finalizedBlock"),
+        "lastFinalizedBlock": samples[-1].get("finalizedBlock"),
+        "candidateAccount": next(iter(candidates)) if len(candidates) == 1 else None,
+        "authorshipProofs": list(proofs.values()),
+        "lastLifecycleState": samples[-1].get("lifecycleState"),
+        "lastRemediation": samples[-1].get("remediation"),
+        "acceptanceScope": "Observed readiness and canonical finalized authorship only; not heartbeat inclusion or incident closure",
     }
 
 
@@ -154,11 +307,16 @@ def main() -> int:
     parser.add_argument("--interval", type=float, default=30.0)
     parser.add_argument("--timeout", type=float, default=8.0)
     parser.add_argument("--require-consecutive-ready", type=int, default=3)
-    parser.add_argument("--no-require-authorship", action="store_true")
+    parser.add_argument("--no-require-authorship", action="store_true",
+                        help="diagnostic only; acceptancePassed remains false")
+    parser.add_argument("--require-session-boundary", action="store_true",
+                        help="require a session transition in the ending ready window and fresh authorship in its final session")
     parser.add_argument("--output", help="write sanitized JSON Lines evidence")
     args = parser.parse_args()
-    if args.samples < 2 or args.interval < 0 or args.require_consecutive_ready < 1:
-        parser.error("samples must be >=2, interval >=0, and required ready samples >=1")
+    if (args.samples < 2 or not math.isfinite(args.interval) or args.interval < 0
+            or not math.isfinite(args.timeout) or args.timeout <= 0
+            or not 1 <= args.require_consecutive_ready <= args.samples):
+        parser.error("samples must be >=2, finite interval >=0, finite timeout >0, and ready count within sample count")
 
     observations = []
     output = open(args.output, "a", encoding="utf-8") if args.output else None
@@ -175,7 +333,7 @@ def main() -> int:
                 output.flush()
             print(
                 "sample={}/{} finalized={} session={} lifecycle={} mapped={}/{} "
-                "contributing={} ready={} authored={}".format(
+                "contributing={} ready={} proof_present={} canonical_proof={}".format(
                     index + 1,
                     args.samples,
                     observation.get("finalizedBlock"),
@@ -186,12 +344,14 @@ def main() -> int:
                     observation.get("contributingTemporalPeers"),
                     observation.get("readyToAuthor"),
                     bool(observation.get("authorshipProof")),
+                    observation.get("authorshipProofCanonical"),
                 )
             )
             if index + 1 < args.samples:
                 time.sleep(args.interval)
 
-        summary = evaluate(observations, args.require_consecutive_ready, not args.no_require_authorship)
+        summary = evaluate(observations, args.require_consecutive_ready, not args.no_require_authorship,
+                           args.require_session_boundary)
         if output:
             output.write(json.dumps({"type": "summary", **summary}, sort_keys=True) + "\n")
         print(json.dumps(summary, indent=2, sort_keys=True))
