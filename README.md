@@ -138,13 +138,35 @@ acceptance window without enabling unsafe RPC methods:
   --output validator-window.jsonl
 ```
 
-Success requires advancing finalized height, the configured mapped and
-contributing temporal quorum for three consecutive samples, `readyToAuthor`,
-and a bounded finalized authorship proof from
-`temporal_getValidatorReadiness`. The JSON Lines artifact contains only
-allow-listed public readiness fields; it excludes session keys, tokens, seeds,
-and unsafe peer RPC output. `--no-require-authorship` is available only for
-diagnostic windows and is not sufficient to close an authoring incident.
+Success requires an advancing, nondecreasing finalized chain and a ready window
+that continues through the last sample. Throughout that window, the local
+candidate must remain the same, mapped and contributing temporal peers must meet
+a positive configured quorum, and `activeSessionMatch` and `readyToAuthor` must
+remain true. An earlier ready streak followed by failure cannot pass.
+
+A finalized authorship proof must be newer than the first ready observation in
+its session, match the local active BABE authority index, and resolve to the same
+canonical hash using the Safe `chain_getBlockHash` RPC. The watcher checks the
+finalized header with `chain_getHeader` and retries a moving readiness/head
+snapshot at most three times. A proof from before the measured window cannot
+establish recovery. The authority index may change at a session boundary; an
+index change within one session fails verification.
+
+For a window intended to cover a session transition, add
+`--require-session-boundary`. This requires uninterrupted readiness across an
+observed transition and fresh finalized authorship in the final observed session.
+Choose enough samples and a suitable interval to observe that transition; this
+flag does not change session timing or cause transactions.
+
+The JSON Lines artifact contains allow-listed public readiness fields, candidate
+account, authority index, and canonical-proof results. It excludes session keys,
+tokens, seeds, and unsafe peer RPC output. `--no-require-authorship` is diagnostic
+only: its summary uses `mode: diagnostic-no-authorship` and always reports
+`acceptancePassed: false`, even if `passed` is true and the diagnostic exits zero.
+
+A successful acceptance window establishes only the observed readiness and
+canonical finalized authorship. It does not prove heartbeat inclusion, repair a
+runtime or consensus defect, or by itself close a recovery incident.
 
 ## Permissionless validator enrollment
 
