@@ -228,13 +228,39 @@ def check_transition(rpc: "RpcClient", account: str, expected_session_keys: str 
     keys_match = expected_session_keys is None or (keys_present and next_keys.lower() == expected_session_keys.lower())
     local_custody = expected_session_keys is not None and transition_local_custody(rpc, account, expected_session_keys)
     active_member = account.lower() in {entry.lower() for entry in active}
+    report = capture_readiness(rpc)
+    failures = []
+    if not bonded or not intent:
+        failures.append("Complete finalized bond and validator candidacy first.")
+    if not keys_present or not keys_match or not local_custody:
+        failures.append("Match all seven locally held public keys to finalized session.nextKeys before handoff.")
+    if report["candidateAccount"] is not None and report["candidateAccount"].lower() != account.lower():
+        failures.append("Select the candidate account reported by the local node.")
+    if report["majorSyncing"] is not False or report["validatorRoleConfigured"] is not True:
+        failures.append("Finish syncing and configure the validator role before handoff.")
+    if report["mappedTemporalPeers"] < max(2, report["minimumTemporalSources"]):
+        failures.append("Connect at least two mapped active-authority temporal peers; ordinary P2P peers do not count.")
+    if not report["nextKeysMatch"] or not report["candidateIntent"] or report["matchedSessionKeyCount"] != 7:
+        failures.append("Resolve the Safe readiness RPC's candidacy and seven-key nextKeys mismatch.")
+    if active_member and not (report["activeSessionMatch"] and report["activeBabeAuthorityIndex"] is not None
+                              and report["activeTemporalAuthorityIndex"] is not None
+                              and report["producerAuthorityIndex"] is not None
+                              and report["convergenceState"] == "Converged"
+                              and report["readyToAuthor"]):
+        failures.append("Wait for active session mapping, converged time and Safe RPC authoring readiness.")
     state = "active" if active_member else "waiting" if intent and keys_present else "candidate" if intent else "bonded" if bonded else "not-started"
     return {
         "schema": "roko.validator-transition-status.v1", "account": account.lower(),
         "finalizedHash": finalized, "finalizedHeight": str(block_height(header)), "state": state,
         "bonded": bonded, "validatorIntent": intent, "sessionKeysPresent": keys_present,
         "sessionKeysMatch": keys_match, "localSessionCustody": local_custody, "active": active_member,
-        "safeToEnableValidatorMode": bonded and intent and keys_present and keys_match and local_custody,
+        "safeToEnableValidatorMode": not failures,
+        "mappedTemporalPeers": report["mappedTemporalPeers"], "genericP2pPeers": report["genericP2pPeers"],
+        "safeToAuthor": not failures and active_member and report["readyToAuthor"],
+        "authorshipProven": (not failures and active_member and report["authorshipProof"] is not None
+                             and report["authorshipProof"]["authorityIndex"] == report["producerAuthorityIndex"]
+                             and report["authorshipProof"]["blockNumber"] <= report["finalizedBlock"]),
+        "failedStages": failures,
         "safeToRetireOldKeys": False,
         "retirementReason": "Retire old keys only after Agora proves replacement activation and finalized authorship.",
     }

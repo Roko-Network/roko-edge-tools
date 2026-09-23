@@ -233,6 +233,14 @@ bin/roko-validator-enroll \
 ```
 
 The tuple is public. Require `safeToEnableValidatorMode: true`; keep Safe RPC
-enabled. A not-ready result is not permission to skip custody verification.
+enabled. This pre-activation handoff gate now also requires seven matched keys,
+configured candidacy, a synced node, and at least two mapped active-authority
+temporal peers; generic P2P peers do not count. Before activation, a null
+producer index and an absent queued tuple are expected and do not block the
+handoff. Once active, `safeToAuthor` additionally requires the mapped active
+session and converged Safe-RPC readiness. `authorshipProven` reports a finalized
+block attributed to the expected producer; neither flag is implied by the
+pre-activation handoff. Follow `failedStages` rather than lowering the time
+source minimum. A not-ready result is not permission to skip custody verification.
 Older signed tool bundles may lack the Safe readiness fallback; use the source
 command above until a new signed bundle includes it.

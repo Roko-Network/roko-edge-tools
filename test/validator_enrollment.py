@@ -363,6 +363,7 @@ class ValidatorEnrollmentTests(unittest.TestCase):
                 if method == "chain_getFinalizedHead": return finalized
                 if method == "chain_getHeader": return {"number": "0x64"}
                 if method == "author_hasSessionKeys": return arguments == [session_keys]
+                if method == "temporal_getValidatorReadiness": return readiness
                 key = arguments[0]
                 if key == MODULE.storage_value_key("Session", "Validators"):
                     return "0x04" + account[2:]
@@ -373,12 +374,6 @@ class ValidatorEnrollmentTests(unittest.TestCase):
                 }
                 return present.get(key)
 
-        status = MODULE.check_transition(TransitionRpc(), account, session_keys)
-        self.assertEqual(status["finalizedHeight"], "100")
-        self.assertEqual(status["state"], "active")
-        self.assertTrue(status["safeToEnableValidatorMode"])
-        self.assertFalse(status["safeToRetireOldKeys"])
-
         readiness = self.readiness()
         readiness["candidateAccount"] = account
         for entry in readiness["sessionKeys"]:
@@ -386,6 +381,11 @@ class ValidatorEnrollmentTests(unittest.TestCase):
             public = "0x" + "55" * width
             entry["expectedPublic"] = public
             entry["observedPublic"] = [public]
+        status = MODULE.check_transition(TransitionRpc(), account, session_keys)
+        self.assertEqual(status["finalizedHeight"], "100")
+        self.assertEqual(status["state"], "active")
+        self.assertTrue(status["safeToEnableValidatorMode"])
+        self.assertFalse(status["safeToRetireOldKeys"])
 
         class SafeTransitionRpc(TransitionRpc):
             def call(self, method, params=None):
@@ -398,6 +398,35 @@ class ValidatorEnrollmentTests(unittest.TestCase):
         self.assertTrue(safe_status["safeToEnableValidatorMode"])
         readiness["sessionKeys"][-1]["observedPublic"] = []
         self.assertFalse(MODULE.check_transition(SafeTransitionRpc(), account, session_keys)["safeToEnableValidatorMode"])
+        readiness["sessionKeys"][-1]["observedPublic"] = ["0x" + "55" * 33]
+        readiness["mappedTemporalPeers"] = 0
+        readiness["genericP2pPeers"] = 8
+        blocked = MODULE.check_transition(TransitionRpc(), account, session_keys)
+        self.assertFalse(blocked["safeToEnableValidatorMode"])
+        self.assertIn("mapped active-authority", blocked["failedStages"][-1])
+        readiness["mappedTemporalPeers"] = 2
+        readiness["producerAuthorityIndex"] = None
+        self.assertFalse(MODULE.check_transition(TransitionRpc(), account, session_keys)["safeToEnableValidatorMode"])
+        readiness["producerAuthorityIndex"] = 3
+        readiness["activeSessionMatch"] = False
+        self.assertFalse(MODULE.check_transition(TransitionRpc(), account, session_keys)["safeToEnableValidatorMode"])
+
+        class WaitingRpc(TransitionRpc):
+            def call(self, method, params=None):
+                if method == "state_getStorage" and params[0] == MODULE.storage_value_key("Session", "Validators"):
+                    return "0x00"
+                return super().call(method, params)
+
+        readiness["producerAuthorityIndex"] = None
+        readiness["activeBabeAuthorityIndex"] = None
+        readiness["activeTemporalAuthorityIndex"] = None
+        readiness["queuedKeysMatch"] = False
+        waiting = MODULE.check_transition(WaitingRpc(), account, session_keys)
+        self.assertEqual(waiting["state"], "waiting")
+        self.assertTrue(waiting["safeToEnableValidatorMode"])
+        self.assertFalse(waiting["safeToAuthor"])
+        readiness["mappedTemporalPeers"] = 1
+        self.assertFalse(MODULE.check_transition(WaitingRpc(), account, session_keys)["safeToEnableValidatorMode"])
 
     def test_transition_check_fails_closed_on_key_or_runtime_shape_drift(self):
         account = f"0x{'22' * 20}"
@@ -453,11 +482,13 @@ class ValidatorEnrollmentTests(unittest.TestCase):
             def call(self, method, params=None):
                 if method == "chain_getFinalizedHead": return "0x" + "aa" * 32
                 if method == "chain_getHeader": return {"number": "0x64"}
+                if method == "temporal_getValidatorReadiness": return report
                 if method != "state_getStorage": raise AssertionError(method)
                 if params[0] == MODULE.storage_value_key("Session", "Validators"):
                     return "0x00"
                 return "0x" + "55" * 226
 
+        report = self.readiness()
         status = MODULE.check_transition(StateOnlyRpc(), account)
         self.assertFalse(status["localSessionCustody"])
         self.assertFalse(status["safeToEnableValidatorMode"])
