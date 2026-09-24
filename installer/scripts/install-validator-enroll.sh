@@ -40,8 +40,8 @@ as_root bash "$task_dir/install-roko-validator-enroll.sh" --release-base "$relea
 
 resolved="$(command -v roko-validator-enroll || true)"
 [[ -n "$resolved" && -x "$resolved" ]] || fail \
-  "roko-validator-enroll was not installed. Download and verify it at $release_base/"
+  "roko-validator-enroll was not installed. Install and verify it with https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh"
 version_output="$(roko-validator-enroll --version 2>&1)" || fail \
-  "roko-validator-enroll cannot run. Reinstall from $release_base/"
+  "roko-validator-enroll cannot run. Install and verify it with https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh"
 log "Validator enrollment command: $resolved"
 log "Validator enrollment version: $version_output"

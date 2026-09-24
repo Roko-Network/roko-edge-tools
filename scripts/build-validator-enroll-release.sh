@@ -129,6 +129,7 @@ target, version, revision, updated, archive, digest, size, compatibility_digest 
 value = {
     "schema": "roko.validator-enroll-release.v1",
     "tool": {"name": "roko-validator-enroll", "version": version},
+    "package": {"name": pathlib.PurePosixPath(archive).stem.removesuffix(".tar")},
     "source": {
         "repository": "https://github.com/Roko-Network/roko-edge-tools",
         "revision": revision,

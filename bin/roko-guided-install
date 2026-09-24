@@ -272,11 +272,15 @@ printf '\nROKO installation is ready. Review: %s\n' "$REPORT_PATH"
 
 if [[ "$NODE_ROLE" == validator-candidate ]]; then
   enrollment_path="$(command -v roko-validator-enroll || true)"
-  [[ -n "$enrollment_path" ]] || {
-    printf 'Validator enrollment command is missing after installation. Reinstall from https://downloads.roko.network/validator-tools/current/\n' >&2
+  [[ -n "$enrollment_path" && -x "$enrollment_path" ]] || {
+    printf 'Validator enrollment command is missing after installation. Install and verify it with https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh\n' >&2
     exit 1
   }
-  enrollment_version="$(roko-validator-enroll --version)"
+  enrollment_path="$(readlink -f -- "$enrollment_path")"
+  if ! enrollment_version="$("$enrollment_path" --version)"; then
+    printf 'Validator enrollment command cannot run after installation. Install and verify it with https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh\n' >&2
+    exit 1
+  fi
   cat <<EOF
 
 Validator onboarding

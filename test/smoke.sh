@@ -26,6 +26,7 @@ python3 -m py_compile bin/roko-rpc-health
 python3 -m py_compile bin/roko-validator-watch test/validator_watch.py
 python3 test/validator_watch.py
 python3 test/docset.py
+python3 test/validator_public_contract.py
 
 grep -R "ntp01.roko.network" README.md examples docs bin lib >/dev/null
 grep -R "/roko/timesync/1" README.md docs >/dev/null
@@ -47,7 +48,8 @@ grep -F "roko-validator-enroll" installer/scripts/write-readiness-report.sh >/de
 grep -F "sudo roko-session-key-window --help" bin/roko-guided-install >/dev/null
 grep -F "install-validator-enroll" bin/roko-guided-install >/dev/null
 grep -F "Installed command:" bin/roko-guided-install >/dev/null
-grep -F "https://downloads.roko.network/validator-tools/current/" bin/roko-guided-install >/dev/null
+grep -F "https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh" bin/roko-guided-install >/dev/null
+grep -F 'readlink -f' bin/roko-guided-install >/dev/null
 grep -F 'SHA256SUMS.asc' installer/scripts/install-validator-enroll.sh >/dev/null
 grep -F '62297562B1C7053088F405DB0117DAAA677A5BF2' installer/scripts/install-validator-enroll.sh >/dev/null
 test "$(grep -n 'gpg --batch --verify' installer/scripts/install-validator-enroll.sh | cut -d: -f1)" -lt "$(grep -n 'as_root bash' installer/scripts/install-validator-enroll.sh | cut -d: -f1)"

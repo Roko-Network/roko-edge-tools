@@ -57,12 +57,20 @@ and required RPC capabilities instead of comparing those three strings as
 semver. The CLI records binary identity; it does not itself authenticate the
 node binary or certify the operator's service configuration.
 
-For an air-gapped host,
-download the versioned offline bundle and its `.sha256` file on another host,
-verify the bundle over a separately authenticated channel, transfer both,
-extract the bundle, verify its pinned key plus `SHA256SUMS.asc`, and run:
+For an air-gapped host, download the versioned offline bundle and its
+`.sha256` file on another host, transfer both files, then verify the pinned
+release key fingerprint and the signed `SHA256SUMS` manifest before running the
+bundled installer. This does not require cloning a development branch:
 
 ```bash
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.1/roko-validator-enroll-offline-1.4.1.tar.gz
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.1/roko-validator-enroll-offline-1.4.1.tar.gz.sha256
+sha256sum --check --strict roko-validator-enroll-offline-1.4.1.tar.gz.sha256
+tar -xzf roko-validator-enroll-offline-1.4.1.tar.gz
+gpg --import roko-release-signing-key.asc
+gpg --fingerprint 62297562B1C7053088F405DB0117DAAA677A5BF2
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum --check --strict --ignore-missing SHA256SUMS
 sudo bash install-roko-validator-enroll.sh --bundle-dir "$PWD"
 ```
 
