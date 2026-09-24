@@ -28,6 +28,21 @@ cmp "$task_dir/release-a/roko-validator-enroll-1.4.1.tar.gz" \
   "$task_dir/release-b/roko-validator-enroll-1.4.1.tar.gz"
 cmp "$task_dir/release-a/roko-validator-enroll-1.4.1.metadata.json" \
   "$task_dir/release-b/roko-validator-enroll-1.4.1.metadata.json"
+python3 - "$task_dir/release-a/roko-validator-enroll-1.4.1.metadata.json" <<'PY'
+import json
+import re
+import sys
+
+metadata = json.load(open(sys.argv[1], encoding="utf-8"))
+assert metadata["tool"] == {"name": "roko-validator-enroll", "version": "1.4.1"}
+assert metadata["package"] == {"name": "roko-validator-enroll-1.4.1"}
+assert metadata["artifact"]["file"] == "roko-validator-enroll-1.4.1.tar.gz"
+assert re.fullmatch(r"[0-9a-f]{64}", metadata["artifact"]["sha256"])
+assert metadata["artifact"]["bytes"] > 0
+assert metadata["artifact"]["mediaType"] == "application/gzip"
+assert metadata["source"]["revision"] == "0123456789abcdef0123456789abcdef01234567"
+assert metadata["updatedAt"] == "2026-09-05T01:00:00Z"
+PY
 grep -F 'install-roko-validator-enroll.sh' "$task_dir/release-a/SHA256SUMS" >/dev/null
 (
   cd "$task_dir/release-a"
