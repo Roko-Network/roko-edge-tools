@@ -1,0 +1,48 @@
+{
+  "status": "pass",
+  "scope": "operator-owned live testnet node; guarded existing-key package refresh only",
+  "observedAt": "2026-09-15T18:03:03+00:00",
+  "liveChainUsed": true,
+  "tooling": {
+    "version": "roko-validator-enroll 1.4.1",
+    "cliSha256": "7563a5b0121879eab175bd92db88d3c2b57c59182a83c37b188fea584fb66c26",
+    "helperSha256": "095774575f59f45c8f280fc8bfa20e31f9aafaee52bf2e10ac12e9e7ad015e40"
+  },
+  "node": {
+    "version": "roko-node-current 3.0.0-dev-3eb6295b06a",
+    "binarySha256": "119f90a7686524d117201933bf4f066e2b813e27f44db332c289f5a2bbf762ae",
+    "genesisHash": "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb",
+    "specName": "mainnet",
+    "specVersion": 286,
+    "transactionVersion": 4,
+    "role": "Full",
+    "isSyncing": false,
+    "currentHeight": 1243143,
+    "highestHeight": 1243143,
+    "peers": 1,
+    "clockSource": "PHC via chrony"
+  },
+  "reuse": {
+    "helperExit": 0,
+    "samePublicTuple": true,
+    "freshEnrollmentId": true,
+    "freshPackageDigest": true,
+    "packageIntegrityRecomputed": true,
+    "packageDigest": "sha256:db8df923de3f9b9317b0b36ff87bf8b6a413cf5200306fc6820b85f6568a7c77",
+    "generatedAt": "2026-09-15T17:59:11.104Z",
+    "expiresAt": "2026-09-15T18:29:11.104Z"
+  },
+  "recovery": {
+    "safeRpcRestored": true,
+    "safeRpcVerified": true,
+    "keyManagementMethodsBlocked": true,
+    "serviceActive": true,
+    "rpcExposure": "loopback-only"
+  },
+  "excludedClaims": [
+    "No session tuple or importable enrollment package is retained in this receipt.",
+    "No private key bytes, key-file hashes, wallet data, or credentials were inspected or retained.",
+    "This run did not rotate keys, exercise injected service faults, import into Agora, request wallet signatures, or prove finalized validator registration.",
+    "This operator receipt complements but does not replace the isolated qualification harness."
+  ]
+}

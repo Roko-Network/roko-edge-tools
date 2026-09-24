@@ -138,13 +138,35 @@ acceptance window without enabling unsafe RPC methods:
   --output validator-window.jsonl
 ```
 
-Success requires advancing finalized height, the configured mapped and
-contributing temporal quorum for three consecutive samples, `readyToAuthor`,
-and a bounded finalized authorship proof from
-`temporal_getValidatorReadiness`. The JSON Lines artifact contains only
-allow-listed public readiness fields; it excludes session keys, tokens, seeds,
-and unsafe peer RPC output. `--no-require-authorship` is available only for
-diagnostic windows and is not sufficient to close an authoring incident.
+Success requires an advancing, nondecreasing finalized chain and a ready window
+that continues through the last sample. Throughout that window, the local
+candidate must remain the same, mapped and contributing temporal peers must meet
+a positive configured quorum, and `activeSessionMatch` and `readyToAuthor` must
+remain true. An earlier ready streak followed by failure cannot pass.
+
+A finalized authorship proof must be newer than the first ready observation in
+its session, match the local active BABE authority index, and resolve to the same
+canonical hash using the Safe `chain_getBlockHash` RPC. The watcher checks the
+finalized header with `chain_getHeader` and retries a moving readiness/head
+snapshot at most three times. A proof from before the measured window cannot
+establish recovery. The authority index may change at a session boundary; an
+index change within one session fails verification.
+
+For a window intended to cover a session transition, add
+`--require-session-boundary`. This requires uninterrupted readiness across an
+observed transition and fresh finalized authorship in the final observed session.
+Choose enough samples and a suitable interval to observe that transition; this
+flag does not change session timing or cause transactions.
+
+The JSON Lines artifact contains allow-listed public readiness fields, candidate
+account, authority index, and canonical-proof results. It excludes session keys,
+tokens, seeds, and unsafe peer RPC output. `--no-require-authorship` is diagnostic
+only: its summary uses `mode: diagnostic-no-authorship` and always reports
+`acceptancePassed: false`, even if `passed` is true and the diagnostic exits zero.
+
+A successful acceptance window establishes only the observed readiness and
+canonical finalized authorship. It does not prove heartbeat inclusion, repair a
+runtime or consensus defect, or by itself close a recovery incident.
 
 ## Permissionless validator enrollment
 
@@ -300,3 +322,38 @@ Use it to observe and report; make operational changes deliberately.
 
 - Primary: [github.com/Roko-Network/roko-edge-tools](https://github.com/Roko-Network/roko-edge-tools)
 - Mirror: [git.integrolabs.net/roctinam/roko-edge-tools](https://git.integrolabs.net/roctinam/roko-edge-tools)
+
+## Wallet setup before enrollment
+
+Agora uses Substrate signing with an Ethereum-format AccountId20 account.
+Ordinary MetaMask/EVM mode cannot sign this flow. Talisman is the documented
+path with reported enrollment success; confirm the intended account and exact
+network/metadata in Agora. A web-only wallet is not a verified substitute.
+
+In a build whose `roko-validator-enroll --help` lists `--wallet-setup`, run:
+
+```sh
+roko-validator-enroll --wallet-setup YOUR_PUBLIC_0x_ACCOUNT --output ./roko-wallet-setup.json
+```
+
+Replace the placeholder with only the intended public 20-byte address. This
+read-only command checks configured-testnet genesis/chain ID and reads runtime
+version at a finalized hash through loopback RPC. It emits a public agent-readable
+handoff, official setup links and ordered browser steps. It never opens Unsafe
+RPC, changes keys, signs, or claims the browser wallet is ready. Existing output
+files are not overwritten. The JSON is a setup checklist, **not an enrollment
+package** to import into Agora.
+
+Wallet import, permission approval and signing remain owner-controlled in the
+official wallet UI. Never give tools/agents an account private key or recovery
+phrase. Verify the exact same account after any wallet migration. A watch-only
+account cannot sign. Use a desktop browser extension and custom Substrate
+network; adding an EVM network alone is insufficient.
+
+Complete the browser wallet/network check before generating the short-lived
+node package. Compare the installed CLI and signed catalog with the actual
+Agora importer contract; version labels do not prove acceptance. If a package
+expires, use the supported refresh/reissue procedure without editing its tuple
+or expiry and without assuming another key rotation is necessary. Existing
+signed releases may lack this new option; use the [public wallet guide](https://docs.roko.network/pages/wallets-faucet.html)
+until a signed release containing it is published.
