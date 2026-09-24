@@ -229,18 +229,32 @@ source checkout to verify finalized state and local custody under Safe RPC:
 bin/roko-validator-enroll \
   --rpc http://127.0.0.1:9944 \
   --check-account 0xYOUR_40_HEX_CHARACTER_ACCOUNT \
+  --qualification reviewed-public-qualification.json \
   --expected-session-keys "$(python3 -c 'import json; print(json.load(open("roko-validator-enrollment.json"))["session"]["encodedKeys"])')"
 ```
 
-The tuple is public. Require `safeToEnableValidatorMode: true`; keep Safe RPC
-enabled. This pre-activation handoff gate now also requires seven matched keys,
+The tuple is public. `reviewed-public-qualification.json` contains only
+`sourceCommit` (40 hex characters), `imageDigest` (a `0x` SHA-256 digest, or
+`null` for native), `binarySha256`, `genesisHash`, `specName`, `specVersion`,
+and `metadataHash`. Obtain these from reviewed release/image qualification;
+never invent identities. The CLI checks the local binary and live genesis,
+runtime and metadata against them. Verify source/image provenance through the
+reviewed signed release out of band; this RPC cannot attest build provenance.
+Without qualification, the handoff is blocked. The public
+`roko.validator-transition-status.v2` receipt has a canonical SHA-256 digest
+checked by `validator_receipt.verify_receipt`. Safe readiness exposes
+`queuedKeysMatch`, not a raw queued set; the receipt states that limitation.
+
+Require `safeToEnableValidatorMode: true`; keep Safe RPC enabled. This pre-activation handoff gate now also requires seven matched keys,
 configured candidacy, a synced node, and at least two mapped active-authority
 temporal peers; generic P2P peers do not count. Before activation, a null
 producer index and an absent queued tuple are expected and do not block the
-handoff. Once active, `safeToAuthor` additionally requires the mapped active
-session and converged Safe-RPC readiness. `authorshipProven` reports a finalized
-block attributed to the expected producer; neither flag is implied by the
-pre-activation handoff. Follow `failedStages` rather than lowering the time
-source minimum. A not-ready result is not permission to skip custody verification.
+handoff. Once active, `safeToAuthor` additionally requires exact active keys,
+matching BABE/temporal/producer mappings, converged time and a canonical
+finalized block attributed to the expected producer. Generic P2P peers and
+`system_nodeRoles: Authority` are separate diagnostics, not readiness evidence.
+Neither authorship nor retirement is implied by pre-activation handoff. Follow
+`failedStages`; never use `--timesync-min-sources 1` as remediation without a
+separately reviewed protocol policy authorizing that profile. A not-ready result is not permission to skip custody verification.
 Older signed tool bundles may lack the Safe readiness fallback; use the source
 command above until a new signed bundle includes it.

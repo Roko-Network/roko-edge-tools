@@ -5,12 +5,14 @@ import importlib.util
 import json
 import os
 import stat
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "lib"))
 SPEC = importlib.util.spec_from_file_location("validator_enrollment", ROOT / "lib" / "validator_enrollment.py")
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader
@@ -351,6 +353,15 @@ class ValidatorEnrollmentTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.EnrollmentError, "exactly seven"):
             MODULE.validate_readiness(malformed)
 
+    def qualification(self):
+        return {
+            "sourceCommit": "a" * 40, "imageDigest": None,
+            "binarySha256": MODULE.binary_identity(self.binary)[1],
+            "genesisHash": MODULE.TESTNET_GENESIS,
+            "specName": "roko-testnet", "specVersion": 285,
+            "metadataHash": MODULE.metadata_digest("0x01020304"),
+        }
+
     def test_substrate_storage_keys_and_finalized_transition_status(self):
         self.assertEqual(MODULE.storage_value_key("System", "Account")[:34], "0x26aa394eea5630e07c48ae0c9558cef7")
         account = f"0x{'22' * 20}"
@@ -362,6 +373,10 @@ class ValidatorEnrollmentTests(unittest.TestCase):
                 arguments = params or []
                 if method == "chain_getFinalizedHead": return finalized
                 if method == "chain_getHeader": return {"number": "0x64"}
+                if method == "chain_getBlockHash": return MODULE.TESTNET_GENESIS if arguments == [0] else finalized
+                if method == "state_getRuntimeVersion": return {"specName": "roko-testnet", "specVersion": 285}
+                if method == "state_getMetadata": return "0x01020304"
+                if method == "system_nodeRoles": return ["Authority"]
                 if method == "author_hasSessionKeys": return arguments == [session_keys]
                 if method == "temporal_getValidatorReadiness": return readiness
                 key = arguments[0]
@@ -381,10 +396,14 @@ class ValidatorEnrollmentTests(unittest.TestCase):
             public = "0x" + "55" * width
             entry["expectedPublic"] = public
             entry["observedPublic"] = [public]
-        status = MODULE.check_transition(TransitionRpc(), account, session_keys)
+        readiness["expectedTemporalPublic"] = "0x" + "55" * 33
+        readiness["observedTemporalPublic"] = [readiness["expectedTemporalPublic"]]
+        status = MODULE.check_transition(TransitionRpc(), account, session_keys, self.qualification())
         self.assertEqual(status["finalizedHeight"], "100")
         self.assertEqual(status["state"], "active")
-        self.assertTrue(status["safeToEnableValidatorMode"])
+        self.assertFalse(status["safeToEnableValidatorMode"])
+        self.assertIn("authorship", " ".join(status["failedStages"]))
+        self.assertEqual(MODULE.verify_receipt(status), status)
         self.assertFalse(status["safeToRetireOldKeys"])
 
         class SafeTransitionRpc(TransitionRpc):
@@ -394,8 +413,8 @@ class ValidatorEnrollmentTests(unittest.TestCase):
                 if method == "temporal_getValidatorReadiness": return readiness
                 return super().call(method, params)
 
-        safe_status = MODULE.check_transition(SafeTransitionRpc(), account, session_keys)
-        self.assertTrue(safe_status["safeToEnableValidatorMode"])
+        safe_status = MODULE.check_transition(SafeTransitionRpc(), account, session_keys, self.qualification())
+        self.assertFalse(safe_status["safeToEnableValidatorMode"])
         readiness["sessionKeys"][-1]["observedPublic"] = []
         self.assertFalse(MODULE.check_transition(SafeTransitionRpc(), account, session_keys)["safeToEnableValidatorMode"])
         readiness["sessionKeys"][-1]["observedPublic"] = ["0x" + "55" * 33]
@@ -403,7 +422,7 @@ class ValidatorEnrollmentTests(unittest.TestCase):
         readiness["genericP2pPeers"] = 8
         blocked = MODULE.check_transition(TransitionRpc(), account, session_keys)
         self.assertFalse(blocked["safeToEnableValidatorMode"])
-        self.assertIn("mapped active-authority", blocked["failedStages"][-1])
+        self.assertTrue(any("mapped active-authority" in stage for stage in blocked["failedStages"]))
         readiness["mappedTemporalPeers"] = 2
         readiness["producerAuthorityIndex"] = None
         self.assertFalse(MODULE.check_transition(TransitionRpc(), account, session_keys)["safeToEnableValidatorMode"])
@@ -421,7 +440,7 @@ class ValidatorEnrollmentTests(unittest.TestCase):
         readiness["activeBabeAuthorityIndex"] = None
         readiness["activeTemporalAuthorityIndex"] = None
         readiness["queuedKeysMatch"] = False
-        waiting = MODULE.check_transition(WaitingRpc(), account, session_keys)
+        waiting = MODULE.check_transition(WaitingRpc(), account, session_keys, self.qualification())
         self.assertEqual(waiting["state"], "waiting")
         self.assertTrue(waiting["safeToEnableValidatorMode"])
         self.assertFalse(waiting["safeToAuthor"])
@@ -483,6 +502,7 @@ class ValidatorEnrollmentTests(unittest.TestCase):
                 if method == "chain_getFinalizedHead": return "0x" + "aa" * 32
                 if method == "chain_getHeader": return {"number": "0x64"}
                 if method == "temporal_getValidatorReadiness": return report
+                if method == "system_nodeRoles": return ["Authority"]
                 if method != "state_getStorage": raise AssertionError(method)
                 if params[0] == MODULE.storage_value_key("Session", "Validators"):
                     return "0x00"
@@ -495,4 +515,6 @@ class ValidatorEnrollmentTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
+    suite.addTests(unittest.defaultTestLoader.discover(str(ROOT / "test"), pattern="validator_transition_scenarios.py"))
+    raise SystemExit(0 if unittest.TextTestRunner(verbosity=1).run(suite).wasSuccessful() else 1)
