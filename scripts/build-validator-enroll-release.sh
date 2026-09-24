@@ -84,7 +84,7 @@ install -m 0755 "$repo_root/bin/roko-validator-enroll" "$package_root/bin/"
 install -m 0755 "$repo_root/bin/roko-session-key-window" "$package_root/bin/"
 install -m 0755 "$repo_root/bin/roko-authority-peers" "$package_root/bin/"
 install -m 0755 "$repo_root/bin/roko-validator-watch" "$package_root/bin/"
-for module in validator_enrollment validator_contract validator_storage validator_transition validator_receipt authority_peers; do
+for module in validator_enrollment validator_contract validator_storage validator_transition validator_receipt validator_wallet_setup authority_peers; do
   install -m 0644 "$repo_root/lib/$module.py" "$package_root/lib/"
 done
 install -m 0644 "$repo_root/contracts/validator-enrollment-v1.schema.json" "$package_root/contracts/"

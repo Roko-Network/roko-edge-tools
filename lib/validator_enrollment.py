@@ -21,13 +21,12 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Callable
 from validator_contract import (SCHEMA, TOOL_VERSION, TESTNET_GENESIS, KEY_TYPES, HASH,
-                                ENCODED_KEYS, EnrollmentError, RpcRejectedError,
-                                scan_prohibited)
-from validator_storage import (storage_value_key, storage_map_key, decode_compact_length,
-                               decode_fixed_vector, xxhash64, twox128)
+                                ENCODED_KEYS, EnrollmentError, RpcRejectedError, scan_prohibited)
+from validator_storage import storage_value_key, storage_map_key, decode_fixed_vector
 from validator_transition import (key_rpc_policy_disabled, transition_local_custody,
                                   check_transition, validate_readiness, capture_readiness, block_height)
 from validator_receipt import verify_receipt
+from validator_wallet_setup import run_wallet_setup, wallet_setup
 
 
 def bounded_rpc_message(value: Any) -> str:
@@ -429,6 +428,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--qualification", help="Reviewed public source/image/genesis/runtime/binary identity JSON (required for transition receipt)")
     result.add_argument("--check-rpc-policy", action="store_true", help="Non-mutating proof that key-management RPC is blocked while safe health RPC remains available")
     result.add_argument("--save-readiness", help="Write the validated redacted Safe RPC readiness result for Agora (temporal_getValidatorReadiness)")
+    result.add_argument("--wallet-setup", metavar="PUBLIC_ACCOUNT", help="Read-only wallet setup handoff; optionally save public JSON with --output. Does not generate keys or an enrollment package")
     result.add_argument("--confirm-isolated-unsafe-rpc", action="store_true", help="Confirm the temporary key-generation endpoint is loopback-only and is not forwarded by a proxy or tunnel")
     session = result.add_mutually_exclusive_group()
     session.add_argument("--confirm-new-keys", action="store_true", help="Explicitly generate a fresh session-key tuple in the local keystore")
@@ -438,6 +438,8 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
+    if args.wallet_setup:
+        return run_wallet_setup(args, RpcClient, loopback_rpc)
     if args.save_readiness:
         if args.output or args.check_account or args.expected_session_keys or args.qualification or args.check_rpc_policy or args.confirm_new_keys or args.session_keys or args.confirm_isolated_unsafe_rpc:
             raise EnrollmentError("Readiness capture cannot create packages, rotate keys, or inspect an account")

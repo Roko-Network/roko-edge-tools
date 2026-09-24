@@ -77,3 +77,19 @@ service-fault cases and complete cleanup passed on nightly 086baf26/runtime
 complements the two-build source qualification above. Twelve contract cases
 and the full smoke suite passed. The 1.4.1 artifacts built before discovering
 this defect were never tagged or published.
+
+## Live operator confirmation
+
+A subsequent [sanitized operator receipt](evidence/live-reuse-3eb6295-runtime286-20260915.json)
+records successful existing-key reuse on the live configured testnet with the
+newer PHC-enabled amd64 node build `3eb6295b06a`, runtime 286, and released
+tooling 1.4.1. The helper returned zero, issued a fresh package for the same
+public tuple, restored Safe RPC, and verified key-management methods were
+blocked afterward. The receipt retains hashes and public verification facts,
+but no session tuple, importable package, key-file material, wallet data, or
+credentials.
+
+This live observation is deliberately narrower than the isolated harness: it
+did not rotate keys, inject service faults, inspect private key files, import
+into Agora, request wallet signatures, or prove finalized validator
+registration. It extends build coverage without weakening those boundaries.
