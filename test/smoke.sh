@@ -11,7 +11,7 @@ bash -n bin/roko-guided-install
 bash -n bin/roko-session-key-window
 bash -n scripts/build-validator-enroll-release.sh
 bash -n scripts/install-roko-validator-enroll.sh
-python3 -m py_compile bin/roko-validator-enroll bin/roko-authority-peers lib/validator_enrollment.py lib/authority_peers.py test/validator_enrollment.py test/authority_peers.py
+python3 -m py_compile bin/roko-validator-enroll bin/roko-authority-peers lib/validator_enrollment.py lib/validator_contract.py lib/validator_storage.py lib/validator_transition.py lib/validator_receipt.py lib/authority_peers.py test/validator_enrollment.py test/validator_transition_scenarios.py test/authority_peers.py
 python3 test/validator_enrollment.py
 python3 test/rpc_policy_contract.py
 python3 test/authority_peers.py
@@ -53,8 +53,8 @@ grep -F 'readlink -f' bin/roko-guided-install >/dev/null
 grep -F 'SHA256SUMS.asc' installer/scripts/install-validator-enroll.sh >/dev/null
 grep -F '62297562B1C7053088F405DB0117DAAA677A5BF2' installer/scripts/install-validator-enroll.sh >/dev/null
 test "$(grep -n 'gpg --batch --verify' installer/scripts/install-validator-enroll.sh | cut -d: -f1)" -lt "$(grep -n 'as_root bash' installer/scripts/install-validator-enroll.sh | cut -d: -f1)"
-grep -F "author_hasSessionKeys" lib/validator_enrollment.py >/dev/null
-grep -F "temporal_getValidatorReadiness" lib/validator_enrollment.py >/dev/null
+grep -F "author_hasSessionKeys" lib/validator_transition.py >/dev/null
+grep -F "temporal_getValidatorReadiness" lib/validator_transition.py >/dev/null
 grep -F -- "--save-readiness" docs/validator-self-join.md >/dev/null
 grep -F -- "--check-rpc-policy" docs/validator-self-join.md >/dev/null
 grep -F "Safe RPC restored and verified" bin/roko-session-key-window >/dev/null
