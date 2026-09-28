@@ -64,6 +64,42 @@ class AuthorityPeerTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.AuthorityPeerError, "two-mapped-peer"):
             MODULE.validate_manifest(lowered, self.now)
 
+    def test_expired_message_names_timestamps_and_remediation(self):
+        expired = json.loads(json.dumps(self.value))
+        expired["expiresAt"] = "2026-09-06T14:59:59Z"
+        with self.assertRaises(MODULE.AuthorityPeerError) as ctx:
+            MODULE.validate_manifest(expired, self.now)
+        message = str(ctx.exception)
+        self.assertIn("expired", message)
+        self.assertIn("2026-09-06T14:59:59Z", message)
+        self.assertIn("2026-09-06T15:00:00Z", message)
+        self.assertIn("re-published by the network operators", message)
+        self.assertIn("NODE_ROLE=full", message)
+        self.assertIn("host clock", message)
+        self.assertIn("synchronized", message)
+
+    def test_rejects_expires_not_after_generated(self):
+        bad_window = json.loads(json.dumps(self.value))
+        bad_window["generatedAt"] = "2026-09-06T15:02:00Z"
+        bad_window["expiresAt"] = "2026-09-06T15:01:00Z"
+        with self.assertRaises(MODULE.AuthorityPeerError) as ctx:
+            MODULE.validate_manifest(bad_window, self.now)
+        message = str(ctx.exception)
+        self.assertIn("invalid validity window", message)
+        self.assertIn("2026-09-06T15:02:00Z", message)
+        self.assertIn("2026-09-06T15:01:00Z", message)
+
+    def test_rejects_window_exceeding_fourteen_days(self):
+        wide = json.loads(json.dumps(self.value))
+        wide["expiresAt"] = "2026-09-21T14:55:01Z"
+        with self.assertRaises(MODULE.AuthorityPeerError) as ctx:
+            MODULE.validate_manifest(wide, self.now)
+        message = str(ctx.exception)
+        self.assertIn("invalid validity window", message)
+        self.assertIn("2026-09-06T14:55:00Z", message)
+        self.assertIn("2026-09-21T14:55:01Z", message)
+        self.assertIn("14 days", message)
+
     def test_atomic_output_is_canonical_owner_only(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "authority-peers.json"

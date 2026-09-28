@@ -80,8 +80,24 @@ def validate_manifest(value: Any, now: dt.datetime | None = None) -> dict[str, A
     expires = parse_utc(value["expiresAt"])
     if generated > observed + dt.timedelta(minutes=5):
         raise AuthorityPeerError("Authority manifest was generated in the future")
-    if expires <= observed or expires <= generated or expires - generated > dt.timedelta(days=14):
-        raise AuthorityPeerError("Authority manifest is expired or has an invalid validity window")
+    if expires <= observed:
+        observed_raw = observed.isoformat().replace("+00:00", "Z")
+        raise AuthorityPeerError(
+            f"Authority manifest is expired (expiresAt {value['expiresAt']}, "
+            f"observed UTC time {observed_raw}): the published manifest must be "
+            f"re-published by the network operators; install with NODE_ROLE=full "
+            f"until a fresh manifest is available, and ensure the host clock is synchronized"
+        )
+    if expires <= generated:
+        raise AuthorityPeerError(
+            f"Authority manifest has an invalid validity window: expiresAt {value['expiresAt']} "
+            f"is not after generatedAt {value['generatedAt']}"
+        )
+    if expires - generated > dt.timedelta(days=14):
+        raise AuthorityPeerError(
+            f"Authority manifest has an invalid validity window: validity window from "
+            f"generatedAt {value['generatedAt']} to expiresAt {value['expiresAt']} exceeds 14 days"
+        )
     finalized = value["finalized"]
     if not isinstance(finalized, dict) or set(finalized) != {"blockNumber", "blockHash", "sessionIndex"}:
         raise AuthorityPeerError("Authority manifest finalized evidence is malformed")
