@@ -65,6 +65,45 @@ pruning_line=""
 observer_line=""
 "$observer" && observer_line=$'  --timesync-advertise-observer \\\n'
 
+current_user_label() {
+  id -un 2>/dev/null || printf 'uid %s' "$(id -u)"
+}
+
+chrony_socket_missing() {
+  local checked_as="$1"
+  echo "Missing Chrony command socket: $chrony_socket (checked as $checked_as)." >&2
+  if [[ "$(id -u)" -ne 0 ]]; then
+    echo "If sudo escalation is unavailable, run this installer with sudo." >&2
+  fi
+  exit 1
+}
+
+read_chrony_socket_gid() {
+  local checked_as
+  local -a sudo_args
+  if [[ "$(id -u)" -eq 0 ]]; then
+    checked_as=root
+    [[ -S "$chrony_socket" ]] || chrony_socket_missing "$checked_as"
+    chrony_gid="$(stat -c %g "$chrony_socket")"
+    return
+  fi
+
+  checked_as="root via sudo from $(current_user_label)"
+  if "$dry_run"; then
+    if ! sudo -n true >/dev/null 2>&1; then
+      echo "Warning: could not check Chrony command socket during dry run because non-interactive sudo is unavailable; using Chrony group id ${ROKO_CHRONY_GID:-999}." >&2
+      chrony_gid="${ROKO_CHRONY_GID:-999}"
+      return
+    fi
+    sudo_args=(-n)
+  else
+    sudo_args=()
+  fi
+
+  sudo "${sudo_args[@]}" test -S "$chrony_socket" || chrony_socket_missing "$checked_as"
+  chrony_gid="$(sudo "${sudo_args[@]}" stat -c %g "$chrony_socket")"
+}
+
 authority_lines=""
 if "$validator_candidate"; then
   authority_manifest="${ROKO_AUTHORITY_MANIFEST_PATH:-/etc/roko/authority-peers.json}"
@@ -111,13 +150,10 @@ if [[ "$clock_provider" == chrony ]]; then
   chrony_pre_line="ExecStartPre=/usr/bin/test -S $chrony_socket"
   chrony_mount_requirement=" /run/chrony"
   time_lines=$'  --timesync-time-source auto \\\n  --timesync-chrony-socket /run/chrony/chronyd.sock \\\n'
-  if "$render_unit" || "$dry_run"; then
+  if "$render_unit"; then
     chrony_gid="${ROKO_CHRONY_GID:-999}"
   else
-    [[ -S "$chrony_socket" ]] || {
-      echo "Missing Chrony command socket: $chrony_socket" >&2; exit 1;
-    }
-    chrony_gid="$(stat -c %g "$chrony_socket")"
+    read_chrony_socket_gid
     if systemctl cat chronyd.service >/dev/null 2>&1; then
       clock_unit=chronyd.service
     fi
