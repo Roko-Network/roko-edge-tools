@@ -17,6 +17,7 @@ python3 test/rpc_policy_contract.py
 python3 test/authority_peers.py
 test/session_key_window.sh
 test/validator_enroll_release.sh
+test/chrony_socket_contract.sh
 test/docker_time_source_contract.sh
 test/authority_service_contract.sh
 for installer_script in installer/scripts/*.sh; do
