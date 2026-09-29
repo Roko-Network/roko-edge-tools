@@ -242,14 +242,31 @@ runtime and metadata against them. Verify source/image provenance through the
 reviewed signed release out of band; this RPC cannot attest build provenance.
 Without qualification, the handoff is blocked. The public
 `roko.validator-transition-status.v2` receipt has a canonical SHA-256 digest
-checked by `validator_receipt.verify_receipt`. Safe readiness exposes
-`queuedKeysMatch`, not a raw queued set; the receipt states that limitation.
+checked by `validator_receipt.verify_receipt`. Its `evidence` records only
+public material: the submitted tuple, finalized `session.nextKeys`, the active
+set, BABE/temporal/producer indices and the queued-set evidence below.
+
+Nodes that include roko_network#456 add the raw public `queuedValidators` and
+`activeValidators` to Safe readiness. The receipt then records
+`queuedSetEvidence: "Safe readiness RPC queuedValidators/activeValidators (raw public sets)"`,
+the candidate's `queuedCandidate` entry (account plus seven public keys in
+protocol order), `queuedTupleMatchesLocal` (the queued keys compared with the
+locally held public tuple) and `candidateInReadinessActiveSet`. A waiting
+candidate that has not yet been elected is absent from the queued set. This is
+recorded (`queuedSetEvidence` ends with `candidate not yet queued`) and does not
+block the handoff, because pre-activation safety rests on the finalized
+`nextKeys` proof. Once the account is queued, the gate fails with
+`Queued session tuple mismatch`, naming the differing keys, when the queued
+tuple is not the local one. Older
+nodes expose only `queuedKeysMatch`; the receipt records
+`queuedSetEvidence: "unavailable (node predates readiness queued set)"` with
+null queued fields, and the gate is unchanged.
 
 Require `safeToEnableValidatorMode: true`; keep Safe RPC enabled. This pre-activation handoff gate now also requires seven matched keys,
 configured candidacy, a synced node, and at least two mapped active-authority
 temporal peers; generic P2P peers do not count. Before activation, a null
-producer index and an absent queued tuple are expected and do not block the
-handoff. Once active, `safeToAuthor` additionally requires exact active keys,
+producer index is expected and does not block the handoff; on older nodes
+without the raw queued set, `queuedKeysMatch: false` does not block it either. Once active, `safeToAuthor` additionally requires exact active keys,
 matching BABE/temporal/producer mappings, converged time and a canonical
 finalized block attributed to the expected producer. Generic P2P peers and
 `system_nodeRoles: Authority` are separate diagnostics, not readiness evidence.

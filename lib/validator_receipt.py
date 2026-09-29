@@ -25,14 +25,24 @@ def verify_receipt(value: dict[str, Any]) -> dict[str, Any]:
 
 def transition_receipt(status: dict[str, Any], rpc: Any, readiness: dict[str, Any],
                        roles: list[str], submitted: str | None, next_keys: str | None, active: list[str],
-                       qualification: dict[str, Any] | None) -> dict[str, Any]:
-    # The Safe readiness RPC exposes queuedKeysMatch, not the raw queued set.
-    # Preserve that limitation rather than invent a queued-account RPC field.
+                       qualification: dict[str, Any] | None,
+                       queued: dict[str, Any] | None = None) -> dict[str, Any]:
+    # Nodes predating roko_network#456 expose only queuedKeysMatch; newer nodes
+    # add the raw public queued/active sets. Record which one this receipt used
+    # rather than invent queued-set evidence the node did not provide.
+    queued = queued or {
+        "queuedSetEvidence": "unavailable (node predates readiness queued set)",
+        "queuedCandidate": None, "queuedTupleMatchesLocal": None,
+        "candidateInReadinessActiveSet": None,
+    }
     status["evidence"] = {
         "submittedPublicTuple": submitted,
         "finalizedNextKeys": next_keys if status["sessionKeysPresent"] else None,
         "queuedKeysMatch": readiness["queuedKeysMatch"],
-        "queuedSetEvidence": "Safe readiness RPC queuedKeysMatch (not raw queued set)",
+        "queuedSetEvidence": queued["queuedSetEvidence"],
+        "queuedCandidate": queued["queuedCandidate"],
+        "queuedTupleMatchesLocal": queued["queuedTupleMatchesLocal"],
+        "candidateInReadinessActiveSet": queued["candidateInReadinessActiveSet"],
         "activeSet": active,
         "activeBabeAuthorityIndex": readiness["activeBabeAuthorityIndex"],
         "activeTemporalAuthorityIndex": readiness["activeTemporalAuthorityIndex"],
