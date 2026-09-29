@@ -20,6 +20,7 @@ test/validator_enroll_release.sh
 test/chrony_socket_contract.sh
 test/docker_time_source_contract.sh
 test/authority_service_contract.sh
+test/timing_profile_contract.sh
 for installer_script in installer/scripts/*.sh; do
   bash -n "$installer_script"
 done

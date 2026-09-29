@@ -10,6 +10,8 @@ clock_provider=chrony
 start_service=false
 dry_run=false
 render_unit=false
+timing_profile="${ROKO_TIMING_PROFILE:-}"
+timing_profile_explicit=false
 
 usage() {
   cat <<'EOF'
@@ -17,11 +19,20 @@ Usage:
   install-roko-service.sh --runtime native|docker --node-name NAME
                           [--archive] [--observer] [--validator-candidate]
                           [--clock-provider chrony|timebeat]
+                          [--timing-profile early-testnet|strict]
                           [--start] [--dry-run] [--render-unit]
 
 Installs a hardened, non-authoring ROKO service with loopback-only Safe RPC.
 Chrony deployments use the explicit node time-source contract. Docker mounts
 the host command socket read/write and adds its numeric group to uid 1000.
+
+--timing-profile selects the validator timing participation policy rendered
+as --timesync-participation-profile. It applies only to --validator-candidate
+and defaults to early-testnet on the configured ROKO testnet (roko-testnet-v2),
+matching the network-managed validators (ADR-021). strict is opt-in. Sync,
+fresh authenticated authority updates, clock discipline, and active session
+keys stay mandatory under both profiles. Non-validator roles never receive the
+flag. ROKO_TIMING_PROFILE supplies the same value from the environment.
 
 --render-unit prints the deterministic unit instead of changing the host.
 This script never generates keys, enrolls a validator, or enables authoring.
@@ -36,6 +47,7 @@ while (($#)); do
     --observer) observer=true ;;
     --validator-candidate) validator_candidate=true ;;
     --clock-provider) clock_provider="${2:-}"; shift ;;
+    --timing-profile) timing_profile="${2:-}"; timing_profile_explicit=true; shift ;;
     --start) start_service=true ;;
     --dry-run) dry_run=true ;;
     --render-unit) render_unit=true ;;
@@ -55,7 +67,26 @@ done
   echo "--node-name must use 1-64 letters, digits, dots, underscores, or hyphens" >&2; exit 2;
 }
 
+# The configured testnet is the only network this tooling targets.
 chain_path=/etc/roko/roko-testnet-v2.json
+default_timing_profile=early-testnet
+if "$timing_profile_explicit" || [[ -n "$timing_profile" ]]; then
+  [[ "$timing_profile" == early-testnet || "$timing_profile" == strict ]] || {
+    echo "--timing-profile (or ROKO_TIMING_PROFILE) must be early-testnet or strict; got: $timing_profile" >&2; exit 2;
+  }
+fi
+if "$timing_profile_explicit" && ! "$validator_candidate"; then
+  echo "--timing-profile applies only to --validator-candidate; non-validator roles do not take a participation profile." >&2
+  exit 2
+fi
+participation_line=""
+if "$validator_candidate"; then
+  timing_profile="${timing_profile:-$default_timing_profile}"
+  participation_line="  --timesync-participation-profile $timing_profile \\"
+  participation_line+=$'\n'
+else
+  timing_profile=""
+fi
 data_path=/var/lib/roko
 unit_path=/etc/systemd/system/roko-node.service
 bootnode=/dns4/boot.roko.network/tcp/30333/ws/p2p/12D3KooWKSBZRtSiGKo8ueJtazCHT89LaBi6ZAtzgbeznf4NtVGj
@@ -184,7 +215,7 @@ ExecStart=/usr/local/bin/roko-node \\
   --bootnodes $bootnode \\
 ${authority_lines}  --port 30333 \\
   --rpc-port 9944 \\
-${pruning_line}${time_lines}${observer_line}  --rpc-methods Safe
+${pruning_line}${time_lines}${participation_line}${observer_line}  --rpc-methods Safe
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536
@@ -223,7 +254,7 @@ ${docker_chrony_lines}  --mount type=bind,src=$data_path,dst=/data \\
   --bootnodes $bootnode \\
 ${authority_lines}  --port 30333 \\
   --rpc-port 9944 \\
-${pruning_line}${time_lines}${observer_line}  --rpc-methods Safe
+${pruning_line}${time_lines}${participation_line}${observer_line}  --rpc-methods Safe
 ExecStop=/usr/bin/docker stop --time 60 roko-node
 Restart=on-failure
 RestartSec=10
@@ -246,6 +277,7 @@ echo "  node name: $node_name"
 echo "  archive: $archive"
 echo "  observer: $observer"
 echo "  clock provider: $clock_provider"
+if "$validator_candidate"; then echo "  timing profile: $timing_profile"; fi
 echo "  start now: $start_service"
 if "$dry_run"; then exit 0; fi
 

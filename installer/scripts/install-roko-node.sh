@@ -32,6 +32,8 @@ bash "$task_dir/bootstrap-roko-chain-spec.sh"
 service_args=(--runtime "$RUNTIME" --node-name "$NODE_NAME" --clock-provider "${CLOCK_PROVIDER:-chrony}")
 [[ "$NODE_ROLE" == archive ]] && service_args+=(--archive)
 [[ "$NODE_ROLE" == observer ]] && service_args+=(--observer)
-[[ "$NODE_ROLE" == validator-candidate ]] && service_args+=(--validator-candidate)
+if [[ "$NODE_ROLE" == validator-candidate ]]; then
+  service_args+=(--validator-candidate --timing-profile "${ROKO_TIMING_PROFILE:-early-testnet}")
+fi
 bash "$(dirname "${BASH_SOURCE[0]}")/install-roko-service.sh" "${service_args[@]}"
 log "Installed the verified ROKO node and non-authoring service profile."

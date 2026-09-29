@@ -131,6 +131,59 @@ failure. Confirm the service still contains the mount, group and explicit
 flags; confirm the socket exists; and reinstall the current image rather than
 adding `chronyd` inside the container.
 
+### Validator timing participation profile
+
+The node flag `--timesync-participation-profile` selects how a validator
+responds to timing-quality changes. It takes `early-testnet` or `strict`; the
+node binary itself defaults to `strict` when the flag is absent.
+
+- `early-testnet` is the installer default for the `validator-candidate` role
+  on the configured ROKO testnet (`roko-testnet-v2`). Per ADR-021 the early
+  configured testnet must let elected validators with imperfect timing quality
+  keep participating while their operators diagnose hardware and networks, and
+  every network-managed validator runs this profile. Ordinary mesh-quality
+  settling or convergence regression is reported as a warning instead of
+  stopping authoring.
+- `strict` is opt-in. Authoring stops (`STRICT_TIMING_UNQUALIFIED`) whenever
+  timing quality falls below the strict qualification threshold.
+
+Neither profile bypasses mandatory evidence: full sync, fresh authenticated
+authority updates, a disciplined system clock, and active session keys remain
+required under `early-testnet` exactly as under `strict`.
+
+Select the profile at install time with `--timing-profile early-testnet|strict`
+(or `ROKO_TIMING_PROFILE`) on `bin/roko-guided-install` or
+`installer/scripts/install-roko-service.sh`. Only the `validator-candidate`
+role renders the flag; full, archive, and observer units never receive it, and
+passing `--timing-profile` for those roles is rejected. Preview the result:
+
+```bash
+ROKO_CHRONY_GID="$(stat -c %g /run/chrony/chronyd.sock)" \
+ROKO_AUTHORITY_ADDRESSES="$(python3 -c 'import json; [print(a) for x in json.load(open("/etc/roko/authority-peers.json"))["authorities"] for a in x["addresses"]]')" \
+  installer/scripts/install-roko-service.sh \
+  --runtime native --node-name preview --clock-provider chrony \
+  --validator-candidate --timing-profile early-testnet --render-unit
+```
+
+#### Switching an already-installed validator
+
+Validators installed before this option exist without the flag and therefore
+run the node default, `strict`. To switch, either rerun the service installer
+with the same arguments you used originally (it rewrites
+`/etc/systemd/system/roko-node.service` and preserves keys and data), or edit
+the unit by hand:
+
+1. `sudo systemctl edit --full roko-node.service`
+2. In `ExecStart`, add `  --timesync-participation-profile early-testnet \`
+   next to the other `--timesync-*` lines (use `strict` to opt back in). For
+   the Docker unit the line goes among the node arguments after `${ROKO_IMAGE}`.
+3. `sudo systemctl daemon-reload && sudo systemctl restart roko-node`
+4. Confirm with `systemctl cat roko-node | grep participation-profile` and the
+   node log.
+
+No session-key, keystore, or database change is needed; the profile is read
+at startup only.
+
 ## Generate or verify keys
 
 The installed node correctly defaults to `--rpc-methods Safe`; therefore a
