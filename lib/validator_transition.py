@@ -92,6 +92,8 @@ def check_transition(rpc: "RpcClient", account: str, expected_session_keys: str 
                     or not entry["matchesExpected"] or public not in
                     [value.lower() for value in entry["observedPublic"]]):
                 failures.append(f"Public {entry['name']} key mismatch: restore the registered tuple locally or submit a reviewed rotation.")
+    queued_evidence, queued_failures = queued_set_evidence(report, account, expected_session_keys)
+    failures.extend(queued_failures)
     if active_member and not (report["activeSessionMatch"] and report["activeBabeAuthorityIndex"] is not None
                               and report["activeBabeAuthorityIndex"] == report["activeTemporalAuthorityIndex"]
                               and report["producerAuthorityIndex"] == report["activeBabeAuthorityIndex"]):
@@ -119,7 +121,8 @@ def check_transition(rpc: "RpcClient", account: str, expected_session_keys: str 
         "safeToRetireOldKeys": False,
         "retirementReason": "Retire old keys only after Agora proves replacement activation and finalized authorship.",
     }
-    return transition_receipt(status, rpc, report, roles, expected_session_keys, next_keys, active, qualification)
+    return transition_receipt(status, rpc, report, roles, expected_session_keys, next_keys, active, qualification,
+                              queued_evidence)
 
 
 def reject_sensitive_text(value: str) -> None:
@@ -143,7 +146,10 @@ def validate_readiness(report: Any) -> dict[str, Any]:
         "mappedTemporalPeers", "contributingTemporalPeers", "peerExclusions",
         "readyToAuthor", "authorshipProof", "remediation",
     }
-    if set(report) != required:
+    # roko_network#456 adds the raw queued and active sets together. Older
+    # nodes omit both; a node that reports only one of them is malformed.
+    queued_set = {"queuedValidators", "activeValidators"}
+    if set(report) - queued_set != required or len(set(report) & queued_set) == 1:
         raise EnrollmentError("Validator readiness result has missing or unsupported fields")
     if report["lifecycleState"] not in READINESS_STATES:
         raise EnrollmentError("Validator readiness lifecycle state is unsupported")
@@ -216,12 +222,98 @@ def validate_readiness(report: Any) -> dict[str, Any]:
             raise EnrollmentError("Validator readiness authorship hash is malformed")
         if not isinstance(proof["authorityIndex"], int) or proof["authorityIndex"] < 0:
             raise EnrollmentError("Validator readiness authorship authority is malformed")
+    if "queuedValidators" in report:
+        validate_queued_set(report["queuedValidators"], report["activeValidators"])
     if not isinstance(report["convergenceState"], str) or not 1 <= len(report["convergenceState"]) <= 64:
         raise EnrollmentError("Validator readiness convergence state is malformed")
     if not isinstance(report["remediation"], str) or not 1 <= len(report["remediation"]) <= 2048:
         raise EnrollmentError("Validator readiness remediation is malformed")
     reject_sensitive_text(report["remediation"])
     return report
+
+
+SESSION_KEY_WIDTHS = (32, 32, 32, 32, 32, 33, 33)
+SESSION_KEY_TYPES = ("gran", "babe", "imon", "audi", "mixn", "beef", "temp")
+MAX_VALIDATOR_SET = 4096
+
+
+def validate_queued_set(queued: Any, active: Any) -> None:
+    """Validate the public queued/active sets without trusting their flags."""
+    if not isinstance(queued, list) or len(queued) > MAX_VALIDATOR_SET:
+        raise EnrollmentError("Validator readiness queued validator set is malformed")
+    accounts = set()
+    for entry in queued:
+        if (not isinstance(entry, dict) or set(entry) != {"account", "sessionKeys", "matchesCandidate"}
+                or not isinstance(entry["account"], str) or not ACCOUNT.fullmatch(entry["account"])
+                or not isinstance(entry["matchesCandidate"], bool)):
+            raise EnrollmentError("Validator readiness queued validator entry is malformed")
+        if entry["account"].lower() in accounts:
+            raise EnrollmentError("Validator readiness queued validator set repeats an account")
+        accounts.add(entry["account"].lower())
+        keys = entry["sessionKeys"]
+        if not isinstance(keys, list) or len(keys) != 7:
+            raise EnrollmentError("Validator readiness queued entry must contain exactly seven session keys")
+        for index, key in enumerate(keys):
+            width = SESSION_KEY_WIDTHS[index]
+            if (not isinstance(key, dict) or set(key) != {"name", "keyType", "public"}
+                    or key["name"] != KEY_TYPES[index] or key["keyType"] != SESSION_KEY_TYPES[index]
+                    or not isinstance(key["public"], str)
+                    or not re.fullmatch(rf"0x[0-9a-f]{{{width * 2}}}", key["public"], re.I)):
+                raise EnrollmentError("Validator readiness queued session-key ordering or public key is malformed")
+    if (not isinstance(active, list) or len(active) > MAX_VALIDATOR_SET
+            or not all(isinstance(account, str) and ACCOUNT.fullmatch(account) for account in active)):
+        raise EnrollmentError("Validator readiness active validator set is malformed")
+
+
+def queued_set_evidence(report: dict[str, Any], account: str, local_tuple: str | None) -> tuple[dict[str, Any], list[str]]:
+    """Compare the candidate's queued public tuple with the host-local public tuple.
+
+    Returns receipt evidence and gate failures. Nodes predating the raw queued
+    set yield no failures, preserving the queuedKeysMatch-only behaviour.
+    """
+    if "queuedValidators" not in report:
+        return {
+            "queuedSetEvidence": "unavailable (node predates readiness queued set)",
+            "queuedCandidate": None, "queuedTupleMatchesLocal": None,
+            "candidateInReadinessActiveSet": None,
+        }, []
+    entry = next((item for item in report["queuedValidators"]
+                  if item["account"].lower() == account.lower()), None)
+    in_active = account.lower() in {value.lower() for value in report["activeValidators"]}
+    evidence = {
+        "queuedSetEvidence": "Safe readiness RPC queuedValidators/activeValidators (raw public sets)",
+        "queuedCandidate": None if entry is None else {
+            "account": entry["account"].lower(),
+            "sessionKeys": [{"name": key["name"], "keyType": key["keyType"], "public": key["public"].lower()}
+                            for key in entry["sessionKeys"]],
+            "matchesCandidate": entry["matchesCandidate"],
+        },
+        "queuedTupleMatchesLocal": None,
+        "candidateInReadinessActiveSet": in_active,
+    }
+    if entry is None:
+        # A registered, waiting candidate is not in the queued set until it is
+        # elected for the next session. Pre-activation safety rests on the
+        # finalized nextKeys proof, so absence is recorded, not a failure (#1).
+        evidence["queuedSetEvidence"] += "; candidate not yet queued"
+        return evidence, []
+    if local_tuple is None:
+        return evidence, []
+    mismatched, offset = [], 2
+    for key, width in zip(entry["sessionKeys"], SESSION_KEY_WIDTHS):
+        if "0x" + local_tuple[offset:offset + width * 2].lower() != key["public"].lower():
+            mismatched.append(key["name"])
+        offset += width * 2
+    if offset != len(local_tuple) and not mismatched:
+        mismatched.append("tuple length")
+    evidence["queuedTupleMatchesLocal"] = not mismatched
+    failures = []
+    if mismatched:
+        failures.append("Queued session tuple mismatch: queued public " + ", ".join(mismatched)
+                        + " key(s) differ from the locally held public tuple; restore the registered tuple locally or submit a reviewed rotation.")
+    elif not entry["matchesCandidate"]:
+        failures.append("Queued session tuple mismatch: node reports the queued entry does not match its candidate keys.")
+    return evidence, failures
 
 
 def capture_readiness(rpc: "RpcClient") -> dict[str, Any]:

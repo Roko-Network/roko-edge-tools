@@ -188,3 +188,94 @@ class ValidatorTransitionScenarios(unittest.TestCase):
         result = self.check()
         self.assertFalse(result["safeToEnableValidatorMode"])
         self.assertTrue(any("Qualification identity mismatch" in stage for stage in result["failedStages"]))
+
+    def queued_set(self, keys=None, account=ACCOUNT, active=()):
+        names = MODULE.KEY_TYPES
+        key_types = ["gran", "babe", "imon", "audi", "mixn", "beef", "temp"]
+        publics = [entry["expectedPublic"] for entry in self.report["sessionKeys"]] if keys is None else keys
+        # account=None queues some other account (even with identical keys).
+        self.report["queuedValidators"] = [{
+            "account": "0x" + "33" * 20 if account is None else account,
+            "matchesCandidate": account is not None and keys is None,
+            "sessionKeys": [{"name": name, "keyType": key_type, "public": public}
+                            for name, key_type, public in zip(names, key_types, publics)],
+        }]
+        self.report["activeValidators"] = list(active)
+
+    def test_queued_set_present_and_matching_passes(self):
+        self.queued_set(active=[ACCOUNT])
+        result = self.check()
+        self.assertTrue(result["safeToEnableValidatorMode"], result["failedStages"])
+        evidence = result["evidence"]
+        self.assertEqual(evidence["queuedSetEvidence"],
+                         "Safe readiness RPC queuedValidators/activeValidators (raw public sets)")
+        self.assertTrue(evidence["queuedTupleMatchesLocal"])
+        self.assertTrue(evidence["candidateInReadinessActiveSet"])
+        self.assertEqual(evidence["queuedCandidate"]["account"], ACCOUNT)
+        self.assertEqual("0x" + "".join(key["public"][2:] for key in evidence["queuedCandidate"]["sessionKeys"]),
+                         self.keys)
+
+    def test_queued_set_mismatch_fails_with_named_key(self):
+        publics = [entry["expectedPublic"] for entry in self.report["sessionKeys"]]
+        publics[1] = "0x" + "ee" * 32
+        self.queued_set(keys=publics)
+        result = self.check()
+        self.assertFalse(result["safeToEnableValidatorMode"])
+        self.assertFalse(result["evidence"]["queuedTupleMatchesLocal"])
+        self.assertFalse(result["evidence"]["candidateInReadinessActiveSet"])
+        stages = [stage for stage in result["failedStages"] if stage.startswith("Queued session tuple mismatch")]
+        self.assertEqual(len(stages), 1)
+        self.assertIn("queued public babe key(s) differ", stages[0])
+
+    def test_queued_set_node_flag_mismatch_fails(self):
+        self.queued_set()
+        self.report["queuedValidators"][0]["matchesCandidate"] = False
+        result = self.check()
+        self.assertFalse(result["safeToEnableValidatorMode"])
+        self.assertTrue(result["evidence"]["queuedTupleMatchesLocal"])
+        self.assertTrue(any("queued entry does not match" in stage for stage in result["failedStages"]))
+
+    def test_waiting_candidate_not_yet_queued_is_recorded_not_blocking(self):
+        # Waiting (not yet elected) candidates are absent from the queued set;
+        # the finalized nextKeys proof gates pre-activation, not queueing.
+        self.queued_set(account=None)
+        result = self.check()
+        self.assertTrue(result["safeToEnableValidatorMode"], result["failedStages"])
+        self.assertIsNone(result["evidence"]["queuedCandidate"])
+        self.assertIsNone(result["evidence"]["queuedTupleMatchesLocal"])
+        self.assertTrue(result["evidence"]["queuedSetEvidence"].endswith("candidate not yet queued"))
+
+    def test_absent_queued_set_falls_back_unchanged(self):
+        self.report["queuedKeysMatch"] = False
+        result = self.check()
+        self.assertTrue(result["safeToEnableValidatorMode"], result["failedStages"])
+        evidence = result["evidence"]
+        self.assertFalse(evidence["queuedKeysMatch"])
+        self.assertEqual(evidence["queuedSetEvidence"], "unavailable (node predates readiness queued set)")
+        self.assertIsNone(evidence["queuedCandidate"])
+        self.assertIsNone(evidence["queuedTupleMatchesLocal"])
+        self.assertIsNone(evidence["candidateInReadinessActiveSet"])
+        self.assertFalse(any("queued" in stage.lower() for stage in result["failedStages"]))
+
+    def test_queued_set_receipt_digest_deterministic_and_tamper_evident(self):
+        self.queued_set(active=[ACCOUNT])
+        first, second = self.check(), self.check()
+        self.assertEqual(first, second)
+        self.assertEqual(first["integrity"], second["integrity"])
+        first["evidence"]["queuedCandidate"]["sessionKeys"][0]["public"] = "0x" + "ee" * 32
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "digest"):
+            MODULE.verify_receipt(first)
+
+    def test_queued_set_shape_is_validated(self):
+        self.queued_set()
+        del self.report["activeValidators"]
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "missing or unsupported"):
+            MODULE.validate_readiness(self.report)
+        self.queued_set()
+        self.report["queuedValidators"][0]["sessionKeys"].reverse()
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "queued session-key ordering"):
+            MODULE.validate_readiness(self.report)
+        self.queued_set()
+        self.report["queuedValidators"][0]["secretSeed"] = "not-real"
+        with self.assertRaisesRegex(MODULE.EnrollmentError, "prohibited"):
+            MODULE.validate_readiness(self.report)
