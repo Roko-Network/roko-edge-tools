@@ -91,6 +91,11 @@ For a guided full, archive, observer, or validator-candidate installation:
 ./bin/roko-guided-install --time-stack chrony
 ```
 
+Validator candidates default to the `early-testnet` timing participation
+profile used by the network-managed validators; add
+`--timing-profile strict` to opt into strict participation. See
+[`docs/validator-self-join.md`](docs/validator-self-join.md#validator-timing-participation-profile).
+
 Before choosing a region or timing stack, read
 [`docs/time-authority/README.md`](docs/time-authority/README.md). It routes
 humans and agents to focused pages rather than requiring a repository-wide

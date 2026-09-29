@@ -123,6 +123,15 @@ host Chrony socket. It never starts a second clock daemon in the container.
 Use `install-roko-service.sh --render-unit` to audit the exact unit before an
 installation.
 
+Validator candidates render `--timesync-participation-profile early-testnet`
+by default, matching the network-managed validators on the configured testnet
+(ADR-021); pass `--timing-profile strict` (or `ROKO_TIMING_PROFILE=strict`) to
+opt into strict timing participation. Both profiles keep sync, fresh
+authenticated authority updates, clock discipline, and active session keys
+mandatory. Other roles never receive the flag. See
+[Validator timing participation profile](../docs/validator-self-join.md#validator-timing-participation-profile)
+for switching an already-installed validator.
+
 Before any change, the launcher shows the resolved node name, role, runtime,
 clock owner, timeout, report location, and ordered steps. Use `--dry-run` to
 review this plan. For automated lab provisioning, supply all documented

@@ -5,6 +5,8 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 time_stack=chrony
 dry_run=false
 non_interactive=false
+timing_profile="${ROKO_TIMING_PROFILE:-}"
+timing_profile_explicit=false
 
 usage() {
   cat <<'EOF'
@@ -14,7 +16,11 @@ Runs the script-first installation flow described by the ROKO AIWG
 SetupManifest. Every parameter is collected before the first system change.
 
 Options:
-  --time-stack chrony|timebeat  Timing profile (default: chrony)
+  --time-stack chrony|timebeat  Clock stack (default: chrony)
+  --timing-profile early-testnet|strict
+                                Validator timing participation profile
+                                (validator-candidate only; default:
+                                early-testnet on the configured testnet)
   --dry-run                     Show the resolved plan without changing the host
   --non-interactive             Require all parameters from environment values
   -h, --help                    Show this help
@@ -22,6 +28,16 @@ Options:
 chrony   Installs/configures Chrony with diverse NTP sources.
 timebeat Installs an operator-supplied Timebeat package, licence, and reviewed
          configuration. ROKO does not redistribute Timebeat software or keys.
+
+Validator timing participation (validator-candidate role only):
+  early-testnet  Default on the configured ROKO testnet, matching the
+                 network-managed validators (ADR-021). Ordinary mesh-quality
+                 settling is a warning instead of a stop to authoring.
+  strict         Opt-in. Authoring stops whenever timing quality falls below
+                 the strict qualification threshold.
+  Both profiles still require sync, fresh authenticated authority updates,
+  clock discipline, and active session keys. Rendered as the node flag
+  --timesync-participation-profile; other roles never receive it.
 
 Connectivity layers:
   Every role joins the ROKO blockchain P2P network and runs the ROKO
@@ -33,12 +49,14 @@ Environment values:
   NODE_NAME, NODE_ROLE, RUNTIME, SYNC_TIMEOUT_SECONDS, REPORT_PATH
   TIME_REGION (global, americas, europe, asia, oceania, or africa)
   TIMEBEAT_PACKAGE, TIMEBEAT_LICENSE, TIMEBEAT_CONFIG (Timebeat profile only)
+  ROKO_TIMING_PROFILE (validator-candidate only; same as --timing-profile)
 EOF
 }
 
 while (($#)); do
   case "$1" in
     --time-stack) time_stack="${2:-}"; shift ;;
+    --timing-profile) timing_profile="${2:-}"; timing_profile_explicit=true; shift ;;
     --dry-run) dry_run=true ;;
     --non-interactive) non_interactive=true ;;
     -h|--help) usage; exit 0 ;;
@@ -147,6 +165,24 @@ prompt_choice TIME_REGION "Choose the nearest public time-source region:" global
   exit 2
 }
 
+if { "$timing_profile_explicit" || [[ -n "$timing_profile" ]]; } &&
+  [[ "$timing_profile" != early-testnet && "$timing_profile" != strict ]]; then
+  printf '%s\n' "--timing-profile (or ROKO_TIMING_PROFILE) must be early-testnet or strict; got: $timing_profile" >&2
+  exit 2
+fi
+if [[ "$NODE_ROLE" == validator-candidate ]]; then
+  ROKO_TIMING_PROFILE="${timing_profile:-early-testnet}"
+  export ROKO_TIMING_PROFILE
+  timing_profile_summary="$ROKO_TIMING_PROFILE"
+else
+  if "$timing_profile_explicit"; then
+    printf '%s\n' "--timing-profile applies only to the validator-candidate role." >&2
+    exit 2
+  fi
+  unset ROKO_TIMING_PROFILE
+  timing_profile_summary="not applicable (validator-candidate only)"
+fi
+
 CLOCK_PROVIDER="$time_stack"
 if [[ "$time_stack" == timebeat ]]; then
   clock_step="Bootstrap Chrony from regional public authorities and install verified Timebeat 2.3.5"
@@ -180,6 +216,7 @@ ROKO guided installation plan
   Runtime:        $RUNTIME
   Clock owner:    $CLOCK_PROVIDER
   Time region:    $TIME_REGION
+  Timing profile: $timing_profile_summary
   Sync timeout:   ${SYNC_TIMEOUT_SECONDS}s
   Report:         $REPORT_PATH
 
