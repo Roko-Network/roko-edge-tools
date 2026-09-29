@@ -48,7 +48,7 @@ done
 
 # The flag sits with the other timesync flags and the unit stays non-authoring.
 unit="$(render --runtime native --clock-provider chrony --validator-candidate)"
-grep -A1 -F -- '--timesync-chrony-socket /run/chrony/chronyd.sock' <<<"$unit" |
+grep -A3 -F -- '--timesync-chrony-socket /run/chrony/chronyd.sock' <<<"$unit" |
   grep -F -- "$flag early-testnet" >/dev/null || fail "profile flag is not next to the timesync lines"
 ! grep -E -- '(^|[[:space:]])--validator([[:space:]]|$)' <<<"$unit" >/dev/null ||
   fail "validator-candidate unit unexpectedly enables authoring"

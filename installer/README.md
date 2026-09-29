@@ -132,6 +132,12 @@ mandatory. Other roles never receive the flag. See
 [Validator timing participation profile](../docs/validator-self-join.md#validator-timing-participation-profile)
 for switching an already-installed validator.
 
+Every rendered unit also carries the fleet temporal-mesh policy,
+`--timesync-convergence-threshold-ns 5000000` and
+`--timesync-lucky-threshold-ns 10000000`, and bootstraps from the plain-TCP
+public bootnode address (no `/ws` segment). See
+[Temporal mesh thresholds](../docs/validator-self-join.md#temporal-mesh-thresholds).
+
 Before any change, the launcher shows the resolved node name, role, runtime,
 clock owner, timeout, report location, and ordered steps. Use `--dry-run` to
 review this plan. For automated lab provisioning, supply all documented
