@@ -184,6 +184,36 @@ the unit by hand:
 No session-key, keystore, or database change is needed; the profile is read
 at startup only.
 
+### Temporal mesh thresholds
+
+Every rendered unit, for every role, carries the fleet temporal-mesh policy:
+
+```text
+  --timesync-convergence-threshold-ns 5000000 \
+  --timesync-lucky-threshold-ns 10000000 \
+```
+
+The testnet mesh is routed and software-timestamped, so peers normally differ
+by a few milliseconds. The network-managed validators and the public sentry run
+a 5 ms convergence threshold with a 10 ms lucky-packet/reputation tolerance.
+Without these flags the node falls back to 1 ms and 100 us, so ordinary WAN
+spread between authorities reports `Converging` with timing quality 0. Under
+the `strict` profile that stops authoring. Under `early-testnet` it produces
+constant timing warnings and makes quality readings incomparable with the
+rest of the fleet.
+
+Units installed by tooling before 1.4.5 lack both lines, and their `--bootnodes`
+address carries a `/ws` segment that matches no listener on the public
+bootnode. To update an existing install, rerun the service installer with your
+original arguments, or edit the unit by hand:
+
+1. `sudo systemctl edit --full roko-node.service`
+2. Add the two lines above next to the other `--timesync-*` lines. In
+   `--bootnodes`, change `/tcp/30333/ws/p2p/` to `/tcp/30333/p2p/`.
+3. `sudo systemctl daemon-reload && sudo systemctl restart roko-node`
+
+No session-key, keystore, or database change is needed.
+
 ## Generate or verify keys
 
 The installed node correctly defaults to `--rpc-methods Safe`; therefore a

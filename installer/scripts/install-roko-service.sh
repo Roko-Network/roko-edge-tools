@@ -89,7 +89,12 @@ else
 fi
 data_path=/var/lib/roko
 unit_path=/etc/systemd/system/roko-node.service
-bootnode=/dns4/boot.roko.network/tcp/30333/ws/p2p/12D3KooWKSBZRtSiGKo8ueJtazCHT89LaBi6ZAtzgbeznf4NtVGj
+# The public bootnode listens on plain TCP only; a /ws address matches no listener.
+bootnode=/dns4/boot.roko.network/tcp/30333/p2p/12D3KooWKSBZRtSiGKo8ueJtazCHT89LaBi6ZAtzgbeznf4NtVGj
+# Fleet temporal-mesh policy for the routed, software-timestamped testnet mesh:
+# 5 ms convergence threshold, 10 ms lucky-packet/reputation tolerance. The node
+# defaults (1 ms / 100 us) mark ordinary WAN spread as Converging with quality 0.
+mesh_lines=$'  --timesync-convergence-threshold-ns 5000000 \\\n  --timesync-lucky-threshold-ns 10000000 \\\n'
 chrony_socket=/run/chrony/chronyd.sock
 pruning_line=""
 "$archive" && pruning_line=$'  --pruning archive \\\n'
@@ -215,7 +220,7 @@ ExecStart=/usr/local/bin/roko-node \\
   --bootnodes $bootnode \\
 ${authority_lines}  --port 30333 \\
   --rpc-port 9944 \\
-${pruning_line}${time_lines}${participation_line}${observer_line}  --rpc-methods Safe
+${pruning_line}${time_lines}${mesh_lines}${participation_line}${observer_line}  --rpc-methods Safe
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536
@@ -254,7 +259,7 @@ ${docker_chrony_lines}  --mount type=bind,src=$data_path,dst=/data \\
   --bootnodes $bootnode \\
 ${authority_lines}  --port 30333 \\
   --rpc-port 9944 \\
-${pruning_line}${time_lines}${participation_line}${observer_line}  --rpc-methods Safe
+${pruning_line}${time_lines}${mesh_lines}${participation_line}${observer_line}  --rpc-methods Safe
 ExecStop=/usr/bin/docker stop --time 60 roko-node
 Restart=on-failure
 RestartSec=10
