@@ -19,7 +19,7 @@ checks the production service identity and removes only its exact owned units
 and slice file. No address-space limit is used.
 
 ```bash
-python3 test/run_guarded_enrollment_qualification.py \
+PYTHONDONTWRITEBYTECODE=1 python3 test/run_guarded_enrollment_qualification.py \
   --expected-harness-sha256 REVIEWED_HARNESS_SHA \
   --receipt NEW_NATIVE_RECEIPT -- \
   --binary FINAL_NATIVE_BINARY --expected-sha256 FINAL_BINARY_SHA \
@@ -82,3 +82,26 @@ Archive SHA256 is
 These are historical signature-regression inputs, not new qualification receipts.
 Pure assessment tests use explicitly synthetic receipt data; no services,
 native nodes, wallet transactions or public RPC are exercised by ordinary smoke.
+
+The root-controlled fixture must use a fresh isolated signed-tools installation,
+not an existing shared installation. Authenticate the install before execution
+with the checker's `authenticated_tools` preflight, then authenticate it again
+when assessing the final receipt. All four commands must be signed archive
+members, and the package's regular files must exactly match that archive; extra
+modules, file or directory links, special files and preexisting `__pycache__`
+are rejected. Nothing is deleted or silently excluded to make a package pass.
+Set `PYTHONDONTWRITEBYTECODE=1` on install/qualification/checker invocations.
+The campaign service inherits this setting, tool subprocesses receive it, and
+privileged helper calls set it inside sudo's root environment. The version
+probe also receives it. This prevents newly generated unsigned bytecode.
+
+Both real argument parsers disable abbreviations. The wrapper rejects forwarded
+owned options and additional `--` delimiters and parses the full harness grammar
+before any service operation. Every package network field must match the
+independently observed six-field tuple, including genesis and runtime version.
+The actual Agora contract emits an explicit `true` for a negative only after
+asserting its exact rejection code; `rejectionCodes` retains those codes
+separately. Offline smoke executes this emitter against the exact retained
+Agora module export in `test/fixtures/agora-validator`; `SOURCE.json` pins its
+source revision and SHA256. Its generated fixture and checker assessment remain
+synthetic offline regressions, not native qualification receipts.

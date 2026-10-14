@@ -70,6 +70,21 @@ def checksums(path):
     require(result, 'Empty signed checksums')
     return result
 
+def closed_installed_files(package_root, files):
+    """No unsigned importable files, bytecode, links or special files."""
+    observed = set()
+    def unreadable(_):
+        raise VerificationError('Cannot enumerate installed package')
+    for current, directories, names in os.walk(package_root, followlinks=False, onerror=unreadable):
+        for name in directories:
+            require(name != '__pycache__', 'Unsigned installed bytecode cache')
+            require(not (Path(current) / name).is_symlink(), 'Unsigned installed directory link')
+        for name in names:
+            path = Path(current) / name
+            require(path.is_file() and not path.is_symlink(), 'Unsigned installed link/special file')
+            observed.add(path.relative_to(package_root).as_posix())
+    require(observed == set(files), 'Installed package file set differs from signed archive')
+
 def authenticated_tools(directory, tool_bin):
     directory, tool_bin = Path(directory), Path(tool_bin)
     key = directory / 'roko-release-signing-key.asc'
@@ -121,6 +136,9 @@ def authenticated_tools(directory, tool_bin):
             expected = hashlib.sha256(raw).hexdigest()
             require(digest(actual) == expected, 'Installed package differs from signed archive: ' + str(relative))
             files[str(relative)] = expected
+    require({f'bin/{name}' for name in COMMANDS}.issubset(files),
+            'Signed archive must contain all four installed commands')
+    closed_installed_files(package_root, files)
     compatibility_path = package_root / 'compatibility/validator-enroll-compatibility.json'
     require(digest(compatibility_path) == metadata['compatibility']['sha256'], 'Compatibility digest mismatch')
     compatibility = read_json(compatibility_path)
@@ -130,7 +148,9 @@ def authenticated_tools(directory, tool_bin):
     require(compatibility.get('network', {}).get('genesisHash') == LIVE_GENESIS and
             compatibility.get('network', {}).get('chainId') == '52370', 'Wrong published compatibility network')
     actual_version = subprocess.run([str(installed['roko-validator-enroll']), '--version'], check=True,
-                                    capture_output=True, text=True, timeout=15).stdout.strip()
+                                    capture_output=True, text=True, timeout=15,
+                                    env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1')).stdout.strip()
+    closed_installed_files(package_root, files)
     require(actual_version == f'roko-validator-enroll {version}', 'Installed command version differs from authenticated package')
     if version == LEGACY['version']:
         require(source == LEGACY['source'] and digest(archive) == LEGACY['archive'], 'Immutable legacy release was replaced')
@@ -241,8 +261,9 @@ def assess_receipt(receipt, args, tools, node, image, values, provenance):
                 isinstance(expected.get('chainName'), str) and bool(expected['chainName']) and
                 isinstance(expected.get('specName'), str) and bool(expected['specName']) and
                 re.fullmatch(r'0x[0-9a-f]{64}', expected.get('metadataHash', '')), 'Agora expected tuple incomplete')
-        require(expected.get('genesisHash') == r.get('genesis') and expected.get('specVersion') == args.runtime_spec and
-                all(expected.get(name) == package_network.get(name) for name in ('chainName', 'specName', 'transactionVersion', 'metadataHash')),
+        require(expected.get('genesisHash') == r.get('genesis') and type(expected.get('specVersion')) is int and
+                expected['specVersion'] == args.runtime_spec and
+                all(type(expected[name]) is type(package_network[name]) and expected[name] == package_network[name] for name in fields),
                 'Agora independent network tuple mismatch')
     faults = r.get('faultCases', [])
     require(len(faults) == 3 and {f.get('fault') for f in faults} == FAULTS, 'Three unique fault cases required')
@@ -288,7 +309,7 @@ def assess_receipt(receipt, args, tools, node, image, values, provenance):
             'harnessSha256': args.expected_harness_sha256, 'scope': 'disposable log-only enrollment; no live readiness/browser/strict-time claim'}
 
 def parser():
-    p = argparse.ArgumentParser(description=__doc__)
+    p = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     for name in ('receipt', 'binary', 'runtime-wasm', 'agora-module', 'node-metadata', 'node-metadata-signature',
                  'node-checksums', 'node-checksums-signature', 'node-public-key', 'tools-release', 'tool-bin', 'harness', 'wrapper', 'output'):
         p.add_argument('--' + name, type=Path, required=True)

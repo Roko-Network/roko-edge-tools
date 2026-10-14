@@ -16,6 +16,7 @@ import subprocess
 import tempfile
 import uuid
 
+
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / 'test/guarded_enrollment_live.py'
 
@@ -33,7 +34,8 @@ def unit_inode(path):
     return run('sudo', '-n', 'stat', '--printf=%d:%i:%u', '--', str(path)).stdout
 
 def execute(args):
-    if hashlib.sha256(HARNESS.read_bytes()).hexdigest() != args.expected_harness_sha256:
+    source = HARNESS.read_bytes()
+    if hashlib.sha256(source).hexdigest() != args.expected_harness_sha256:
         raise ValueError('reviewed harness hash mismatch')
     receipt = args.receipt.absolute()
     if receipt.exists() or receipt.is_symlink():
@@ -41,8 +43,15 @@ def execute(args):
     forwarded = args.harness_args
     if forwarded and forwarded[0] == '--':
         forwarded = forwarded[1:]
-    if not forwarded or any(arg.split('=', 1)[0] in ('--campaign-name', '--campaign-slice', '--receipt') for arg in forwarded):
+    if not forwarded or '--' in forwarded or any(arg.split('=', 1)[0] in ('--campaign-name', '--campaign-slice', '--receipt') for arg in forwarded):
         raise ValueError('wrapper owns campaign and receipt arguments')
+    # Parse the real harness grammar before any service operation. Abbreviations
+    # and option terminators cannot replace wrapper-owned values.
+    namespace = {'__file__': str(HARNESS), '__name__': 'qualification_preflight'}
+    # Compile the already hash-checked bytes; no stale source-tree .pyc import.
+    exec(compile(source, str(HARNESS), 'exec'), namespace)
+    namespace['argument_parser']().parse_args(['--campaign-name', 'preflight', '--campaign-slice',
+                                 'preflight.slice', '--receipt', str(receipt), *forwarded])
     operator_uid = os.getuid()
     if operator_uid == 0:
         operator_uid = int(os.environ.get('SUDO_UID', '0'))
@@ -72,6 +81,7 @@ def execute(args):
                        '--property=RuntimeMaxSec=1800', '--property=TimeoutStopSec=90',
                        '--property=KillMode=mixed', '--property=WorkingDirectory=' + str(ROOT),
                        '--property=LimitCORE=0', '--setenv=PATH=' + os.environ['PATH'],
+                       '--setenv=PYTHONDONTWRITEBYTECODE=1',
                        '/usr/bin/python3', str(HARNESS), '--campaign-name', name,
                        '--campaign-slice', slice_name, '--receipt', str(receipt), *forwarded]
             result = subprocess.run(command, capture_output=True, text=True, timeout=1905)
@@ -128,7 +138,7 @@ def execute(args):
     print('Owned enrollment fixture receipt: ' + str(receipt))
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument('--expected-harness-sha256', required=True)
     parser.add_argument('--receipt', type=Path, required=True)
     parser.add_argument('harness_args', nargs=argparse.REMAINDER)

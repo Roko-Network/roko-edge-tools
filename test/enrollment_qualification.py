@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Offline controller/checker tests; no native fixture, services or network."""
 import copy
+import datetime as dt
+import contextlib
+import io
+import subprocess
 import importlib.util
 import json
 import os
@@ -91,6 +95,41 @@ class AuthenticationTests(unittest.TestCase):
         with self.assertRaises(checker.VerificationError):
             self.authenticate()
 
+    def test_extra_importable_bytecode_and_symlink_files_refused(self):
+        for relative, link in [('lib/unsigned.py', False), ('lib/__pycache__/validator_enrollment.pyc', False), ('lib/unsigned-link.py', True)]:
+            with self.subTest(relative=relative):
+                path = self.package / relative
+                path.parent.mkdir(exist_ok=True)
+                if link: path.symlink_to(self.package / 'lib/validator_enrollment.py')
+                else: path.write_bytes(b'unsigned')
+                with self.assertRaises(checker.VerificationError): self.authenticate()
+                path.unlink()
+                if path.parent.name == '__pycache__': path.parent.rmdir()
+        empty = self.package / 'lib/__pycache__'; empty.mkdir()
+        with self.assertRaises(checker.VerificationError): self.authenticate()
+
+    def test_archive_must_bind_every_command_before_version_execution(self):
+        # Model a future signature-verified archive missing a command. Keep all
+        # other authentication real; changing the retained signed archive would
+        # correctly fail its digest earlier instead of exercising this boundary.
+        real_open = checker.tarfile.open
+        for command in checker.COMMANDS:
+            with real_open(self.release / 'roko-validator-enroll-1.4.5.tar.gz') as archive:
+                members = [m for m in archive.getmembers() if not m.name.endswith('/bin/' + command)]
+                with self.subTest(command=command), mock.patch.object(archive, 'getmembers', return_value=members), mock.patch.object(checker.tarfile, 'open', return_value=archive):
+                    with self.assertRaisesRegex(checker.VerificationError, 'all four installed commands'): self.authenticate()
+
+    def test_version_invocation_disables_installed_bytecode(self):
+        with mock.patch.object(checker.subprocess, 'run', wraps=checker.subprocess.run) as run:
+            real = run._mock_wraps
+            def calls(argv, **kwargs):
+                if argv[0].endswith('/bin/roko-validator-enroll'):
+                    self.assertEqual(kwargs['env']['PYTHONDONTWRITEBYTECODE'], '1')
+                    return types.SimpleNamespace(stdout='roko-validator-enroll 1.4.5\n')
+                return real(argv, **kwargs)
+            run.side_effect = calls
+            checker.authenticated_tools(self.release, self.links)
+
 class ReceiptTests(unittest.TestCase):
     def setUp(self):
         self.args = types.SimpleNamespace(runtime_spec=290, harness=ROOT / 'test/guarded_enrollment_live.py',
@@ -109,11 +148,11 @@ class ReceiptTests(unittest.TestCase):
                   'harnessSha256':self.args.expected_harness_sha256,'wrapperSha256':self.args.expected_wrapper_sha256,'toolVersion':'roko-validator-enroll 1.4.5',
                   'installedCommandLinks':True,'installedResolvedCommands':self.tools['installed'],
                   'helperSha256':'d'*64,'helperExit':0,'policyBytesRestored':True,
-                  'afterPolicy':{'safeForNormalOperation':True},'package':{'network':network},
+                  'afterPolicy':{'safeForNormalOperation':True},'package':{'network':copy.deepcopy(network)},
                   'keyCustodyEvidence':{'helperAttested':True,'method':'author_hasSessionKeys','validatorEnrollmentSha256':'e'*64},
                   'reuse':{'helperExit':0,'existingKeyCount':7,**{name:True for name in ('sameTuple','freshPackage','existingKeyFilesPreserved','safeAfter','policyBytesRestored')},
                            'custodyObservation':{'status':'independently-observed','method':'author_hasSessionKeys','observedTrue':True,'additionalUnsafeWindowOpened':False}},
-                  'agoraImport':{label:{'accepted':True,'moduleSha256':'c'*64,'expected':network, 'rejected':{name:True for name in checker.NEGATIVE}} for label in ('generated','reused')},
+                  'agoraImport':{label:{'accepted':True,'moduleSha256':'c'*64,'expected':copy.deepcopy(network), 'rejected':{name:True for name in checker.NEGATIVE}} for label in ('generated','reused')},
                   'faultCases':[{'fault':fault,'helperExit':1,'existingKeyCount':7,**{name:True for name in ('safeAfter','policyBytesRestored','noPackageWritten','existingKeyFilesPreserved')}} for fault in checker.FAULTS],
                   **{name:True for name in ('processesStopped','serviceStopped','serviceRemoved','temporaryStateRemoved','campaignSliceStopped','campaignSliceRemoved','productionServiceIdentityPreserved')},
                   'cleanupErrors':[],'wrapperCleanupErrors':[],
@@ -152,6 +191,97 @@ class ReceiptTests(unittest.TestCase):
         self.r['expectedRuntimeSpec']=287;self.r['before']['runtime']['specVersion']=287
         for imported in self.r['agoraImport'].values(): imported['expected']['specVersion']=287
         with self.assertRaises(checker.VerificationError):self.assess()
+
+    def test_every_package_network_field_bound_to_independent_expected(self):
+        wrong = {'chainName':'other', 'genesisHash':'0x'+'9'*64, 'specName':'other',
+                 'specVersion':291, 'transactionVersion':2, 'metadataHash':'0x'+'8'*64}
+        for field, value in [*wrong.items(), ('transactionVersion', True)]:
+            changed = copy.deepcopy(self.r)
+            observed = copy.deepcopy(changed['agoraImport'])
+            changed['package']['network'][field] = value
+            self.assertEqual(changed['agoraImport'], observed)
+            with self.subTest(field=field), self.assertRaisesRegex(checker.VerificationError, 'network tuple mismatch'):
+                checker.assess_receipt(changed,self.args,self.tools,{'source_revision':'4'*40},'fixture@sha256:'+'5'*64,self.values,{})
+
+class AgoraEmitterTests(unittest.TestCase):
+    def test_actual_js_emitter_and_exact_export_produce_checker_booleans(self):
+        existing = module('existing_enrollment_tests', ROOT / 'test/validator_enrollment.py')
+        fixture = existing.ValidatorEnrollmentTests()
+        fixture.setUp()
+        try:
+            fixture.now = dt.datetime.now(dt.timezone.utc)
+            genesis = '0x' + '2'*64
+            rpc = existing.FakeRpc({('chain_getBlockHash',(0,)):genesis,
+                                    ('state_getRuntimeVersion',()):{'specName':'mainnet','specVersion':290,'transactionVersion':1}})
+            package = fixture.build(rpc, fixture.args(expected_genesis=genesis))
+            path = ROOT / 'test/fixtures/agora-validator/validator-enrollment.mjs'
+            provenance = json.loads(path.with_name('SOURCE.json').read_text())
+            self.assertEqual(checker.digest(path), provenance['sha256'])
+            result = subprocess.run(['node', str(ROOT / 'test/agora_enrollment_contract.mjs'), str(path), provenance['sha256']],
+                                    input=json.dumps({'package':package,'expected':package['network']}),
+                                    capture_output=True,text=True,check=True,timeout=15)
+            value = json.loads(result.stdout)
+            self.assertIs(value['accepted'], True)
+            self.assertEqual(set(value['rejected']), checker.NEGATIVE)
+            self.assertTrue(all(value['rejected'][name] is True for name in checker.NEGATIVE))
+            self.assertEqual(value['rejectionCodes'], {'wrongGenesis':'network.genesisHash','wrongRuntime':'network.specVersion',
+                            'wrongMetadata':'network.metadataHash','expired':'time.expired','tampered':'integrity.mismatch','replayed':'integrity.replay'})
+            assessment = ReceiptTests(); assessment.setUp()
+            assessment.r['genesis'] = genesis
+            assessment.r['package']['network'] = copy.deepcopy(package['network'])
+            assessment.values['agoraModule'] = provenance['sha256']
+            for label in ('generated','reused'):
+                assessment.r['agoraImport'][label] = copy.deepcopy(value)
+            self.assertFalse(assessment.assess()['deliveryBinding'])
+            with tempfile.TemporaryDirectory(dir='/dev/shm') as tmp:
+                wrong_module = Path(tmp) / 'wrong-code.mjs'
+                wrong_module.write_bytes(path.read_bytes().replace(b'network.genesisHash', b'network.unexpected'))
+                failed = subprocess.run(['node',str(ROOT / 'test/agora_enrollment_contract.mjs'),str(wrong_module),checker.digest(wrong_module)],
+                                        input=json.dumps({'package':package,'expected':package['network']}),capture_output=True,text=True,timeout=15)
+                self.assertNotEqual(failed.returncode,0)
+                self.assertEqual(failed.stdout,'')
+        finally:
+            fixture.tearDown()
+
+class ParserBoundaryTests(unittest.TestCase):
+    forwarded = ['--binary','/fixture/node','--expected-sha256','a'*64,'--runtime-wasm','/fixture/runtime',
+                 '--expected-runtime-sha256','b'*64,'--expected-runtime-spec','290','--tool-bin','/fixture/bin']
+    def test_real_harness_parser_refuses_owned_abbreviations(self):
+        owned = ['--campaign-name','owned','--campaign-slice','owned.slice','--receipt','/fixture/receipt']
+        for bad in ('--campaign-n=other', '--campaign-s=other.slice', '--rec=/other'):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                harness.argument_parser().parse_args(owned + self.forwarded + [bad])
+    def test_wrapper_rejects_abbreviations_exact_duplicates_and_double_dash_before_services(self):
+        for bad in ('--campaign-n=other','--campaign-s=other.slice','--rec=/other','--campaign-name=other',
+                    '--campaign-slice=other.slice','--receipt=/other','--','--receipt'):
+            with tempfile.TemporaryDirectory(dir='/dev/shm') as tmp:
+                args = ['--expected-harness-sha256',checker.digest(wrapper.HARNESS),'--receipt',str(Path(tmp)/'receipt'),'--',*self.forwarded,bad]
+                with mock.patch.object(wrapper,'run') as run, mock.patch.object(wrapper.subprocess,'run') as process:
+                    with contextlib.redirect_stderr(io.StringIO()), self.assertRaises((SystemExit,ValueError)):
+                        wrapper.main(args)
+                    run.assert_not_called(); process.assert_not_called()
+        with mock.patch.object(wrapper,'execute') as execute:
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                wrapper.main(['--expected-harness-sha256','a'*64,'--rec','/other'])
+            execute.assert_not_called()
+    def test_tool_and_privileged_helper_environments_disable_bytecode(self):
+        with mock.patch.object(harness.subprocess,'run') as run:
+            harness.run('/fixture/tool', '--version')
+            self.assertEqual(run.call_args.kwargs['env']['PYTHONDONTWRITEBYTECODE'], '1')
+        self.assertEqual(harness.privileged_tool('roko-session-key-window')[:4],
+                         ['sudo','-n','env','PYTHONDONTWRITEBYTECODE=1'])
+
+    def test_harness_refuses_preexisting_cache_before_privileged_calls(self):
+        with tempfile.TemporaryDirectory(dir='/dev/shm') as tmp:
+            root = Path(tmp); binary = root/'node'; wasm = root/'runtime.wasm'
+            binary.write_bytes(b'offline-not-executable'); wasm.write_bytes(b'offline-wasm')
+            installed = root/'installed'; (installed/'bin').mkdir(parents=True)
+            (installed/'bin/roko-validator-enroll').write_text('not executed')
+            (installed/'lib/__pycache__').mkdir(parents=True)
+            with mock.patch.object(harness,'TOOL_BIN',installed/'bin'), mock.patch.object(harness,'run') as run:
+                with self.assertRaisesRegex(ValueError,'preexisting unsigned installed bytecode'):
+                    harness.qualify(binary,checker.digest(binary),root/'receipt',wasm,checker.digest(wasm),290)
+                run.assert_not_called()
 
 class ResourceAndCustodyTests(unittest.TestCase):
     def test_owned_namespace_has_no_implicit_parent_slices_and_rejects_injection(self):

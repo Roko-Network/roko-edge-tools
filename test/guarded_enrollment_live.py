@@ -23,9 +23,18 @@ TOOL_BIN = ROOT / "bin"
 LIVE_GENESIS = "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb"
 
 
+def no_bytecode_env():
+    return dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+
+
+def privileged_tool(name):
+    # sudo may reset the caller environment; set this inside the root process.
+    return ["sudo", "-n", "env", "PYTHONDONTWRITEBYTECODE=1", str(TOOL_BIN / name)]
+
+
 def run(*args, **kwargs):
     return subprocess.run(list(args), check=True, capture_output=True, text=True,
-                          timeout=kwargs.pop("timeout", 30), **kwargs)
+                          timeout=kwargs.pop("timeout", 30), env=no_bytecode_env(), **kwargs)
 
 
 def rpc(port, method, params=None):
@@ -91,7 +100,7 @@ def campaign_resources(campaign_name, campaign_slice):
 def observe_custody_window(arguments, rpc_port, policy, encoded_keys, timeout=180):
     """Read known public tuple only while the helper's existing window is open."""
     helper = subprocess.Popen(arguments, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              text=True, start_new_session=True)
+                              text=True, start_new_session=True, env=no_bytecode_env())
     began = time.monotonic()
     observed = False
     try:
@@ -141,6 +150,11 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
         raise ValueError("Agora module path and digest must be supplied together")
     if agora_module and hashlib.sha256(agora_module.read_bytes()).hexdigest() != agora_sha256:
         raise ValueError("Agora module digest mismatch")
+    # A fresh signed install is required. Never execute preexisting bytecode.
+    installed_root = (TOOL_BIN / "roko-validator-enroll").resolve(strict=True).parent.parent
+    if any(path.name == "__pycache__" or path.suffix in (".pyc", ".pyo")
+           for path in installed_root.rglob("*")):
+        raise ValueError("preexisting unsigned installed bytecode cache")
     run("sudo", "-n", "true")
     if run("timedatectl", "show", "-p", "NTPSynchronized", "--value").stdout.strip() != "yes":
         raise ValueError("host clock is not synchronized")
@@ -203,7 +217,7 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                                                                "--rpc-methods", "Safe"]
                     if peers:
                         args += ["--reserved-nodes", *peers]
-                    process = subprocess.Popen(args, stdout=log, stderr=log)
+                    process = subprocess.Popen(args, stdout=log, stderr=log, env=no_bytecode_env())
                     processes.append(process)
                     try:
                         genesis = wait_rpc(rpc_port, lambda: process.poll() is None)
@@ -282,7 +296,7 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                     raise ValueError("candidate runtime mismatch")
                 output = root / "package.json"
                 peer = rpc(rpc_port, "system_localPeerId")
-                result = run("sudo", "-n", str(TOOL_BIN / "roko-session-key-window"),
+                result = run(*privileged_tool("roko-session-key-window"),
                              "--service", unit, "--policy-file", str(policy),
                              "--rpc", f"http://127.0.0.1:{rpc_port}",
                              "--confirm-isolated-window", "--confirm-no-forwarding", "--",
@@ -308,7 +322,7 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                     raise ValueError("policy bytes not restored")
                 baseline_keys = {p.name: p.read_bytes() for p in (root / "candidate").rglob("keystore/*") if p.is_file()}
                 reuse_output = root / "reused-package.json"
-                reuse_args = ["sudo", "-n", str(TOOL_BIN / "roko-session-key-window"),
+                reuse_args = [*privileged_tool("roko-session-key-window"),
                               "--service", unit, "--policy-file", str(policy),
                               "--rpc", f"http://127.0.0.1:{rpc_port}",
                                "--reuse-session-keys", package["session"]["encodedKeys"],
@@ -362,7 +376,7 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                     fault_output = root / (fault + ".json")
                     if fault == "unsafe-restart-failure":
                         fail_start.touch()
-                    helper_args = ["sudo", "-n", str(TOOL_BIN / "roko-session-key-window"),
+                    helper_args = [*privileged_tool("roko-session-key-window"),
                                    "--service", unit, "--policy-file", str(policy),
                                    "--rpc", f"http://127.0.0.1:{rpc_port}",
                                          "--confirm-isolated-window", "--confirm-no-forwarding", "--",
@@ -370,7 +384,7 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                                    "--minimum-peers", "2", "--observation-seconds", "20",
                                    "--output", str(fault_output)]
                     helper = subprocess.Popen(helper_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                              text=True, start_new_session=True)
+                                              text=True, start_new_session=True, env=no_bytecode_env())
                     injected = fault == "unsafe-restart-failure"
                     try:
                         if not injected:
@@ -456,8 +470,8 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
             out.write(json.dumps(report, indent=2) + "\n")
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
+def argument_parser():
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--expected-sha256", required=True)
     parser.add_argument("--receipt", type=Path, required=True)
@@ -469,7 +483,12 @@ if __name__ == "__main__":
     parser.add_argument("--campaign-slice", required=True)
     parser.add_argument("--agora-module", type=Path)
     parser.add_argument("--agora-sha256")
-    args = parser.parse_args()
+    return parser
+
+
+def main(argv=None):
+    global TOOL_BIN
+    args = argument_parser().parse_args(argv)
     if args.tool_bin:
         TOOL_BIN = args.tool_bin.absolute()
     def interrupted(*_):
@@ -479,3 +498,7 @@ if __name__ == "__main__":
     qualify(args.binary.resolve(), args.expected_sha256, args.receipt.resolve(),
             args.runtime_wasm.resolve(), args.expected_runtime_sha256, args.expected_runtime_spec,
             args.agora_module.resolve() if args.agora_module else None, args.agora_sha256, args.campaign_name, args.campaign_slice)
+
+
+if __name__ == "__main__":
+    main()
