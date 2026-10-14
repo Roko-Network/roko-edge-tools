@@ -134,7 +134,7 @@ class ReceiptTests(unittest.TestCase):
     def setUp(self):
         self.args = types.SimpleNamespace(runtime_spec=290, harness=ROOT / 'test/guarded_enrollment_live.py',
                                          expected_harness_sha256=checker.digest(ROOT / 'test/guarded_enrollment_live.py'),
-                                         wrapper=ROOT / 'test/run_guarded_enrollment_qualification.py',expected_wrapper_sha256=checker.digest(ROOT / 'test/run_guarded_enrollment_qualification.py'),mode='candidate', architecture='amd64')
+                                         wrapper=ROOT / 'test/run_guarded_enrollment_qualification.py',expected_wrapper_sha256=checker.digest(ROOT / 'test/run_guarded_enrollment_qualification.py'),mode='candidate', architecture='amd64', expected_production_service='roko-titan.service')
         self.values = {'binary':'a'*64,'runtimeWasm':'b'*64,'agoraModule':'c'*64}
         self.tools = {'version':'1.4.5','sourceRevision':checker.LEGACY['source'],
                       'files':{'bin/roko-session-key-window':'d'*64,'lib/validator_enrollment.py':'e'*64},
@@ -156,7 +156,10 @@ class ReceiptTests(unittest.TestCase):
                   'faultCases':[{'fault':fault,'helperExit':1,'existingKeyCount':7,**{name:True for name in ('safeAfter','policyBytesRestored','noPackageWritten','existingKeyFilesPreserved')}} for fault in checker.FAULTS],
                   **{name:True for name in ('processesStopped','serviceStopped','serviceRemoved','temporaryStateRemoved','campaignSliceStopped','campaignSliceRemoved','productionServiceIdentityPreserved')},
                   'cleanupErrors':[],'wrapperCleanupErrors':[],
-                  'resources':{'verified':True,'sliceMemoryMax':12*1024**3,'sliceCpuQuotaPerSecUSec':4_000_000,'sliceTasksMax':1024,'runtimeMaxUSec':1_800_000_000,'timeoutStopUSec':90_000_000,'candidateMemoryMax':2*1024**3}}
+                  'resources':{'slice':'rokoenrollqualabc123def456.slice','verified':True,'sliceMemoryMax':12*1024**3,'sliceCpuQuotaPerSecUSec':4_000_000,'sliceTasksMax':1024,'runtimeMaxUSec':1_800_000_000,'timeoutStopUSec':90_000_000,'candidateMemoryMax':2*1024**3}}
+        service = {'Id':'roko-titan.service','LoadState':'loaded','ActiveState':'active',
+                   'MainPID':12345,'ControlGroup':'/system.slice/roko-titan.service'}
+        self.r['productionService'] = {'unit':'roko-titan.service','before':copy.deepcopy(service),'after':copy.deepcopy(service)}
     def assess(self):
         return checker.assess_receipt(self.r, self.args, self.tools, {'source_revision':'4'*40}, 'fixture@sha256:'+'5'*64, self.values, {'kind':'synthetic-test-only'})
     def test_candidate290_is_explicitly_not_a_published_delivery_binding(self):
@@ -253,9 +256,9 @@ class ParserBoundaryTests(unittest.TestCase):
                 harness.argument_parser().parse_args(owned + self.forwarded + [bad])
     def test_wrapper_rejects_abbreviations_exact_duplicates_and_double_dash_before_services(self):
         for bad in ('--campaign-n=other','--campaign-s=other.slice','--rec=/other','--campaign-name=other',
-                    '--campaign-slice=other.slice','--receipt=/other','--','--receipt'):
+                    '--campaign-slice=other.slice','--receipt=/other','--production-service=roko-other.service','--','--receipt'):
             with tempfile.TemporaryDirectory(dir='/dev/shm') as tmp:
-                args = ['--expected-harness-sha256',checker.digest(wrapper.HARNESS),'--receipt',str(Path(tmp)/'receipt'),'--',*self.forwarded,bad]
+                args = ['--expected-harness-sha256',checker.digest(wrapper.HARNESS),'--receipt',str(Path(tmp)/'receipt'),'--production-service','roko-titan.service','--',*self.forwarded,bad]
                 with mock.patch.object(wrapper,'run') as run, mock.patch.object(wrapper.subprocess,'run') as process:
                     with contextlib.redirect_stderr(io.StringIO()), self.assertRaises((SystemExit,ValueError)):
                         wrapper.main(args)
@@ -282,6 +285,105 @@ class ParserBoundaryTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'preexisting unsigned installed bytecode'):
                     harness.qualify(binary,checker.digest(binary),root/'receipt',wasm,checker.digest(wasm),290)
                 run.assert_not_called()
+
+class ProductionServiceTests(unittest.TestCase):
+    unit = 'roko-titan.service'
+    slice_name = 'rokoenrollqualabc123def456.slice'
+    state = {'Id':'roko-titan.service','LoadState':'loaded','ActiveState':'active',
+             'MainPID':12345,'ControlGroup':'/system.slice/roko-titan.service'}
+    def args(self, receipt, unit=None):
+        return ['--expected-harness-sha256',checker.digest(wrapper.HARNESS),
+                '--receipt',str(receipt),'--production-service',unit or self.unit,
+                '--',*ParserBoundaryTests.forwarded]
+    def shown(self, state):
+        return '\n'.join(f'{key}={value}' for key,value in state.items())+'\n'
+    def invalid_states(self):
+        return [dict(self.state,LoadState='not-found',MainPID=0,ControlGroup=''),
+                dict(self.state,ActiveState='inactive'),dict(self.state,MainPID=0),
+                dict(self.state,ControlGroup=''),dict(self.state,ControlGroup='/'),
+                dict(self.state,Id='roko-other.service'),
+                dict(self.state,ControlGroup='/system.slice/'+self.slice_name+'/candidate.service')]
+    def test_real_baseline_refuses_missing_inactive_zero_pid_alias_and_campaign_before_mutation(self):
+        for state in self.invalid_states():
+            with tempfile.TemporaryDirectory(dir='/dev/shm') as tmp:
+                with mock.patch.object(wrapper.os,'getuid',return_value=1000), \
+                     mock.patch.object(wrapper.pwd,'getpwuid',return_value=types.SimpleNamespace(pw_name='fixture')), \
+                     mock.patch.object(wrapper.uuid,'uuid4',return_value=types.SimpleNamespace(hex='abc123def456ffff')), \
+                     mock.patch.object(wrapper,'run',return_value=types.SimpleNamespace(stdout=self.shown(state))) as run, \
+                     mock.patch.object(wrapper.subprocess,'run') as process:
+                    with self.subTest(state=state), self.assertRaises(ValueError):
+                        wrapper.main(self.args(Path(tmp)/'receipt'))
+                    self.assertEqual(len(run.call_args_list),1)
+                    self.assertEqual(run.call_args.args[:3],('systemctl','show',self.unit))
+                    process.assert_not_called()
+    def test_required_exact_service_option_and_bad_names_refused_without_commands(self):
+        for name in ('apache.service','roko-titan','roko-titan.service;touch','roko-@titan.service','../roko-titan.service','roko-titan.service --other'):
+            with mock.patch.object(wrapper,'run') as run, mock.patch.object(wrapper.subprocess,'run') as process:
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    wrapper.main(self.args(Path('/fixture/receipt'),name))
+                run.assert_not_called();process.assert_not_called()
+        with mock.patch.object(wrapper,'execute') as execute:
+            args=self.args(Path('/fixture/receipt'));i=args.index('--production-service');del args[i:i+2]
+            with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):wrapper.main(args)
+            execute.assert_not_called()
+    def test_wrapper_records_active_identity_and_fails_real_cleanup_path_on_rebound(self):
+        for after in (self.state,dict(self.state,MainPID=99999),dict(self.state,ControlGroup='/system.slice/other.service'),
+                      dict(self.state,ActiveState='inactive',MainPID=0)):
+            with tempfile.TemporaryDirectory(dir='/dev/shm') as tmp:
+                receipt=Path(tmp)/'receipt';snapshots=iter([self.state,after])
+                def command(*argv,**kwargs):
+                    if argv[:3]==('systemctl','show',self.unit):
+                        return types.SimpleNamespace(stdout=self.shown(next(snapshots)))
+                    if argv[:3]==('sudo','-n','stat'):return types.SimpleNamespace(stdout='1:2:0')
+                    return types.SimpleNamespace(stdout='ActiveState=inactive\n')
+                def process(argv,**kwargs):
+                    if argv[:3]==['sudo','-n','systemd-run']:
+                        receipt.write_text(json.dumps({'status':'pass'}));receipt.chmod(0o600)
+                        return types.SimpleNamespace(returncode=0)
+                    self.assertEqual(argv[:3],['systemctl','is-active','--quiet'])
+                    return types.SimpleNamespace(returncode=3)
+                with mock.patch.object(wrapper.os,'getuid',return_value=1000), \
+                     mock.patch.object(wrapper.pwd,'getpwuid',return_value=types.SimpleNamespace(pw_name='fixture')), \
+                     mock.patch.object(wrapper.uuid,'uuid4',return_value=types.SimpleNamespace(hex='abc123def456ffff')), \
+                     mock.patch.object(wrapper,'run',side_effect=command), \
+                     mock.patch.object(wrapper.subprocess,'run',side_effect=process):
+                    if after==self.state:
+                        with contextlib.redirect_stdout(io.StringIO()):wrapper.main(self.args(receipt))
+                    else:
+                        with self.assertRaises(RuntimeError):wrapper.main(self.args(receipt))
+                actual=json.loads(receipt.read_text())
+                self.assertEqual(actual['productionService'],{'unit':self.unit,'before':self.state,'after':after})
+                self.assertIs(actual['productionServiceIdentityPreserved'],after==self.state)
+                self.assertEqual(actual['status'],'pass' if after==self.state else 'failed')
+    def test_checker_requires_independent_exact_unit_and_active_unchanged_evidence(self):
+        fixture=ReceiptTests();fixture.setUp()
+        self.assertEqual(fixture.assess()['productionService']['unit'],self.unit)
+        for label in ('before','after'):
+            for state in self.invalid_states()+[dict(self.state,MainPID=True)]:
+                changed=copy.deepcopy(fixture.r);changed['productionService'][label]=state
+                with self.subTest(label=label,state=state),self.assertRaises(checker.VerificationError):
+                    checker.assess_receipt(changed,fixture.args,fixture.tools,{'source_revision':'4'*40},'fixture@sha256:'+'5'*64,fixture.values,{})
+        for change in ('missing','rebound','self-selected','slice-missing'):
+            changed=copy.deepcopy(fixture.r)
+            if change=='missing':del changed['productionService']
+            elif change=='rebound':changed['productionService']['after']['MainPID']+=1
+            elif change=='self-selected':changed['productionService']['unit']='roko-other.service'
+            else:del changed['resources']['slice']
+            with self.subTest(change=change),self.assertRaises(checker.VerificationError):
+                checker.assess_receipt(changed,fixture.args,fixture.tools,{'source_revision':'4'*40},'fixture@sha256:'+'5'*64,fixture.values,{})
+        fixture.args.expected_production_service='apache.service'
+        with self.assertRaises(checker.VerificationError):fixture.assess()
+    def test_checker_expected_unit_option_is_required_in_real_parser(self):
+        with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):
+            checker.parser().parse_args([])
+        parser=checker.parser()
+        argv=[]
+        for action in parser._actions:
+            if action.required and action.dest!='expected_production_service':
+                value={'architecture':'amd64','runtime_spec':'290','mode':'candidate'}.get(action.dest,'/fixture/value')
+                argv.extend([action.option_strings[0],value])
+        with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):parser.parse_args(argv)
+        self.assertEqual(parser.parse_args(argv+['--expected-production-service',self.unit]).expected_production_service,self.unit)
 
 class ResourceAndCustodyTests(unittest.TestCase):
     def test_owned_namespace_has_no_implicit_parent_slices_and_rejects_injection(self):

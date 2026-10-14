@@ -33,6 +33,35 @@ def owned_names(identifier):
 def unit_inode(path):
     return run('sudo', '-n', 'stat', '--printf=%d:%i:%u', '--', str(path)).stdout
 
+def production_service_name(value):
+    if not re.fullmatch(r'roko-[a-z0-9]+(?:-[a-z0-9]+)*\.service', value):
+        raise ValueError('production service must be an exact managed ROKO service name')
+    return value
+
+def production_snapshot(unit):
+    production_service_name(unit)
+    fields = ('Id', 'LoadState', 'ActiveState', 'MainPID', 'ControlGroup')
+    text = run('systemctl', 'show', unit, *['--property=' + field for field in fields]).stdout
+    lines = [line.split('=', 1) for line in text.splitlines()]
+    if len(lines) != len(fields) or any(len(line) != 2 for line in lines):
+        raise ValueError('production service properties incomplete')
+    state = dict(lines)
+    if set(state) != set(fields) or not re.fullmatch(r'[0-9]+', state['MainPID']):
+        raise ValueError('production service properties invalid')
+    state['MainPID'] = int(state['MainPID'])
+    return state
+
+def validate_production_snapshot(unit, state, slice_name):
+    production_service_name(unit)
+    group = state.get('ControlGroup')
+    if (state.get('Id') != unit or state.get('LoadState') != 'loaded'
+            or state.get('ActiveState') != 'active' or type(state.get('MainPID')) is not int
+            or state['MainPID'] <= 0 or not isinstance(group, str) or not group.startswith('/')
+            or group == '/' or any(character.isspace() for character in group)
+            or slice_name in group.split('/')):
+        raise ValueError('production service must be loaded, active and outside the campaign with its exact identity')
+
+
 def execute(args):
     source = HARNESS.read_bytes()
     if hashlib.sha256(source).hexdigest() != args.expected_harness_sha256:
@@ -43,7 +72,7 @@ def execute(args):
     forwarded = args.harness_args
     if forwarded and forwarded[0] == '--':
         forwarded = forwarded[1:]
-    if not forwarded or '--' in forwarded or any(arg.split('=', 1)[0] in ('--campaign-name', '--campaign-slice', '--receipt') for arg in forwarded):
+    if not forwarded or '--' in forwarded or any(arg.split('=', 1)[0] in ('--campaign-name', '--campaign-slice', '--receipt', '--production-service') for arg in forwarded):
         raise ValueError('wrapper owns campaign and receipt arguments')
     # Parse the real harness grammar before any service operation. Abbreviations
     # and option terminators cannot replace wrapper-owned values.
@@ -62,9 +91,8 @@ def execute(args):
     path = Path('/run/systemd/system') / slice_name
     if path.exists() or path.is_symlink():
         raise ValueError('owned slice path already exists')
-    production = run('systemctl', 'show', 'roko-node.service', '--property=MainPID', '--property=ControlGroup').stdout
-    if any(line.split('=', 1)[-1].startswith('/' + slice_name) for line in production.splitlines()):
-        raise ValueError('production service unexpectedly inside campaign')
+    production = production_snapshot(args.production_service)
+    validate_production_snapshot(args.production_service, production, slice_name)
     installed, inode, errors = False, None, []
     try:
         with tempfile.TemporaryDirectory(prefix=name + '-', dir='/dev/shm') as temporary:
@@ -116,13 +144,20 @@ def execute(args):
                 errors.append('owned-slice-removal-failed')
             stopped = subprocess.run(['systemctl', 'is-active', '--quiet', slice_name]).returncode != 0
             removed = not path.exists()
-            production_after = run('systemctl', 'show', 'roko-node.service', '--property=MainPID', '--property=ControlGroup').stdout
-            if production_after != production:
+            production_after, preserved = None, False
+            try:
+                production_after = production_snapshot(args.production_service)
+                validate_production_snapshot(args.production_service, production_after, slice_name)
+                preserved = production_after == production
+            except Exception:
+                errors.append('production-service-after-validation-failed')
+            if not preserved:
                 errors.append('production-service-identity-changed')
             if receipt.exists() and not receipt.is_symlink():
                 value = json.loads(receipt.read_text())
                 value['campaignSliceStopped'], value['campaignSliceRemoved'] = stopped, removed
-                value['productionServiceIdentityPreserved'] = production_after == production
+                value['productionServiceIdentityPreserved'] = preserved
+                value['productionService'] = {'unit': args.production_service, 'before': production, 'after': production_after}
                 value['wrapperSha256'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
                 value['wrapperCleanupErrors'] = errors
                 if errors or not stopped or not removed:
@@ -141,6 +176,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument('--expected-harness-sha256', required=True)
     parser.add_argument('--receipt', type=Path, required=True)
+    parser.add_argument('--production-service', type=production_service_name, required=True)
     parser.add_argument('harness_args', nargs=argparse.REMAINDER)
     execute(parser.parse_args(argv))
 

@@ -21,7 +21,7 @@ and slice file. No address-space limit is used.
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 test/run_guarded_enrollment_qualification.py \
   --expected-harness-sha256 REVIEWED_HARNESS_SHA \
-  --receipt NEW_NATIVE_RECEIPT -- \
+  --production-service roko-titan.service --receipt NEW_NATIVE_RECEIPT -- \
   --binary FINAL_NATIVE_BINARY --expected-sha256 FINAL_BINARY_SHA \
   --runtime-wasm FINAL_PRODUCTION_WASM --expected-runtime-sha256 FINAL_WASM_SHA \
   --expected-runtime-spec 290 --tool-bin VERIFIED_INSTALLED_LINKS \
@@ -105,3 +105,19 @@ separately. Offline smoke executes this emitter against the exact retained
 Agora module export in `test/fixtures/agora-validator`; `SOURCE.json` pins its
 source revision and SHA256. Its generated fixture and checker assessment remain
 synthetic offline regressions, not native qualification receipts.
+
+The wrapper requires explicit `--production-service` before the harness delimiter.
+Supply the host's actual canonical managed ROKO unit, such as
+`roko-titan.service` for the reviewed Titan fixture; there is no assumed service
+alias. Before any fixture install or service mutation, the named unit must report
+that exact `Id`, `LoadState=loaded`, `ActiveState=active`, positive `MainPID` and
+an absolute nonempty `ControlGroup` outside the owned campaign slice. Unknown,
+inactive and aliased units are refused. The wrapper reads the same fields after
+owned cleanup and records both snapshots in `productionService`; any identity
+change or failed observation makes the receipt fail. The private checker requires
+independent `--expected-production-service` for both candidate and delivery modes,
+validates both active snapshots and isolation, and requires identical before/after
+state. A preservation boolean alone is insufficient. These observations protect
+the existing service identity; they do not establish runtime activation or live
+network readiness. Root must review the updated wrapper/checker hashes before
+execution. The harness bytes remain unchanged.

@@ -221,6 +221,26 @@ def authenticated_node(args):
         provenance = {'kind': 'direct-signed-checksum-coverage'}
     return metadata, image, values, provenance
 
+def production_service_evidence(receipt, expected_unit, slice_name):
+    require(isinstance(expected_unit, str) and
+            re.fullmatch(r'roko-[a-z0-9]+(?:-[a-z0-9]+)*\.service', expected_unit),
+            'Expected production service must be an exact managed ROKO name')
+    require(isinstance(slice_name, str) and re.fullmatch(r'rokoenrollqual[0-9a-f]{12}\.slice', slice_name),
+            'Production isolation requires the actual owned slice name')
+    evidence = receipt.get('productionService', {})
+    require(isinstance(evidence, dict) and evidence.get('unit') == expected_unit, 'Production service differs from independent expected unit')
+    for label in ('before', 'after'):
+        state = evidence.get(label, {})
+        require(isinstance(state, dict) and set(state) == {'Id','LoadState','ActiveState','MainPID','ControlGroup'},
+                'Production service state missing: ' + label)
+        group = state['ControlGroup']
+        require(state['Id'] == expected_unit and state['LoadState'] == 'loaded' and state['ActiveState'] == 'active' and
+                type(state['MainPID']) is int and state['MainPID'] > 0 and isinstance(group, str) and
+                group.startswith('/') and group != '/' and not any(character.isspace() for character in group) and
+                slice_name not in group.split('/'), 'Production service is not actually active/isolated: ' + label)
+    require(evidence['before'] == evidence['after'], 'Production service rebound during campaign')
+    return evidence
+
 def assess_receipt(receipt, args, tools, node, image, values, provenance):
     r = receipt
     require(r.get('status') == 'pass' and r.get('liveChainUsed') is False, 'Disposable gate did not pass')
@@ -282,6 +302,7 @@ def assess_receipt(receipt, args, tools, node, image, values, provenance):
             resources.get('candidateMemoryMax') == 2 * 1024**3, 'Owned finite cgroup contract not proved')
     require(r.get('campaignSliceStopped') is True and r.get('campaignSliceRemoved') is True and
             r.get('productionServiceIdentityPreserved') is True and r.get('wrapperCleanupErrors') == [], 'Campaign cleanup/production isolation not proved')
+    production = production_service_evidence(r, args.expected_production_service, resources.get('slice'))
     compatibility = tools['compatibility']
     minimum, maximum = compatibility['runtime']['minimumSpecVersion'], compatibility['runtime']['maximumSpecVersion']
     if args.mode == 'candidate':
@@ -306,7 +327,8 @@ def assess_receipt(receipt, args, tools, node, image, values, provenance):
             'agoraModuleSha256':values['agoraModule'],'genesis':r['genesis'],'network':r['package']['network'],'installedResolvedCommands': tools['installed'],
             'nodeProvenance': provenance, 'signingFingerprint': FINGERPRINT,
             'toolsMetadataSha256': tools['metadataSha256'], 'toolsChecksumsSha256': tools['checksumsSha256'],
-            'harnessSha256': args.expected_harness_sha256, 'scope': 'disposable log-only enrollment; no live readiness/browser/strict-time claim'}
+            'harnessSha256': args.expected_harness_sha256, 'wrapperSha256': args.expected_wrapper_sha256,
+            'productionService': production, 'scope': 'disposable log-only enrollment; no live readiness/browser/strict-time claim'}
 
 def parser():
     p = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
@@ -317,6 +339,7 @@ def parser():
         p.add_argument('--' + name, type=Path)
     p.add_argument('--expected-harness-sha256', required=True)
     p.add_argument('--expected-wrapper-sha256', required=True)
+    p.add_argument('--expected-production-service', required=True)
     p.add_argument('--architecture', choices=('amd64', 'arm64'), required=True)
     p.add_argument('--runtime-spec', type=int, required=True)
     p.add_argument('--mode', choices=('candidate', 'delivery'), required=True)
