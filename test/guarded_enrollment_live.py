@@ -17,7 +17,6 @@ import subprocess
 import tempfile
 import time
 import urllib.request
-import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOL_BIN = ROOT / "bin"
@@ -58,7 +57,77 @@ def wait_rpc(rpc_port, alive):
     raise TimeoutError("RPC startup deadline")
 
 
-def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_spec, agora_module=None, agora_sha256=None):
+def systemd_properties(unit, names):
+    text = run("systemctl", "show", unit, *["--property=" + name for name in names]).stdout
+    values = dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
+    if set(values) != set(names):
+        raise ValueError("systemd resource properties incomplete")
+    return values
+
+
+def campaign_resources(campaign_name, campaign_slice):
+    if not __import__('re').fullmatch(r"roko-enrollment-qualification-[0-9a-f]{12}", campaign_name):
+        raise ValueError("campaign name outside owned namespace")
+    expected_slice = "rokoenrollqual" + campaign_name.rsplit("-", 1)[1] + ".slice"
+    if campaign_slice != expected_slice:
+        raise ValueError("campaign slice does not match owned name")
+    slice_props = systemd_properties(campaign_slice, ("MemoryMax", "CPUQuotaPerSecUSec", "TasksMax", "ControlGroup"))
+    outer = systemd_properties(campaign_name + "-harness.service", ("Slice", "RuntimeMaxUSec", "TimeoutStopUSec", "MainPID"))
+    if (int(slice_props['MemoryMax']) != 12 * 1024**3 or slice_props['CPUQuotaPerSecUSec'] != '4s'
+            or int(slice_props['TasksMax']) != 1024 or outer['Slice'] != campaign_slice
+            or outer['RuntimeMaxUSec'] != '30min' or outer['TimeoutStopUSec'] != '1min 30s'
+            or int(outer['MainPID']) != os.getpid()):
+        raise ValueError("harness is not inside the reviewed finite owned campaign")
+    actual = Path('/proc/self/cgroup').read_text().splitlines()
+    group = slice_props['ControlGroup']
+    if not group or not any(line.startswith('0::' + group + '/') for line in actual):
+        raise ValueError("harness cgroup is not inside the owned slice")
+    return {"verified": True, "slice": campaign_slice, "sliceControlGroup": group,
+            "sliceMemoryMax": 12 * 1024**3, "sliceCpuQuotaPerSecUSec": 4_000_000,
+            "sliceTasksMax": 1024, "runtimeMaxUSec": 1_800_000_000,
+            "timeoutStopUSec": 90_000_000, "candidateMemoryMax": 2 * 1024**3}
+
+
+def observe_custody_window(arguments, rpc_port, policy, encoded_keys, timeout=180):
+    """Read known public tuple only while the helper's existing window is open."""
+    helper = subprocess.Popen(arguments, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              text=True, start_new_session=True)
+    began = time.monotonic()
+    observed = False
+    try:
+        while helper.poll() is None and time.monotonic() - began < timeout:
+            current = run('sudo', '-n', 'cat', str(policy), timeout=3).stdout
+            if current == 'ROKO_RPC_METHODS=Unsafe\n':
+                try:
+                    owned = rpc(rpc_port, 'author_hasSessionKeys', [encoded_keys])
+                    if owned is False:
+                        raise ValueError('independent reuse custody check failed')
+                    if owned is True:
+                        observed = True
+                        break
+                except OSError:
+                    pass
+                except ValueError as error:
+                    if str(error) == 'independent reuse custody check failed':
+                        raise
+                    # Startup/restoration can close this read-only opportunity.
+            time.sleep(0.2)
+        remaining = max(1, timeout - (time.monotonic() - began))
+        stdout, stderr = helper.communicate(timeout=remaining)
+        if helper.returncode:
+            raise subprocess.CalledProcessError(helper.returncode, arguments, stdout, stderr)
+        return subprocess.CompletedProcess(arguments, helper.returncode, stdout, stderr), {
+            'status': 'independently-observed' if observed else 'helper-attested-window-closed',
+            'method': 'author_hasSessionKeys', 'observedTrue': observed,
+            'additionalUnsafeWindowOpened': False}
+    finally:
+        if helper.poll() is None:
+            run('sudo', '-n', 'kill', '-TERM', '--', '-' + str(helper.pid))
+            helper.wait(timeout=30)
+
+
+def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_spec,
+            agora_module=None, agora_sha256=None, campaign_name=None, campaign_slice=None):
     with binary.open("rb") as stream:
         digest = hashlib.file_digest(stream, "sha256").hexdigest()
     if digest != expected:
@@ -75,14 +144,19 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
     run("sudo", "-n", "true")
     if run("timedatectl", "show", "-p", "NTPSynchronized", "--value").stdout.strip() != "yes":
         raise ValueError("host clock is not synchronized")
-    name = "roko-enrollment-qualification-" + uuid.uuid4().hex[:12]
+    resources = campaign_resources(campaign_name, campaign_slice)
+    name = campaign_name + "-candidate"
     unit = name + ".service"
     unit_path = Path("/run/systemd/system") / unit
     report = {"runId": name, "status": "incomplete", "binarySha256": digest,
               "harnessSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               "binaryVersion": run(str(binary), "--version").stdout.strip(),
               "toolVersion": run(str(TOOL_BIN / "roko-validator-enroll"), "--version").stdout.strip(),
-              "installedCommandLinks": (TOOL_BIN / "roko-session-key-window").is_symlink(),
+              "installedCommandLinks": all((TOOL_BIN / command).is_symlink() for command in
+                                           ("roko-validator-enroll", "roko-session-key-window", "roko-authority-peers", "roko-validator-watch")),
+              "installedResolvedCommands": {command: str((TOOL_BIN / command).resolve(strict=True)) for command in
+                                             ("roko-validator-enroll", "roko-session-key-window", "roko-authority-peers", "roko-validator-watch")},
+              "resources": resources,
               "helperSha256": hashlib.sha256((TOOL_BIN / "roko-session-key-window").read_bytes()).hexdigest(),
               "startedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
               "service": unit, "liveChainUsed": False, "authorityPolicy": "development log-only",
@@ -167,6 +241,7 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                                   "Environment=ROKO_RPC_METHODS=Safe\nEnvironmentFile=-" + str(policy) + "\n"
                                   "ExecStartPre=" + str(startup_gate) + "\n"
                                   "ExecStart=" + " ".join(args) + "\nRestart=no\nNoNewPrivileges=yes\n"
+                                  "Slice=" + campaign_slice + "\nMemoryMax=2G\nTasksMax=1024\n"
                                   "TimeoutStopSec=15\nStandardOutput=append:" + str(root / "candidate.log") + "\n"
                                   "StandardError=inherit\n")
                 if unit_path.exists():
@@ -175,6 +250,11 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                 installed = True
                 run("sudo", "-n", "systemctl", "daemon-reload")
                 run("sudo", "-n", "systemctl", "start", unit)
+                candidate_resources = systemd_properties(unit, ("Slice", "MemoryMax", "ControlGroup"))
+                if (candidate_resources["Slice"] != campaign_slice or int(candidate_resources["MemoryMax"]) != 2 * 1024**3
+                        or not candidate_resources["ControlGroup"].startswith(resources["sliceControlGroup"] + "/")):
+                    raise ValueError("candidate resource/cgroup confinement mismatch")
+                report["resources"]["candidateControlGroup"] = candidate_resources["ControlGroup"]
                 genesis = wait_rpc(rpc_port, lambda: subprocess.run(
                     ["systemctl", "is-active", "--quiet", unit]).returncode == 0)
                 if genesis != report["genesis"]:
@@ -215,6 +295,11 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                 # Retain only qualification facts, not an importable enrollment package.
                 report["package"] = {"schema": package["schema"], "network": package["network"],
                                      "integrity": package["integrity"], "keyCustodyProved": True}
+                installed_package = (TOOL_BIN / "roko-validator-enroll").resolve(strict=True).parent.parent
+                report["keyCustodyEvidence"] = {"helperAttested": True, "method": "author_hasSessionKeys",
+                    "independentlyObservedGeneration": False,
+                    "validatorEnrollmentSha256": hashlib.sha256((installed_package / "lib/validator_enrollment.py").read_bytes()).hexdigest(),
+                    "scope": "Successful authenticated helper generation enforces author_hasSessionKeys before Safe restoration; no extra window opened."}
                 policy_check = run(str(TOOL_BIN / "roko-validator-enroll"), "--rpc",
                                    f"http://127.0.0.1:{rpc_port}", "--check-rpc-policy")
                 report["afterPolicy"] = json.loads(policy_check.stdout)
@@ -232,13 +317,14 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                               "--minimum-peers", "2", "--observation-seconds", "8",
                               "--public-address", f"/ip4/127.0.0.1/tcp/{p2p_port}/p2p/{peer}",
                               "--output", str(reuse_output)]
-                reused_result = run(*reuse_args, timeout=180)
+                reused_result, custody = observe_custody_window(reuse_args, rpc_port, policy, package["session"]["encodedKeys"])
                 reused = json.loads(run("sudo", "-n", "cat", str(reuse_output)).stdout)
                 keys_after = {p.name: p.read_bytes() for p in (root / "candidate").rglob("keystore/*") if p.is_file()}
                 safe = run(str(TOOL_BIN / "roko-validator-enroll"), "--rpc",
                            f"http://127.0.0.1:{rpc_port}", "--check-rpc-policy")
                 report["reuse"] = {
                     "helperExit": reused_result.returncode,
+                    "custodyObservation": custody,
                     "sameTuple": reused["session"]["encodedKeys"] == package["session"]["encodedKeys"],
                     "freshPackage": reused["enrollmentId"] != package["enrollmentId"],
                     "existingKeyFilesPreserved": keys_after == baseline_keys,
@@ -365,7 +451,9 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
     finally:
         if "directory" in locals():
             report["temporaryStateRemoved"] = not Path(directory).exists()
-        receipt.write_text(json.dumps(report, indent=2) + "\n")
+        descriptor = os.open(receipt, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, 'w') as out:
+            out.write(json.dumps(report, indent=2) + "\n")
 
 
 if __name__ == "__main__":
@@ -376,7 +464,9 @@ if __name__ == "__main__":
     parser.add_argument("--runtime-wasm", type=Path, required=True)
     parser.add_argument("--expected-runtime-sha256", required=True)
     parser.add_argument("--expected-runtime-spec", type=int, required=True)
-    parser.add_argument("--tool-bin", type=Path, help="Installed command-link directory; defaults to source bin")
+    parser.add_argument("--tool-bin", type=Path, required=True, help="Actual installed command-link directory")
+    parser.add_argument("--campaign-name", required=True)
+    parser.add_argument("--campaign-slice", required=True)
     parser.add_argument("--agora-module", type=Path)
     parser.add_argument("--agora-sha256")
     args = parser.parse_args()
@@ -388,4 +478,4 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, interrupted)
     qualify(args.binary.resolve(), args.expected_sha256, args.receipt.resolve(),
             args.runtime_wasm.resolve(), args.expected_runtime_sha256, args.expected_runtime_spec,
-            args.agora_module.resolve() if args.agora_module else None, args.agora_sha256)
+            args.agora_module.resolve() if args.agora_module else None, args.agora_sha256, args.campaign_name, args.campaign_slice)
