@@ -77,8 +77,9 @@ stage="$(mktemp -d)"
 trap 'rm -rf -- "$stage"' EXIT
 package_name="roko-validator-enroll-$version"
 package_root="$stage/$package_name"
-mkdir -p "$package_root/bin" "$package_root/lib" "$package_root/contracts" \
-  "$package_root/compatibility" "$package_root/scripts" "$output_dir"
+mkdir -p "$output_dir"
+install -d -m 0755 "$package_root" "$package_root/bin" "$package_root/lib" \
+  "$package_root/contracts" "$package_root/compatibility" "$package_root/scripts"
 
 install -m 0755 "$repo_root/bin/roko-validator-enroll" "$package_root/bin/"
 install -m 0755 "$repo_root/bin/roko-session-key-window" "$package_root/bin/"
@@ -104,6 +105,7 @@ source, target, version, revision = sys.argv[1:]
 text = pathlib.Path(source).read_text(encoding="utf-8")
 value = json.loads(text.replace("@VERSION@", version).replace("@SOURCE_REVISION@", revision))
 pathlib.Path(target).write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+pathlib.Path(target).chmod(0o644)
 PY
 
 archive="$output_dir/$package_name.tar.gz"

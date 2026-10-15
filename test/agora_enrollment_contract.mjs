@@ -13,6 +13,7 @@ const {validateValidatorEnrollment} = await import(`data:text/javascript;base64,
 const {package: enrollment, expected} = JSON.parse(readFileSync(0, 'utf8'));
 await validateValidatorEnrollment(enrollment, {expected});
 const rejected = {};
+const rejectionCodes = {};
 const cases = [
   ['wrongGenesis', enrollment, {expected: {...expected, genesisHash: `0x${'00'.repeat(32)}`}}, 'network.genesisHash'],
   ['wrongRuntime', enrollment, {expected: {...expected, specVersion: expected.specVersion + 1}}, 'network.specVersion'],
@@ -23,10 +24,11 @@ const cases = [
 ];
 for (const [name, value, options, code] of cases) {
   await assert.rejects(() => validateValidatorEnrollment(value, options), error => error.code === code);
-  rejected[name] = code;
+  rejected[name] = true;
+  rejectionCodes[name] = code;
 }
 console.log(JSON.stringify({
   scope: 'actual Agora validator module in Node; no browser or wallet signing',
   moduleSha256: expectedSha, accepted: true,
-  packageDigest: enrollment.integrity.digest, expected, rejected,
+  packageDigest: enrollment.integrity.digest, expected, rejected, rejectionCodes,
 }));

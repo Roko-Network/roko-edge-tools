@@ -1,0 +1,157 @@
+{
+  "schema": "roko.enrollment-candidate-public-summary.v1",
+  "preparedAtUtc": "2026-10-15T02:53:13.243539Z",
+  "status": "candidate-fixture-passed",
+  "startedAt": "2026-10-15T02:44:46.856596+00:00",
+  "sourceRevision": "fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b",
+  "sourceTree": "2c25857f3dea6d599a0dc2b81f4f6c9816434d28",
+  "binaryVersion": "roko-node 3.0.0-dev-fba4e76cfeb",
+  "architecture": "amd64",
+  "imageDigest": "sha256:0baaa205b2ad249282612f3fd8de023cdb303471a992db94671f9f5cb7b62e45",
+  "artifactSha256": {
+    "binary": "adfd8009807d340e389a8308579da84ac62c36e257c3b9122427a49fb85b6206",
+    "runtimeWasm": "c90d0f20950475f295d4c84d7a5b6d896d71574e7ce9e74c241ea3d1013b5147",
+    "agoraModule": "0c5d29a30ab8d5b796b84958285069571f60347d8de248c84f507c6622ea5bf9"
+  },
+  "runtimeWasmRole": "production-mainnet-a, byte-identical production-mainnet-b",
+  "testedToolVersion": "1.4.5",
+  "proposedToolVersion": "1.4.6",
+  "proposedReleaseStatus": "unpublished; fresh signed1.4.6 fixture required",
+  "deliveryBinding": false,
+  "outsidePublishedCompatibility": true,
+  "liveChainUsed": false,
+  "authorityPolicy": "development log-only",
+  "observedNetwork": {
+    "chainName": "Roko Network Testnet",
+    "genesisHash": "0xfbc9d175bb6d163c10d951e21d7b4820d40f3f52129f482be0623721202f93b2",
+    "metadataHash": "0x88c9107c19c6cf7c0993b62e31a823c39a281ec0b25df74d2bb86288e0aadac0",
+    "specName": "mainnet",
+    "specVersion": 290,
+    "transactionVersion": 4
+  },
+  "candidateRole": [
+    "Full"
+  ],
+  "candidateFinalizedHeight": 5,
+  "generation": {
+    "accepted": true,
+    "helperAttestedCustody": true,
+    "independentlyObservedGeneration": false,
+    "safeRestored": true
+  },
+  "reuse": {
+    "helperExit": 0,
+    "sameTuple": true,
+    "freshPackage": true,
+    "existingKeyFilesPreserved": true,
+    "existingKeyCount": 7,
+    "safeAfter": true,
+    "policyBytesRestored": true
+  },
+  "reuseCustody": {
+    "status": "independently-observed",
+    "method": "author_hasSessionKeys",
+    "observedTrue": true,
+    "additionalUnsafeWindowOpened": false
+  },
+  "agora": {
+    "generated": {
+      "accepted": true,
+      "moduleSha256": "0c5d29a30ab8d5b796b84958285069571f60347d8de248c84f507c6622ea5bf9",
+      "rejected": {
+        "wrongGenesis": true,
+        "wrongRuntime": true,
+        "wrongMetadata": true,
+        "expired": true,
+        "tampered": true,
+        "replayed": true
+      },
+      "rejectionCodes": {
+        "wrongGenesis": "network.genesisHash",
+        "wrongRuntime": "network.specVersion",
+        "wrongMetadata": "network.metadataHash",
+        "expired": "time.expired",
+        "tampered": "integrity.mismatch",
+        "replayed": "integrity.replay"
+      }
+    },
+    "reused": {
+      "accepted": true,
+      "moduleSha256": "0c5d29a30ab8d5b796b84958285069571f60347d8de248c84f507c6622ea5bf9",
+      "rejected": {
+        "wrongGenesis": true,
+        "wrongRuntime": true,
+        "wrongMetadata": true,
+        "expired": true,
+        "tampered": true,
+        "replayed": true
+      },
+      "rejectionCodes": {
+        "wrongGenesis": "network.genesisHash",
+        "wrongRuntime": "network.specVersion",
+        "wrongMetadata": "network.metadataHash",
+        "expired": "time.expired",
+        "tampered": "integrity.mismatch",
+        "replayed": "integrity.replay"
+      }
+    }
+  },
+  "faultCases": [
+    {
+      "fault": "unsafe-restart-failure",
+      "helperExit": 1,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    },
+    {
+      "fault": "term-interruption",
+      "helperExit": 143,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    },
+    {
+      "fault": "rpc-failure",
+      "helperExit": 1,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    }
+  ],
+  "resourceLimits": {
+    "verified": true,
+    "sliceMemoryMax": 12884901888,
+    "sliceCpuQuotaPerSecUSec": 4000000,
+    "sliceTasksMax": 1024,
+    "runtimeMaxUSec": 1800000000,
+    "timeoutStopUSec": 90000000,
+    "candidateMemoryMax": 2147483648
+  },
+  "cleanup": {
+    "processesStopped": true,
+    "serviceRemoved": true,
+    "serviceStopped": true,
+    "temporaryStateRemoved": true,
+    "campaignSliceStopped": true,
+    "campaignSliceRemoved": true,
+    "productionServiceIdentityPreserved": true,
+    "wrapperCleanupErrors": []
+  },
+  "harnessSha256": "814dc70e5d926eb9acc0eaf72d15459ebc27a013b0c49b046305dcda82861437",
+  "wrapperSha256": "19d39d09817860bdd7fd049e98b1b49df9c48324baa7aaa25b448897e6b408e2",
+  "sourceReceiptSha256": "8b2e233248c42e5cd80afce357c1c7b6c16afd65e5df7ae9ef4dad2ee234b66d",
+  "sourceAssessmentSha256": "c959f4d482c45bc32ca0a5e6fb488588dc768d62cccc04a572562696517451d2",
+  "limitations": [
+    "Unpublished1.4.6 has not been built, signed or tested in a native fixture.",
+    "Signed1.4.5 published compatibility remains285..287; this runtime290 execution is candidate-only.",
+    "No ARM enrollment fixture, browser/wallet signing, live enrollment, runtime activation or strict physical-time claim.",
+    "Production identity and headroom were sampled during execution; production finality observations were postflight only."
+  ]
+}

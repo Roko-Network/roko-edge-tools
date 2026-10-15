@@ -1,0 +1,6 @@
+{
+  "sourceUrl": "https://github.com/Roko-Network/roko_network/blob/07af9d95b6270e65c06cb6829662725aee2286f5/governance-web/app/validator-enrollment.mjs",
+  "sourceCommit": "07af9d95b6270e65c06cb6829662725aee2286f5",
+  "sha256": "0c5d29a30ab8d5b796b84958285069571f60347d8de248c84f507c6622ea5bf9",
+  "adaptation": "none; exact standalone Agora module exported for offline contract regression only"
+}

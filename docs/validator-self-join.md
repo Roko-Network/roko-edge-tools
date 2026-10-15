@@ -82,6 +82,19 @@ signature, and installation still requires the pinned release key and signed
 manifest checks above. Tooling 1.4.0 is the first verified fixed release. The affected v1.1.0 and
 v1.3.0 assets remain unchanged; see [asset evidence](offline-checksum-qualification.md).
 
+## Runtime290 release preparation
+
+Source tooling 1.4.6 is unpublished and targets only runtime 290 with the exact
+AMD64 FBA node pair in the proposed compatibility profile. The completed
+[candidate fixture](evidence/guarded-fba4-runtime290-candidate-20261015.json)
+used signed 1.4.5 tools and does not establish published 1.4.6 support. A fresh
+signed 1.4.6 installation and native fixture with delivery binding must pass
+before its immutable release links or canonical downloads are promoted.
+Runtime 286 operators retain their existing signed 1.4.5 release and support
+range; the historical instructions and receipts above remain available. There
+is no ARM enrollment fixture claim. See the
+[qualification sequence](private-enrollment-qualification.md).
+
 ## Before enrollment
 
 The guarded window requires a proven RPC policy: the enrollment CLI uses a
