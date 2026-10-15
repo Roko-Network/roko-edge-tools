@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# The private build caller uses restrictive output/signing permissions.
+umask 077
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 task_dir="$(mktemp -d)"
@@ -43,6 +45,23 @@ assert metadata["artifact"]["mediaType"] == "application/gzip"
 assert metadata["source"]["revision"] == "0123456789abcdef0123456789abcdef01234567"
 assert metadata["updatedAt"] == "2026-09-05T01:00:00Z"
 PY
+# Verify actual signed package modes, not only same-user fixture readability.
+python3 - "$task_dir/release-a/roko-validator-enroll-1.4.6.tar.gz" <<'PYMODES'
+import sys
+import tarfile
+with tarfile.open(sys.argv[1]) as archive:
+    members = archive.getmembers()
+    directories = [member for member in members if member.isdir()]
+    assert len(directories) == 6
+    assert all(member.mode == 0o755 for member in directories)
+    files = [member for member in members if member.isfile()]
+    assert len(files) == 17
+    for member in files:
+        relative = member.name.removeprefix("roko-validator-enroll-1.4.6/")
+        expected = 0o755 if relative.startswith("bin/") or relative == "scripts/install-roko-validator-enroll.sh" else 0o644
+        assert member.mode == expected, (relative, oct(member.mode), oct(expected))
+    assert all(member.isdir() or member.isfile() for member in members)
+PYMODES
 grep -F 'install-roko-validator-enroll.sh' "$task_dir/release-a/SHA256SUMS" >/dev/null
 (
   cd "$task_dir/release-a"
