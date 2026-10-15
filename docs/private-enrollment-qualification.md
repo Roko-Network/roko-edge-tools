@@ -1,10 +1,25 @@
 # Private enrollment qualification preparation
 
 The signed 1.4.5 release and its published spec285–287 support remain unchanged.
-The revised runner and private checker are preparation for an isolated native
-fixture. No spec290 fixture, new tools version, signed support claim, live
-readiness or publication is established by these source changes or smoke tests.
-Historical receipts and their original harness hash remain immutable.
+The [runtime 290 candidate fixture](evidence/guarded-fba4-runtime290-candidate-20261015.json)
+passed with the exact FBA AMD64 node and production mainnet Wasm while using
+unchanged signed 1.4.5 tools outside their published compatibility. Both generated
+and reused packages passed the actual Agora module, all six rejection cases and
+all three restoration faults. The seven existing keys were preserved and owned
+cleanup completed. Production identity and headroom were sampled during the run;
+production finality samples were postflight only. No browser, live readiness,
+physical-time or ARM enrollment qualification is established.
+
+Source version 1.4.6 and its exact 290-only profile are **unpublished preparation**.
+The profile binds only AMD64 source `fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b`,
+node `3.0.0-dev-fba4e76cfeb`, SHA256
+`adfd8009807d340e389a8308579da84ac62c36e257c3b9122427a49fb85b6206`,
+and proposed node release ID `nightly-fba4e76c-20261015`. Neither new tools assets
+nor that node release is published by this preparation. After source review,
+build and sign a fresh 1.4.6 release, install it in a new isolated prefix, and
+repeat the actual fixture and checker in delivery mode. Publication requires
+that fresh assessment to report `deliveryBinding:true`. Historical receipts,
+1.4.5 release fixtures and their published range remain immutable.
 
 The runner now requires an owned systemd campaign. Use
 `test/run_guarded_enrollment_qualification.py` with the independently reviewed
@@ -47,13 +62,14 @@ negative cases, all three fault cases, seven-key reuse, exact Safe restoration
 and complete owned cleanup. It creates a new private assessment; it never
 changes a release profile or manufactures fixture results.
 
-`--mode candidate` is explicitly spec290 with unchanged signed1.4.5 outside
+`--mode candidate` is explicitly spec290 with unchanged signed 1.4.5 outside
 published support. Its result has `deliveryBinding:false`. `--mode delivery`
 requires authenticated published compatibility and an exact qualified-build
 entry matching full source revision, binary SHA, runtime spec, architecture and
-display version. A new release must support precisely its tested spec. Version
-and compatibility edits remain pending the actual native fixture and a repeat
-fixture after any tool-version change.
+display version. A new release must support precisely its tested spec. The
+unpublished 1.4.6 version and exact 290 profile are prepared from the actual
+candidate result; a fresh fixture after this tool-version change is
+still required.
 
 Node inputs can be directly covered by the signature-verified checksum list.
 Alternatively, root may provide a separately signed private operator attestation

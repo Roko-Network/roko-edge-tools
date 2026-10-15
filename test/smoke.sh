@@ -15,6 +15,7 @@ python3 -m py_compile bin/roko-validator-enroll bin/roko-authority-peers lib/val
 python3 test/validator_enrollment.py
 python3 test/rpc_policy_contract.py
 python3 test/enrollment_qualification.py
+python3 test/validator_enroll_profile.py
 python3 test/authority_peers.py
 test/session_key_window.sh
 test/validator_enroll_release.sh
