@@ -112,7 +112,7 @@ function validateTimestamp(generatedAt, expiresAt, now) {
   if (!Number.isFinite(generated) || !Number.isFinite(expires)) fail("time.invalid", "Enrollment timestamps must be valid ISO-8601 values.");
   if (expires <= generated || expires - generated > MAX_PACKAGE_AGE_MS) fail("time.window", "Enrollment expiry must be after generation and no more than 24 hours later.");
   if (generated > now + CLOCK_SKEW_MS) fail("time.future", "Enrollment package was generated too far in the future.");
-  if (expires <= now) fail("time.expired", "Enrollment package has expired. Reissue a fresh package for the existing tuple using the supported guarded reuse workflow; do not rotate keys solely to refresh the package.");
+  if (expires <= now) fail("time.expired", "Enrollment package has expired. Generate fresh node session material.");
 }
 
 function validateExpected(network, expected = {}) {

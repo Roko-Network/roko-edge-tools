@@ -1,0 +1,152 @@
+{
+  "schema": "roko.enrollment-preflight-public-summary.v1",
+  "preparedAtUtc": "2026-10-15T21:45:03.477923Z",
+  "status": "preflight-fixture-passed",
+  "startedAt": "2026-10-15T21:43:07.025766+00:00",
+  "nodeRelease": "nightly-f490bcd1-20261014",
+  "sourceRevision": "f490bcd12df8af67e9bd009482fbc1954199d7f1",
+  "binaryVersion": "roko-node 3.0.0-dev-f490bcd12df",
+  "architecture": "amd64",
+  "imageDigest": "sha256:61a83528d512863c69ccab73fbe6ea607a7a3d805aa76640508f2341ae5b6aa5",
+  "artifactSha256": {
+    "binary": "b0ddc0fdae81ce09b1f6c9b18eee61f86ab6d35ec53b825bcfcc77acf3e66fdc",
+    "runtimeWasm": "2b2c062997dbe9575305a263656a9fb46dc794108944907eec152a5bee4945d3",
+    "agoraModule": "d41eb32e117661ca2a6e535c8f0001847b2c31cdba7695f742493ea81f19b79c"
+  },
+  "runtimeWasmRole": "live on-chain :code (spec 286) extracted from a full state snapshot of the running network",
+  "agoraModuleSource": "roko_network 90a4f5dd57eb2b89f403f0c10ef7ec097f52330a governance-web/app/validator-enrollment.mjs",
+  "testedToolVersion": "1.4.6",
+  "testedToolBuild": "unsigned pre-release build of this repinned source",
+  "proposedReleaseStatus": "unpublished; signed 1.4.6 delivery assessment required",
+  "deliveryBinding": false,
+  "liveChainUsed": false,
+  "authorityPolicy": "development log-only",
+  "observedNetwork": {
+    "chainName": "Roko Network Testnet",
+    "genesisHash": "0xb3bc0a1ebda22deeff199a7c12cc38e4bc69d665ada33d5a158b7bb9b787e406",
+    "metadataHash": "0xc1efe29c737e55702b0241b7f844e11e6a7cc958ed46941a6da5a66286aa4269",
+    "specName": "mainnet",
+    "specVersion": 286,
+    "transactionVersion": 4
+  },
+  "generation": {
+    "accepted": true,
+    "helperAttestedCustody": true,
+    "safeRestored": true
+  },
+  "reuse": {
+    "helperExit": 0,
+    "sameTuple": true,
+    "freshPackage": true,
+    "existingKeyFilesPreserved": true,
+    "existingKeyCount": 7,
+    "safeAfter": true,
+    "policyBytesRestored": true
+  },
+  "reuseCustody": {
+    "status": "independently-observed",
+    "method": "author_hasSessionKeys",
+    "observedTrue": true,
+    "additionalUnsafeWindowOpened": false
+  },
+  "agora": {
+    "generated": {
+      "accepted": true,
+      "moduleSha256": "d41eb32e117661ca2a6e535c8f0001847b2c31cdba7695f742493ea81f19b79c",
+      "rejected": {
+        "wrongGenesis": true,
+        "wrongRuntime": true,
+        "wrongMetadata": true,
+        "expired": true,
+        "tampered": true,
+        "replayed": true
+      },
+      "rejectionCodes": {
+        "wrongGenesis": "network.genesisHash",
+        "wrongRuntime": "network.specVersion",
+        "wrongMetadata": "network.metadataHash",
+        "expired": "time.expired",
+        "tampered": "integrity.mismatch",
+        "replayed": "integrity.replay"
+      }
+    },
+    "reused": {
+      "accepted": true,
+      "moduleSha256": "d41eb32e117661ca2a6e535c8f0001847b2c31cdba7695f742493ea81f19b79c",
+      "rejected": {
+        "wrongGenesis": true,
+        "wrongRuntime": true,
+        "wrongMetadata": true,
+        "expired": true,
+        "tampered": true,
+        "replayed": true
+      },
+      "rejectionCodes": {
+        "wrongGenesis": "network.genesisHash",
+        "wrongRuntime": "network.specVersion",
+        "wrongMetadata": "network.metadataHash",
+        "expired": "time.expired",
+        "tampered": "integrity.mismatch",
+        "replayed": "integrity.replay"
+      }
+    }
+  },
+  "faultCases": [
+    {
+      "fault": "unsafe-restart-failure",
+      "helperExit": 1,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    },
+    {
+      "fault": "term-interruption",
+      "helperExit": 143,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    },
+    {
+      "fault": "rpc-failure",
+      "helperExit": 1,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    }
+  ],
+  "resourceLimits": {
+    "verified": true,
+    "sliceControlGroup": "/rokoenrollqual74c66325e645.slice",
+    "sliceMemoryMax": 12884901888,
+    "sliceCpuQuotaPerSecUSec": 4000000,
+    "sliceTasksMax": 1024,
+    "runtimeMaxUSec": 1800000000,
+    "timeoutStopUSec": 90000000,
+    "candidateMemoryMax": 2147483648,
+    "candidateControlGroup": "/rokoenrollqual74c66325e645.slice/roko-enrollment-qualification-74c66325e645-candidate.service"
+  },
+  "cleanup": {
+    "processesStopped": true,
+    "serviceRemoved": true,
+    "serviceStopped": true,
+    "temporaryStateRemoved": true,
+    "campaignSliceStopped": true,
+    "campaignSliceRemoved": true,
+    "productionServiceIdentityPreserved": true,
+    "wrapperCleanupErrors": []
+  },
+  "harnessSha256": "814dc70e5d926eb9acc0eaf72d15459ebc27a013b0c49b046305dcda82861437",
+  "wrapperSha256": "19d39d09817860bdd7fd049e98b1b49df9c48324baa7aaa25b448897e6b408e2",
+  "sourceReceiptSha256": "b40b62ceb56848190b896d8ba6449d61086c86cb91907ec2a55ed1ff2dfe741a",
+  "limitations": [
+    "Tools under test were an unsigned pre-release build; publication requires a fresh signed 1.4.6 delivery assessment.",
+    "Disposable development chain only; no live enrollment, wallet signing, browser readiness or strict physical-time claim.",
+    "No ARM enrollment fixture; the arm64 member of the node release is not in the compatibility profile."
+  ]
+}

@@ -100,12 +100,12 @@ import json
 import sys
 value = json.load(open(sys.argv[1], encoding="utf-8"))
 assert value["network"]["chainId"] == "52370"
-assert value["runtime"] == {"maximumSpecVersion": 290, "minimumSpecVersion": 290}
+assert value["runtime"] == {"maximumSpecVersion": 286, "minimumSpecVersion": 286}
 assert value["tool"]["sourceRevision"] == "0123456789abcdef0123456789abcdef01234567"
 assert len(value["node"]["qualifiedBuilds"]) == 1
-assert value["node"]["qualifiedBuilds"][0]["sourceRevision"] == "fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b"
+assert value["node"]["qualifiedBuilds"][0]["sourceRevision"] == "f490bcd12df8af67e9bd009482fbc1954199d7f1"
 assert value["node"]["qualifiedBuilds"][0]["platform"] == "linux-amd64"
-assert value["node"]["qualifiedBuilds"][0]["binarySha256"] == "adfd8009807d340e389a8308579da84ac62c36e257c3b9122427a49fb85b6206"
+assert value["node"]["qualifiedBuilds"][0]["binarySha256"] == "b0ddc0fdae81ce09b1f6c9b18eee61f86ab6d35ec53b825bcfcc77acf3e66fdc"
 PY
 
 tampered_archive="$task_dir/tampered-archive"

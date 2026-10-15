@@ -24,7 +24,7 @@ class VersionProfileTests(unittest.TestCase):
     def setUp(self):
         self.profile = profile()
         self.row, = self.profile['node']['qualifiedBuilds']
-        self.evidence = json.loads((ROOT / 'docs/evidence/guarded-fba4-runtime290-candidate-20261015.json').read_text())
+        self.evidence = json.loads((ROOT / 'docs/evidence/guarded-f490bcd-runtime286-20261015.json').read_text())
 
     def test_source_commands_and_profile_version_agree(self):
         self.assertEqual((ROOT / 'VERSION').read_text().strip(), '1.4.6')
@@ -33,10 +33,10 @@ class VersionProfileTests(unittest.TestCase):
             self.assertEqual(output, command + ' 1.4.6')
         self.assertEqual(self.profile['tool']['version'], '1.4.6')
 
-    def test_exact_amd64_node_and_observed_runtime_match_candidate_evidence(self):
-        self.assertEqual(self.profile['runtime'], {'minimumSpecVersion': 290, 'maximumSpecVersion': 290})
+    def test_exact_running_amd64_node_and_live_runtime_match_evidence(self):
+        self.assertEqual(self.profile['runtime'], {'minimumSpecVersion': 286, 'maximumSpecVersion': 286})
         self.assertEqual(self.row['platform'], 'linux-amd64')
-        self.assertEqual(self.row['releaseId'], 'nightly-fba4e76c-20261015')
+        self.assertEqual(self.row['releaseId'], 'nightly-f490bcd1-20261014')
         self.assertEqual(self.row['sourceRevision'], self.evidence['sourceRevision'])
         self.assertEqual(self.row['binarySha256'], self.evidence['artifactSha256']['binary'])
         self.assertEqual('roko-node ' + self.row['displayVersion'], self.evidence['binaryVersion'])
@@ -47,10 +47,10 @@ class VersionProfileTests(unittest.TestCase):
             relative = self.row[name].split('/blob/' + '1' * 40 + '/', 1)[1]
             self.assertTrue((ROOT / relative).is_file())
 
-    def test_projection_keeps_candidate_scope_and_actual_negative_fault_proof(self):
-        self.assertEqual(self.evidence['testedToolVersion'], '1.4.5')
+    def test_projection_keeps_preflight_scope_and_actual_negative_fault_proof(self):
+        self.assertEqual(self.evidence['testedToolVersion'], '1.4.6')
         self.assertFalse(self.evidence['deliveryBinding'])
-        self.assertTrue(self.evidence['outsidePublishedCompatibility'])
+        self.assertFalse(self.evidence['liveChainUsed'])
         self.assertIn('unpublished', self.evidence['proposedReleaseStatus'])
         for result in self.evidence['agora'].values():
             self.assertTrue(result['accepted'])
@@ -90,11 +90,19 @@ class SyntheticDeliveryProfileTests(unittest.TestCase):
         self.fixture.r['binaryVersion'] = 'roko-node ' + self.row['displayVersion']
         self.fixture.values['binary'] = self.row['binarySha256']
         self.fixture.r['binarySha256'] = self.row['binarySha256']
+        # Delivery binds the exact live runtime; retarget the synthetic tuple.
+        spec = self.row['runtimeSpecVersion']
+        self.fixture.args.runtime_spec = spec
+        self.fixture.r['expectedRuntimeSpec'] = spec
+        self.fixture.r['before']['runtime']['specVersion'] = spec
+        self.fixture.r['package']['network']['specVersion'] = spec
+        for imported in self.fixture.r['agoraImport'].values():
+            imported['expected']['specVersion'] = spec
 
     def assess(self):
         f = self.fixture
         return checker.assess_receipt(f.r, f.args, f.tools,
-                                      {'source_revision': 'fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b'},
+                                      {'source_revision': 'f490bcd12df8af67e9bd009482fbc1954199d7f1'},
                                       'synthetic-image@sha256:' + '5' * 64, f.values,
                                       {'kind': 'synthetic-test-only-not-native-evidence'})
 
@@ -105,7 +113,7 @@ class SyntheticDeliveryProfileTests(unittest.TestCase):
 
     def test_source_binary_architecture_runtime_and_display_substitutions_refused(self):
         for field, wrong in {'sourceRevision': '0' * 40, 'binarySha256': '0' * 64,
-                             'platform': 'linux-arm64', 'runtimeSpecVersion': 286,
+                             'platform': 'linux-arm64', 'runtimeSpecVersion': 290,
                              'displayVersion': '3.0.0-dev-other'}.items():
             original = self.row[field]
             self.row[field] = wrong

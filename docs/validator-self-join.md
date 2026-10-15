@@ -82,17 +82,20 @@ signature, and installation still requires the pinned release key and signed
 manifest checks above. Tooling 1.4.0 is the first verified fixed release. The affected v1.1.0 and
 v1.3.0 assets remain unchanged; see [asset evidence](offline-checksum-qualification.md).
 
-## Runtime290 release preparation
+## Tooling 1.4.6 release preparation
 
-Source tooling 1.4.6 is unpublished and targets only runtime 290 with the exact
-AMD64 FBA node pair in the proposed compatibility profile. The completed
+Source tooling 1.4.6 is unpublished. Its compatibility profile binds the
+network's live runtime spec 286 and the node build the managed fleet runs:
+AMD64 release `nightly-f490bcd1-20261014`, source
+`f490bcd12df8af67e9bd009482fbc1954199d7f1`, binary SHA256
+`b0ddc0fdae81ce09b1f6c9b18eee61f86ab6d35ec53b825bcfcc77acf3e66fdc`.
+A [guarded fixture](evidence/guarded-f490bcd-runtime286-20261015.json) and a
+fresh signed 1.4.6 installation with delivery binding must pass before its
+immutable release links or canonical downloads are promoted. Until then, use
+the signed 1.4.5 release. The runtime 290
 [candidate fixture](evidence/guarded-fba4-runtime290-candidate-20261015.json)
-used signed 1.4.5 tools and does not establish published 1.4.6 support. A fresh
-signed 1.4.6 installation and native fixture with delivery binding must pass
-before its immutable release links or canonical downloads are promoted.
-Runtime 286 operators retain their existing signed 1.4.5 release and support
-range; the historical instructions and receipts above remain available. There
-is no ARM enrollment fixture claim. See the
+remains historical evidence for a runtime that is not active on the network.
+There is no ARM enrollment fixture claim. See the
 [qualification sequence](private-enrollment-qualification.md).
 
 ## Before enrollment

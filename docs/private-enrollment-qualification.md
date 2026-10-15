@@ -10,16 +10,21 @@ cleanup completed. Production identity and headroom were sampled during the run;
 production finality samples were postflight only. No browser, live readiness,
 physical-time or ARM enrollment qualification is established.
 
-Source version 1.4.6 and its exact 290-only profile are **unpublished preparation**.
-The profile binds only AMD64 source `fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b`,
-node `3.0.0-dev-fba4e76cfeb`, SHA256
-`adfd8009807d340e389a8308579da84ac62c36e257c3b9122427a49fb85b6206`,
-and proposed node release ID `nightly-fba4e76c-20261015`. Neither new tools assets
-nor that node release is published by this preparation. After source review,
-build and sign a fresh 1.4.6 release, install it in a new isolated prefix, and
-repeat the actual fixture and checker in delivery mode. Publication requires
-that fresh assessment to report `deliveryBinding:true`. Historical receipts,
-1.4.5 release fixtures and their published range remain immutable.
+Source version 1.4.6 is **unpublished preparation**. Its profile binds the
+network's live runtime, spec 286, and the node build the managed fleet runs:
+AMD64 release `nightly-f490bcd1-20261014`, source
+`f490bcd12df8af67e9bd009482fbc1954199d7f1`, node `3.0.0-dev-f490bcd12df`,
+SHA256 `b0ddc0fdae81ce09b1f6c9b18eee61f86ab6d35ec53b825bcfcc77acf3e66fdc`.
+The runtime 290 candidate is not active on the network and is no longer the
+release target. The ARM64 member of the same release (SHA256
+`272d20659a047a530280a4fa9018cf16f450ec3fffecb3b669af336856a74fc2`) has no
+enrollment fixture and is not in the profile. Run the guarded fixture with the
+exact runtime 286 Wasm (code SHA256
+`2b2c062997dbe9575305a263656a9fb46dc794108944907eec152a5bee4945d3`), then build
+and sign 1.4.6, install it in a new isolated prefix, and repeat the actual
+fixture and checker in delivery mode with `--runtime-spec 286`. Publication
+requires that fresh assessment to report `deliveryBinding:true`. Historical
+receipts, 1.4.5 release fixtures and their published range remain immutable.
 
 The runner now requires an owned systemd campaign. Use
 `test/run_guarded_enrollment_qualification.py` with the independently reviewed
@@ -39,7 +44,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 test/run_guarded_enrollment_qualification.py \
   --production-service roko-titan.service --receipt NEW_NATIVE_RECEIPT -- \
   --binary FINAL_NATIVE_BINARY --expected-sha256 FINAL_BINARY_SHA \
   --runtime-wasm FINAL_PRODUCTION_WASM --expected-runtime-sha256 FINAL_WASM_SHA \
-  --expected-runtime-spec 290 --tool-bin VERIFIED_INSTALLED_LINKS \
+  --expected-runtime-spec 286 --tool-bin VERIFIED_INSTALLED_LINKS \
   --agora-module FINAL_EXACT_AGORA_MODULE --agora-sha256 FINAL_MODULE_SHA
 ```
 
@@ -67,9 +72,8 @@ published support. Its result has `deliveryBinding:false`. `--mode delivery`
 requires authenticated published compatibility and an exact qualified-build
 entry matching full source revision, binary SHA, runtime spec, architecture and
 display version. A new release must support precisely its tested spec. The
-unpublished 1.4.6 version and exact 290 profile are prepared from the actual
-candidate result; a fresh fixture after this tool-version change is
-still required.
+unpublished 1.4.6 profile binds exactly the live spec 286; a fresh fixture
+with the signed 1.4.6 tools is still required.
 
 Node inputs can be directly covered by the signature-verified checksum list.
 Alternatively, root may provide a separately signed private operator attestation

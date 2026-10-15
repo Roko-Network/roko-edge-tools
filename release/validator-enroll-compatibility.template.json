@@ -15,24 +15,24 @@
     "releaseChannel": "testnet-nightly",
     "qualifiedBuilds": [
       {
-        "releaseId": "nightly-fba4e76c-20261015",
-        "sourceRevision": "fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b",
-        "displayVersion": "3.0.0-dev-fba4e76cfeb",
+        "releaseId": "nightly-f490bcd1-20261014",
+        "sourceRevision": "f490bcd12df8af67e9bd009482fbc1954199d7f1",
+        "displayVersion": "3.0.0-dev-f490bcd12df",
         "platform": "linux-amd64",
-        "binarySha256": "adfd8009807d340e389a8308579da84ac62c36e257c3b9122427a49fb85b6206",
-        "runtimeSpecVersion": 290,
-        "evidenceUrl": "https://github.com/Roko-Network/roko-edge-tools/blob/@SOURCE_REVISION@/docs/evidence/guarded-fba4-runtime290-candidate-20261015.json",
-        "reuseEvidenceUrl": "https://github.com/Roko-Network/roko-edge-tools/blob/@SOURCE_REVISION@/docs/evidence/guarded-fba4-runtime290-candidate-20261015.json"
+        "binarySha256": "b0ddc0fdae81ce09b1f6c9b18eee61f86ab6d35ec53b825bcfcc77acf3e66fdc",
+        "runtimeSpecVersion": 286,
+        "evidenceUrl": "https://github.com/Roko-Network/roko-edge-tools/blob/@SOURCE_REVISION@/docs/evidence/guarded-f490bcd-runtime286-20261015.json",
+        "reuseEvidenceUrl": "https://github.com/Roko-Network/roko-edge-tools/blob/@SOURCE_REVISION@/docs/evidence/guarded-f490bcd-runtime286-20261015.json"
       }
     ]
   },
   "runtime": {
-    "minimumSpecVersion": 290,
-    "maximumSpecVersion": 290
+    "minimumSpecVersion": 286,
+    "maximumSpecVersion": 286
   },
   "sessionKeys": {
     "count": 7,
     "proofMode": "legacy-empty"
   },
-  "updatedAt": "2026-10-15T02:53:13.243539Z"
+  "updatedAt": "2026-10-15T21:45:03.477923Z"
 }
