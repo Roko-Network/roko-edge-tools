@@ -117,6 +117,9 @@ same. Two arm64 constraints apply:
   Enrollment therefore needs a runnable native `roko-node` on the host, even
   when the node itself runs in Docker.
 
+For a step-by-step Jetson procedure with expected output at each step, see the
+[Jetson arm64 validator runbook](jetson-arm64-validator-runbook.md).
+
 The runtime 290
 [candidate fixture](evidence/guarded-fba4-runtime290-candidate-20261015.json)
 is historical evidence for a runtime that is not active on the network. See the
