@@ -32,13 +32,15 @@ active membership are separate milestones.
    against loopback and require exit 0. Inspect listeners and all forwarding
    paths, including Docker port publishing, reverse proxies and tunnels. A
    loopback bind alone does not rule out forwarding. The helper requires its
-   supported policy-variable unit contract; a hardcoded Safe custom unit needs
-   a reviewed adaptation that preserves the settings recorded in step 3.
+   supported policy-variable [unit contract](validator-self-join.md#service-unit-contract);
+   a hardcoded Safe unit, including one rendered by the 1.4.6 service
+   installer, needs that adaptation while preserving the settings recorded in
+   step 3.
 6. **Choose reuse or rotation.** For an existing tuple, verify its public
    identity and local custody; refresh the package without generating keys.
    Signed tooling 1.4.0 exposes CLI reuse but its helper supports generation
-   only. Tooling 1.4.1 adds the guarded reuse option; verify the installed
-   version before choosing it. Rotation is a separate
+   only. Tooling 1.4.1 and later add the guarded reuse option; verify the
+   installed version before choosing it. Rotation is a separate
    intentional action. Retain old key custody until the replacement is proven
    active, and never edit a package's expiry or tuple to bypass validation.
 7. **Prepare the intended wallet before the short package window.** Agora's
@@ -59,7 +61,9 @@ active membership are separate milestones.
    and finalized authorship separately. Neither an import nor a finalized
    `validate` call proves an active validator.
 
-The exact native enrollment qualifications for tooling 1.4.0 are in
+The current qualified build for tooling 1.4.6 is listed in
+[Tooling 1.4.6 compatibility](validator-self-join.md#tooling-146-compatibility).
+Earlier native enrollment qualifications are in
 [guarded enrollment qualification](guarded-enrollment-qualification.md).
 They do not certify a custom PHC derivative, Docker timing behavior, the
 owner's wallet integration or an external host's transport reachability.

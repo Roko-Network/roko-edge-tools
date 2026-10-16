@@ -187,13 +187,18 @@ do not hunt for this tool in the node binary archive or clone a development
 branch.
 
 ```bash
-sudo ./bin/roko-session-key-window \
+sudo roko-session-key-window \
   --confirm-isolated-window \
   --confirm-no-forwarding -- \
   --binary /usr/local/bin/roko-node \
-  --public-address /dns4/validator.example/tcp/30333/p2p/YOUR_PUBLIC_PEER_ID \
   --output ./roko-validator-enrollment.json
 ```
+
+`--public-address` is optional; outbound-only candidates use the node's listen
+addresses. The helper requires the
+[service unit contract](docs/validator-self-join.md#service-unit-contract).
+Units rendered by the 1.4.6 service installer need the documented three-line
+adaptation first.
 
 The two confirmations attest that the operator reviewed the temporary change
 and that no tunnel, reverse proxy, or port forward publishes the loopback RPC.
