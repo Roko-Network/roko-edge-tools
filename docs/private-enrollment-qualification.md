@@ -10,23 +10,31 @@ cleanup completed. Production identity and headroom were sampled during the run;
 production finality samples were postflight only. No browser, live readiness,
 physical-time or ARM enrollment qualification is established.
 
-Source version 1.4.7 binds the same profile as the published 1.4.6: the
-network's live runtime, spec 286, and the node build the managed fleet runs:
-AMD64 release `nightly-f490bcd1-20261014`, source
-`f490bcd12df8af67e9bd009482fbc1954199d7f1`, node `3.0.0-dev-f490bcd12df`,
-SHA256 `b0ddc0fdae81ce09b1f6c9b18eee61f86ab6d35ec53b825bcfcc77acf3e66fdc`.
-The runtime 290 candidate is not active on the network and is no longer the
-release target. The ARM64 member of the same release (SHA256
-`272d20659a047a530280a4fa9018cf16f450ec3fffecb3b669af336856a74fc2`) has no
-enrollment fixture and is not in the profile. Run the guarded fixture with the
-exact runtime 286 Wasm (code SHA256
-`2b2c062997dbe9575305a263656a9fb46dc794108944907eec152a5bee4945d3`), then build
-and sign the release, install it in a new isolated prefix, and repeat the
-actual fixture and checker in delivery mode with `--runtime-spec 286`.
-Publication requires that fresh assessment to report `deliveryBinding:true`.
-The 1.4.7 preflight record is
-[guarded-f490bcd-runtime286-tools147-20261016.json](evidence/guarded-f490bcd-runtime286-tools147-20261016.json). Historical
-receipts, 1.4.5 release fixtures and their published range remain immutable.
+Published tooling **1.4.7** remains the runtime 286 release, bound to the
+AMD64 `nightly-f490bcd1-20261014` node. Its published tag, ten assets and versioned
+installation route remain unchanged; see [the current compatibility record](validator-self-join.md#tooling-147-compatibility).
+It includes the service installer's supported RPC policy contract, retained in
+this source together with its rendered native/Docker role regression tests.
+
+Source version **1.4.8** is unpublished preparation for exactly runtime 290 and
+AMD64 `nightly-fba4e76c-20261015`, source
+`fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b`, node `3.0.0-dev-fba4e76cfeb`,
+SHA256 `adfd8009807d340e389a8308579da84ac62c36e257c3b9122427a49fb85b6206`.
+The nightly suffix records the candidate's build date, independent of later
+publication. The [private historical fixture](evidence/guarded-fba4-private147-runtime290-20261016.json)
+used tools source `ba78d9332e96e388e85443301a63e982e813fef0`, a private signed
+1.4.7 build different from the published 1.4.7 release. It passed with production
+**mainnet** Wasm `c90d0f20950475f295d4c84d7a5b6d896d71574e7ce9e74c241ea3d1013b5147`
+and the source-bound Agora module, but does not qualify 1.4.8.
+
+After source review, build and sign the new 1.4.8 assets, install them in a fresh
+isolated prefix, authenticate every installed member, then repeat the actual
+fixture and checker in delivery mode with `--runtime-spec 290`. Require
+`deliveryBinding:true`, all six rejection cases, three restoration faults,
+seven-key preservation, advancing production finality and complete owned cleanup.
+The actual fork's six-field tuple remains authoritative; no live activation or
+ARM enrollment qualification is implied. Keep runtime 286 users on immutable
+1.4.7 until actual runtime 290 delivery and the new release are qualified.
 
 The runner now requires an owned systemd campaign. Use
 `test/run_guarded_enrollment_qualification.py` with the independently reviewed
@@ -46,7 +54,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 test/run_guarded_enrollment_qualification.py \
   --production-service roko-titan.service --receipt NEW_NATIVE_RECEIPT -- \
   --binary FINAL_NATIVE_BINARY --expected-sha256 FINAL_BINARY_SHA \
   --runtime-wasm FINAL_PRODUCTION_WASM --expected-runtime-sha256 FINAL_WASM_SHA \
-  --expected-runtime-spec 286 --tool-bin VERIFIED_INSTALLED_LINKS \
+  --expected-runtime-spec 290 --tool-bin VERIFIED_INSTALLED_LINKS \
   --agora-module FINAL_EXACT_AGORA_MODULE --agora-sha256 FINAL_MODULE_SHA
 ```
 
@@ -71,11 +79,11 @@ changes a release profile or manufactures fixture results.
 
 `--mode candidate` is explicitly spec290 with unchanged signed 1.4.5 outside
 published support. Its result has `deliveryBinding:false`. `--mode delivery`
-requires authenticated published compatibility and an exact qualified-build
-entry matching full source revision, binary SHA, runtime spec, architecture and
-display version. A new release must support precisely its tested spec. The
-1.4.7 profile binds exactly the live spec 286, and each signed release needs
-its own fresh delivery-mode fixture.
+requires authenticated signed compatibility and an exact qualified-build entry
+matching full source revision, binary SHA, runtime spec, architecture and display
+version. A new release must support precisely its tested spec. Unpublished
+1.4.8 binds exactly spec 290 and requires its own signed fixture. Published
+1.4.7 remains exact spec 286.
 
 Node inputs can be directly covered by the signature-verified checksum list.
 Alternatively, root may provide a separately signed private operator attestation
@@ -143,3 +151,10 @@ state. A preservation boolean alone is insufficient. These observations protect
 the existing service identity; they do not establish runtime activation or live
 network readiness. Root must review the updated wrapper/checker hashes before
 execution. The harness bytes remain unchanged.
+
+Immutable public 1.4.6 and 1.4.7 signature-regression inputs are retained separately
+under `test/fixtures/validator-enroll-1.4.6` and `test/fixtures/validator-enroll-1.4.7`.
+Their exact signed source revisions are `35112c97ab820a8e1ffeb7fcd9932eecda76fa93`
+and `caf9eff873983a80742d56125ae48dbd8d7c893e`; both profiles remain spec 286.
+The deployed standalone Agora fixture remains unchanged for that baseline. A
+future native 1.4.8 campaign separately pins the exact runtime 290 module.

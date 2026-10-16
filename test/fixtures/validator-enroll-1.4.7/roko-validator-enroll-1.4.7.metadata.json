@@ -1,0 +1,25 @@
+{
+  "artifact": {
+    "bytes": 31042,
+    "file": "roko-validator-enroll-1.4.7.tar.gz",
+    "mediaType": "application/gzip",
+    "sha256": "28325c1fb75edf261b88d0dad8f9815bd14a93224e21ffb6fb4d65517d55f349"
+  },
+  "compatibility": {
+    "file": "compatibility/validator-enroll-compatibility.json",
+    "sha256": "dce50af6fcd77a1ed43d0ab9633a735e8037b00113febdf3c83a5f17fdb21660"
+  },
+  "package": {
+    "name": "roko-validator-enroll-1.4.7"
+  },
+  "schema": "roko.validator-enroll-release.v1",
+  "source": {
+    "repository": "https://github.com/Roko-Network/roko-edge-tools",
+    "revision": "caf9eff873983a80742d56125ae48dbd8d7c893e"
+  },
+  "tool": {
+    "name": "roko-validator-enroll",
+    "version": "1.4.7"
+  },
+  "updatedAt": "2026-10-16T18:03:24Z"
+}
