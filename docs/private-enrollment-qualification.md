@@ -10,7 +10,7 @@ cleanup completed. Production identity and headroom were sampled during the run;
 production finality samples were postflight only. No browser, live readiness,
 physical-time or ARM enrollment qualification is established.
 
-Source version 1.4.6 is **unpublished preparation**. Its profile binds the
+Source version 1.4.7 binds the same profile as the published 1.4.6: the
 network's live runtime, spec 286, and the node build the managed fleet runs:
 AMD64 release `nightly-f490bcd1-20261014`, source
 `f490bcd12df8af67e9bd009482fbc1954199d7f1`, node `3.0.0-dev-f490bcd12df`,
@@ -21,9 +21,11 @@ release target. The ARM64 member of the same release (SHA256
 enrollment fixture and is not in the profile. Run the guarded fixture with the
 exact runtime 286 Wasm (code SHA256
 `2b2c062997dbe9575305a263656a9fb46dc794108944907eec152a5bee4945d3`), then build
-and sign 1.4.6, install it in a new isolated prefix, and repeat the actual
-fixture and checker in delivery mode with `--runtime-spec 286`. Publication
-requires that fresh assessment to report `deliveryBinding:true`. Historical
+and sign the release, install it in a new isolated prefix, and repeat the
+actual fixture and checker in delivery mode with `--runtime-spec 286`.
+Publication requires that fresh assessment to report `deliveryBinding:true`.
+The 1.4.7 preflight record is
+[guarded-f490bcd-runtime286-tools147-20261016.json](evidence/guarded-f490bcd-runtime286-tools147-20261016.json). Historical
 receipts, 1.4.5 release fixtures and their published range remain immutable.
 
 The runner now requires an owned systemd campaign. Use
@@ -72,8 +74,8 @@ published support. Its result has `deliveryBinding:false`. `--mode delivery`
 requires authenticated published compatibility and an exact qualified-build
 entry matching full source revision, binary SHA, runtime spec, architecture and
 display version. A new release must support precisely its tested spec. The
-unpublished 1.4.6 profile binds exactly the live spec 286; a fresh fixture
-with the signed 1.4.6 tools is still required.
+1.4.7 profile binds exactly the live spec 286, and each signed release needs
+its own fresh delivery-mode fixture.
 
 Node inputs can be directly covered by the signature-verified checksum list.
 Alternatively, root may provide a separately signed private operator attestation

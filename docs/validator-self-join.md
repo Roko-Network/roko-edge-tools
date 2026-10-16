@@ -27,23 +27,23 @@ an already-running node, use the canonical signed-manifest-first sequence:
 
 ```bash
 mkdir roko-validator-tool && cd roko-validator-tool
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.6/install-roko-validator-enroll.sh
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.6/SHA256SUMS
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.6/SHA256SUMS.asc
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.6/roko-release-signing-key.asc
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.7/install-roko-validator-enroll.sh
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.7/SHA256SUMS
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.7/SHA256SUMS.asc
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.7/roko-release-signing-key.asc
 export ROKO_VERIFY_GNUPGHOME="$(mktemp -d)"
 test "$(GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --with-colons --import-options show-only --import roko-release-signing-key.asc 2>/dev/null | awk -F: '$1=="fpr"{print toupper($10);exit}')" = 62297562B1C7053088F405DB0117DAAA677A5BF2
 GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --import roko-release-signing-key.asc
 GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --verify SHA256SUMS.asc SHA256SUMS
 awk '$2=="install-roko-validator-enroll.sh"{print}' SHA256SUMS | sha256sum --check --strict
-sudo bash install-roko-validator-enroll.sh --release-base https://downloads.roko.network/validator-tools/1.4.6
+sudo bash install-roko-validator-enroll.sh --release-base https://downloads.roko.network/validator-tools/1.4.7
 roko-validator-enroll --version
 ```
 
-The current release is **tooling 1.4.6**. Its exact qualified pair is Linux
+The current release is **tooling 1.4.7**. Its exact qualified pair is Linux
 amd64 node release `nightly-f490bcd1-20261014` (source
 `f490bcd12df8af67e9bd009482fbc1954199d7f1`) on runtime spec 286; see
-[Tooling 1.4.6 compatibility](#tooling-146-compatibility). Earlier releases
+[Tooling 1.4.7 compatibility](#tooling-147-compatibility). Earlier releases
 qualified older node builds; their records remain in the qualification
 evidence. Prefer the already-qualified current node; do not downgrade merely
 to match version labels. The [qualification record](guarded-enrollment-qualification.md)
@@ -64,10 +64,10 @@ release key fingerprint and the signed `SHA256SUMS` manifest before running the
 bundled installer. This does not require cloning a development branch:
 
 ```bash
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.6/roko-validator-enroll-offline-1.4.6.tar.gz
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.6/roko-validator-enroll-offline-1.4.6.tar.gz.sha256
-sha256sum --check --strict roko-validator-enroll-offline-1.4.6.tar.gz.sha256
-tar -xzf roko-validator-enroll-offline-1.4.6.tar.gz
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.7/roko-validator-enroll-offline-1.4.7.tar.gz
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.7/roko-validator-enroll-offline-1.4.7.tar.gz.sha256
+sha256sum --check --strict roko-validator-enroll-offline-1.4.7.tar.gz.sha256
+tar -xzf roko-validator-enroll-offline-1.4.7.tar.gz
 gpg --import roko-release-signing-key.asc
 gpg --fingerprint 62297562B1C7053088F405DB0117DAAA677A5BF2
 gpg --verify SHA256SUMS.asc SHA256SUMS
@@ -83,11 +83,11 @@ signature, and installation still requires the pinned release key and signed
 manifest checks above. Tooling 1.4.0 is the first verified fixed release. The affected v1.1.0 and
 v1.3.0 assets remain unchanged; see [asset evidence](offline-checksum-qualification.md).
 
-## Tooling 1.4.6 compatibility
+## Tooling 1.4.7 compatibility
 
-Tooling 1.4.6 accepts exactly runtime spec **286**, the network's live runtime.
-Tooling 1.4.5 covered runtime specs 285–287; a future runtime upgrade requires
-a new tooling release with its own fixture. The profile's single qualified
+Tooling 1.4.7 accepts exactly runtime spec **286**, the network's live runtime,
+the same range as 1.4.6. Tooling 1.4.5 covered runtime specs 285–287; a future
+runtime upgrade requires a new tooling release with its own fixture. The profile's single qualified
 build is the node the managed fleet runs:
 
 | Field | Value |
@@ -97,10 +97,12 @@ build is the node the managed fleet runs:
 | Version string | `3.0.0-dev-f490bcd12df` |
 | amd64 `roko-node` SHA-256 | `b0ddc0fdae81ce09b1f6c9b18eee61f86ab6d35ec53b825bcfcc77acf3e66fdc` |
 
-The [guarded fixture](evidence/guarded-f490bcd-runtime286-20261015.json)
+The [guarded fixture](evidence/guarded-f490bcd-runtime286-tools147-20261016.json)
 covers generation, reuse, the Agora import and rejection cases, and fault
-recovery. The signed 1.4.6 installation then passed the same fixture in
-delivery mode.
+recovery. The signed 1.4.7 installation then passed the same fixture in
+delivery mode. The 1.4.6 [fixture](evidence/guarded-f490bcd-runtime286-20261015.json)
+remains the record for that release. 1.4.7 changes no enrollment behaviour;
+its service installer now renders the [service unit contract](#service-unit-contract).
 
 **arm64 (for example NVIDIA Jetson).** The same node release publishes an arm64
 build (`roko-node-testnet-linux-arm64.tar.gz`, inner `roko-node` SHA-256
@@ -291,10 +293,24 @@ of the following:
   `--rpc-listen-address`;
 - the service is active.
 
-Units rendered by `installer/scripts/install-roko-service.sh` in tooling 1.4.6
-still hardcode `--rpc-methods Safe` and do not create the policy file. Adapt
-them before opening the window. The adaptation is the contract used by the
-qualification fixture:
+From tooling 1.4.7, `installer/scripts/install-roko-service.sh` renders this
+contract for every role and runtime and creates `/etc/roko/node-rpc.env` as
+root-owned `ROKO_RPC_METHODS=Safe` (mode 0600) when it is absent. It refuses to
+install over an existing policy file that is not in exact Safe state. Rerun
+the 1.4.7 installer with your original arguments, or check an installed unit:
+
+```bash
+systemctl cat roko-node.service | grep -F -- '--rpc-methods ${ROKO_RPC_METHODS}'
+sudo cat /etc/roko/node-rpc.env
+```
+
+Expected: the `--rpc-methods ${ROKO_RPC_METHODS}` line, then
+`ROKO_RPC_METHODS=Safe`.
+
+Units rendered by the service installer in tooling 1.4.6 and earlier hardcode
+`--rpc-methods Safe` and do not create the policy file. Rerun the 1.4.7
+installer, or adapt them by hand before opening the window. The manual
+adaptation is the contract used by the qualification fixture:
 
 ```bash
 systemctl cat roko-node.service > roko-node.service.before

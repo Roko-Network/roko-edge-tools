@@ -162,10 +162,11 @@ Fresh session keys therefore use `roko-session-key-window`, not an exposed
 author endpoint: it verifies the supported service and loopback listener,
 retains a recovery backup, performs one confirmed local key-generation window,
 and restores and tests Safe mode before the enrollment file may be imported.
-Units rendered by `install-roko-service.sh` in tooling 1.4.6 still hardcode
-`--rpc-methods Safe`. Apply the
+From tooling 1.4.7, `install-roko-service.sh` renders the
 [service unit contract](../docs/validator-self-join.md#service-unit-contract)
-adaptation before opening the window.
+and creates `/etc/roko/node-rpc.env` in Safe state. Units rendered by 1.4.6 or
+earlier hardcode `--rpc-methods Safe`; rerun the current installer or apply the
+documented adaptation before opening the window.
 The same installed CLI later captures the redacted node-local operational
 proof with `roko-validator-enroll --save-readiness FILE`; no unsafe window is
 needed for that Safe RPC.
