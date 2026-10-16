@@ -6,6 +6,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import tarfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,26 +18,26 @@ checker = qualification.checker
 
 def profile():
     return json.loads((ROOT / 'release/validator-enroll-compatibility.template.json').read_text()
-                      .replace('@VERSION@', '1.4.7').replace('@SOURCE_REVISION@', '1' * 40))
+                      .replace('@VERSION@', '1.4.8').replace('@SOURCE_REVISION@', '1' * 40))
 
 
 class VersionProfileTests(unittest.TestCase):
     def setUp(self):
         self.profile = profile()
         self.row, = self.profile['node']['qualifiedBuilds']
-        self.evidence = json.loads((ROOT / 'docs/evidence/guarded-f490bcd-runtime286-tools147-20261016.json').read_text())
+        self.evidence = json.loads((ROOT / 'docs/evidence/guarded-fba4-private147-runtime290-20261016.json').read_text())
 
     def test_source_commands_and_profile_version_agree(self):
-        self.assertEqual((ROOT / 'VERSION').read_text().strip(), '1.4.7')
+        self.assertEqual((ROOT / 'VERSION').read_text().strip(), '1.4.8')
         for command in ('roko-validator-enroll',):
             output = subprocess.check_output([str(ROOT / 'bin' / command), '--version'], text=True).strip()
-            self.assertEqual(output, command + ' 1.4.7')
-        self.assertEqual(self.profile['tool']['version'], '1.4.7')
+            self.assertEqual(output, command + ' 1.4.8')
+        self.assertEqual(self.profile['tool']['version'], '1.4.8')
 
-    def test_exact_running_amd64_node_and_live_runtime_match_evidence(self):
-        self.assertEqual(self.profile['runtime'], {'minimumSpecVersion': 286, 'maximumSpecVersion': 286})
+    def test_exact_candidate_amd64_node_and_runtime_match_historical_evidence(self):
+        self.assertEqual(self.profile['runtime'], {'minimumSpecVersion': 290, 'maximumSpecVersion': 290})
         self.assertEqual(self.row['platform'], 'linux-amd64')
-        self.assertEqual(self.row['releaseId'], 'nightly-f490bcd1-20261014')
+        self.assertEqual(self.row['releaseId'], 'nightly-fba4e76c-20261015')
         self.assertEqual(self.row['sourceRevision'], self.evidence['sourceRevision'])
         self.assertEqual(self.row['binarySha256'], self.evidence['artifactSha256']['binary'])
         self.assertEqual('roko-node ' + self.row['displayVersion'], self.evidence['binaryVersion'])
@@ -47,9 +48,14 @@ class VersionProfileTests(unittest.TestCase):
             relative = self.row[name].split('/blob/' + '1' * 40 + '/', 1)[1]
             self.assertTrue((ROOT / relative).is_file())
 
-    def test_projection_keeps_preflight_scope_and_actual_negative_fault_proof(self):
+    def test_projection_keeps_private_historical_scope_and_new148_pending(self):
         self.assertEqual(self.evidence['testedToolVersion'], '1.4.7')
-        self.assertFalse(self.evidence['deliveryBinding'])
+        self.assertEqual(self.evidence['testedToolsSourceRevision'], 'ba78d9332e96e388e85443301a63e982e813fef0')
+        self.assertTrue(self.evidence['deliveryBinding'])
+        self.assertFalse(self.evidence['publicToolRelease'])
+        self.assertFalse(self.evidence['qualificationAppliesTo148'])
+        self.assertEqual(self.evidence['proposedToolVersion'], '1.4.8')
+        self.assertEqual(self.evidence['public147HasDifferentSource'], 'caf9eff873983a80742d56125ae48dbd8d7c893e')
         self.assertFalse(self.evidence['liveChainUsed'])
         self.assertIn('unpublished', self.evidence['proposedReleaseStatus'])
         for result in self.evidence['agora'].values():
@@ -83,14 +89,14 @@ class SyntheticDeliveryProfileTests(unittest.TestCase):
         self.fixture = qualification.ReceiptTests()
         self.fixture.setUp()
         self.fixture.args.mode = 'delivery'
-        self.fixture.tools['version'] = '1.4.7'
+        self.fixture.tools['version'] = '1.4.8'
         self.fixture.tools['compatibility'] = profile()
         self.row = self.fixture.tools['compatibility']['node']['qualifiedBuilds'][0]
-        self.fixture.r['toolVersion'] = 'roko-validator-enroll 1.4.7'
+        self.fixture.r['toolVersion'] = 'roko-validator-enroll 1.4.8'
         self.fixture.r['binaryVersion'] = 'roko-node ' + self.row['displayVersion']
         self.fixture.values['binary'] = self.row['binarySha256']
         self.fixture.r['binarySha256'] = self.row['binarySha256']
-        # Delivery binds the exact live runtime; retarget the synthetic tuple.
+        # Delivery binds the exact proposed runtime; retarget the synthetic tuple.
         spec = self.row['runtimeSpecVersion']
         self.fixture.args.runtime_spec = spec
         self.fixture.r['expectedRuntimeSpec'] = spec
@@ -102,7 +108,7 @@ class SyntheticDeliveryProfileTests(unittest.TestCase):
     def assess(self):
         f = self.fixture
         return checker.assess_receipt(f.r, f.args, f.tools,
-                                      {'source_revision': 'f490bcd12df8af67e9bd009482fbc1954199d7f1'},
+                                      {'source_revision': 'fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b'},
                                       'synthetic-image@sha256:' + '5' * 64, f.values,
                                       {'kind': 'synthetic-test-only-not-native-evidence'})
 
@@ -113,7 +119,7 @@ class SyntheticDeliveryProfileTests(unittest.TestCase):
 
     def test_source_binary_architecture_runtime_and_display_substitutions_refused(self):
         for field, wrong in {'sourceRevision': '0' * 40, 'binarySha256': '0' * 64,
-                             'platform': 'linux-arm64', 'runtimeSpecVersion': 290,
+                             'platform': 'linux-arm64', 'runtimeSpecVersion': 286,
                              'displayVersion': '3.0.0-dev-other'}.items():
             original = self.row[field]
             self.row[field] = wrong
@@ -130,6 +136,60 @@ class SyntheticDeliveryProfileTests(unittest.TestCase):
         self.fixture.tools['compatibility']['runtime']['minimumSpecVersion'] = 285
         with self.assertRaises(checker.VerificationError):
             self.assess()
+
+
+class Published146BaselineTests(unittest.TestCase):
+    """Actual public release bytes, not a replacement private146 build."""
+    def setUp(self):
+        self.root = ROOT / 'test/fixtures/validator-enroll-1.4.6'
+
+    def test_public146_signatures_and_signed_members_remain_exact(self):
+        self.assertEqual(checker.digest(self.root / 'SHA256SUMS'), '1030c9a76bd867b9893b830829e7fa21895e7732aa47ce94926ee67475c35919')
+        self.assertEqual(checker.digest(self.root / 'roko-validator-enroll-1.4.6.metadata.json'), 'c9447eb76fe8240aaab76a1205ed9d73a7f9c095f5ff4b951aff9898cc4f0f16')
+        for name in ('SHA256SUMS', 'roko-validator-enroll-1.4.6.metadata.json'):
+            checker.verify_signature(self.root / name, self.root / (name + '.asc'), self.root / 'roko-release-signing-key.asc')
+        for name, digest in checker.checksums(self.root / 'SHA256SUMS').items():
+            self.assertEqual(checker.digest(self.root / name), digest)
+
+    def test_public146_retains_exact286_pair_and_distinct_source(self):
+        archive = self.root / 'roko-validator-enroll-1.4.6.tar.gz'
+        self.assertEqual(checker.digest(archive), 'ab78ac289d0c712ca636d75e687b8f7f0ea814f98b3a6307c74137e42cb6dbd8')
+        with tarfile.open(archive) as bundle:
+            raw = bundle.extractfile('roko-validator-enroll-1.4.6/compatibility/validator-enroll-compatibility.json').read()
+        value = json.loads(raw)
+        self.assertEqual(value['tool']['sourceRevision'], '35112c97ab820a8e1ffeb7fcd9932eecda76fa93')
+        self.assertEqual(value['runtime'], {'minimumSpecVersion': 286, 'maximumSpecVersion': 286})
+        row, = value['node']['qualifiedBuilds']
+        self.assertEqual(row['sourceRevision'], 'f490bcd12df8af67e9bd009482fbc1954199d7f1')
+        self.assertEqual(row['binarySha256'], 'b0ddc0fdae81ce09b1f6c9b18eee61f86ab6d35ec53b825bcfcc77acf3e66fdc')
+        self.assertNotEqual(row['sourceRevision'], profile()['node']['qualifiedBuilds'][0]['sourceRevision'])
+
+
+class Published147BaselineTests(unittest.TestCase):
+    """Actual public release bytes, not a replacement private146 build."""
+    def setUp(self):
+        self.root = ROOT / 'test/fixtures/validator-enroll-1.4.7'
+
+    def test_public147_signatures_and_signed_members_remain_exact(self):
+        self.assertEqual(checker.digest(self.root / 'SHA256SUMS'), '7d4999ee11ef9ebaaf7f6209a4c5dd6891829d5ee453caf5634798881e91c7d6')
+        self.assertEqual(checker.digest(self.root / 'roko-validator-enroll-1.4.7.metadata.json'), 'f1b4417c1391c59c9c40b52bb93ed37ad0e95418d6ca05ad92750ed58ecd05c0')
+        for name in ('SHA256SUMS', 'roko-validator-enroll-1.4.7.metadata.json'):
+            checker.verify_signature(self.root / name, self.root / (name + '.asc'), self.root / 'roko-release-signing-key.asc')
+        for name, digest in checker.checksums(self.root / 'SHA256SUMS').items():
+            self.assertEqual(checker.digest(self.root / name), digest)
+
+    def test_public147_retains_exact286_pair_and_distinct_source(self):
+        archive = self.root / 'roko-validator-enroll-1.4.7.tar.gz'
+        self.assertEqual(checker.digest(archive), '28325c1fb75edf261b88d0dad8f9815bd14a93224e21ffb6fb4d65517d55f349')
+        with tarfile.open(archive) as bundle:
+            raw = bundle.extractfile('roko-validator-enroll-1.4.7/compatibility/validator-enroll-compatibility.json').read()
+        value = json.loads(raw)
+        self.assertEqual(value['tool']['sourceRevision'], 'caf9eff873983a80742d56125ae48dbd8d7c893e')
+        self.assertEqual(value['runtime'], {'minimumSpecVersion': 286, 'maximumSpecVersion': 286})
+        row, = value['node']['qualifiedBuilds']
+        self.assertEqual(row['sourceRevision'], 'f490bcd12df8af67e9bd009482fbc1954199d7f1')
+        self.assertEqual(row['binarySha256'], 'b0ddc0fdae81ce09b1f6c9b18eee61f86ab6d35ec53b825bcfcc77acf3e66fdc')
+        self.assertNotEqual(row['sourceRevision'], profile()['node']['qualifiedBuilds'][0]['sourceRevision'])
 
 
 if __name__ == '__main__':

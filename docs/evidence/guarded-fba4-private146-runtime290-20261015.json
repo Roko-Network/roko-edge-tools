@@ -1,0 +1,167 @@
+{
+  "sourceRevision": "fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b",
+  "sourceTree": "2c25857f3dea6d599a0dc2b81f4f6c9816434d28",
+  "binaryVersion": "roko-node 3.0.0-dev-fba4e76cfeb",
+  "architecture": "amd64",
+  "imageDigest": "sha256:0baaa205b2ad249282612f3fd8de023cdb303471a992db94671f9f5cb7b62e45",
+  "artifactSha256": {
+    "binary": "adfd8009807d340e389a8308579da84ac62c36e257c3b9122427a49fb85b6206",
+    "runtimeWasm": "c90d0f20950475f295d4c84d7a5b6d896d71574e7ce9e74c241ea3d1013b5147",
+    "agoraModule": "0c5d29a30ab8d5b796b84958285069571f60347d8de248c84f507c6622ea5bf9"
+  },
+  "runtimeWasmRole": "production-mainnet-a, byte-identical production-mainnet-b",
+  "liveChainUsed": false,
+  "authorityPolicy": "development log-only",
+  "candidateRole": [
+    "Full"
+  ],
+  "harnessSha256": "814dc70e5d926eb9acc0eaf72d15459ebc27a013b0c49b046305dcda82861437",
+  "wrapperSha256": "19d39d09817860bdd7fd049e98b1b49df9c48324baa7aaa25b448897e6b408e2",
+  "schema": "roko.enrollment-private-historical-summary.v1",
+  "preparedAtUtc": "2026-10-16T17:54:23.699732Z",
+  "status": "historical-private146-fixture-passed-new147-pending",
+  "startedAt": "2026-10-15T03:12:36.470614+00:00",
+  "testedToolVersion": "1.4.6",
+  "testedToolsSourceRevision": "0b489f73e340ebba1f78c63bbd5554f76bb7e722",
+  "testedToolsArchiveSha256": "827e4d888f643b6e01e3ddd322b9172e24e5df9a7c7b1b3e213f551bed9b2282",
+  "proposedToolVersion": "1.4.7",
+  "proposedReleaseStatus": "unpublished1.4.7; fresh signed1.4.7 fixture required",
+  "deliveryBinding": true,
+  "outsidePublishedCompatibility": false,
+  "publicToolRelease": false,
+  "public146HasDifferentSource": "35112c97ab820a8e1ffeb7fcd9932eecda76fa93",
+  "qualificationAppliesTo147": false,
+  "observedNetwork": {
+    "chainName": "Roko Network Testnet",
+    "genesisHash": "0xfbc9d175bb6d163c10d951e21d7b4820d40f3f52129f482be0623721202f93b2",
+    "metadataHash": "0x88c9107c19c6cf7c0993b62e31a823c39a281ec0b25df74d2bb86288e0aadac0",
+    "specName": "mainnet",
+    "specVersion": 290,
+    "transactionVersion": 4
+  },
+  "generation": {
+    "helperAttested": true,
+    "method": "author_hasSessionKeys",
+    "independentlyObservedGeneration": false,
+    "validatorEnrollmentSha256": "c27653ace4cb3a3b22711d55a38ae76e7bef203bbd0a5fb301aa609e33d5f46e",
+    "scope": "Successful authenticated helper generation enforces author_hasSessionKeys before Safe restoration; no extra window opened."
+  },
+  "reuse": {
+    "helperExit": 0,
+    "sameTuple": true,
+    "freshPackage": true,
+    "existingKeyFilesPreserved": true,
+    "existingKeyCount": 7,
+    "safeAfter": true,
+    "policyBytesRestored": true
+  },
+  "reuseCustody": {
+    "status": "independently-observed",
+    "method": "author_hasSessionKeys",
+    "observedTrue": true,
+    "additionalUnsafeWindowOpened": false
+  },
+  "agora": {
+    "generated": {
+      "moduleSha256": "0c5d29a30ab8d5b796b84958285069571f60347d8de248c84f507c6622ea5bf9",
+      "accepted": true,
+      "rejected": {
+        "wrongGenesis": true,
+        "wrongRuntime": true,
+        "wrongMetadata": true,
+        "expired": true,
+        "tampered": true,
+        "replayed": true
+      },
+      "rejectionCodes": {
+        "wrongGenesis": "network.genesisHash",
+        "wrongRuntime": "network.specVersion",
+        "wrongMetadata": "network.metadataHash",
+        "expired": "time.expired",
+        "tampered": "integrity.mismatch",
+        "replayed": "integrity.replay"
+      }
+    },
+    "reused": {
+      "moduleSha256": "0c5d29a30ab8d5b796b84958285069571f60347d8de248c84f507c6622ea5bf9",
+      "accepted": true,
+      "rejected": {
+        "wrongGenesis": true,
+        "wrongRuntime": true,
+        "wrongMetadata": true,
+        "expired": true,
+        "tampered": true,
+        "replayed": true
+      },
+      "rejectionCodes": {
+        "wrongGenesis": "network.genesisHash",
+        "wrongRuntime": "network.specVersion",
+        "wrongMetadata": "network.metadataHash",
+        "expired": "time.expired",
+        "tampered": "integrity.mismatch",
+        "replayed": "integrity.replay"
+      }
+    }
+  },
+  "faultCases": [
+    {
+      "fault": "unsafe-restart-failure",
+      "helperExit": 1,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    },
+    {
+      "fault": "term-interruption",
+      "helperExit": 143,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    },
+    {
+      "fault": "rpc-failure",
+      "helperExit": 1,
+      "safeAfter": true,
+      "policyBytesRestored": true,
+      "noPackageWritten": true,
+      "existingKeyFilesPreserved": true,
+      "existingKeyCount": 7
+    }
+  ],
+  "resourceLimits": {
+    "verified": true,
+    "sliceMemoryMax": 12884901888,
+    "sliceCpuQuotaPerSecUSec": 4000000,
+    "sliceTasksMax": 1024,
+    "runtimeMaxUSec": 1800000000,
+    "timeoutStopUSec": 90000000,
+    "candidateMemoryMax": 2147483648
+  },
+  "cleanup": {
+    "processesStopped": true,
+    "serviceStopped": true,
+    "serviceRemoved": true,
+    "temporaryStateRemoved": true,
+    "campaignSliceStopped": true,
+    "campaignSliceRemoved": true,
+    "productionServiceIdentityPreserved": true,
+    "wrapperCleanupErrors": []
+  },
+  "sourceReceiptSha256": "735a3d4582b34056305d04480bf38dcd528eda8655628ad5b4775858f5f5f0eb",
+  "sourceAssessmentSha256": "a33fbb1c3127736b691ceb76b997b5d22642fa1a36bdd053c4b532094c602e16",
+  "limitations": [
+    "The privately signed runtime290 tools used version1.4.6 before a different public1.4.6 release was published for runtime286. These private assets were never that public release.",
+    "Version1.4.7 has not yet been signed, installed or qualified; historical eligibility does not establish new release qualification.",
+    "No ARM enrollment fixture, browser/wallet signing, live enrollment, runtime activation or strict physical-time claim."
+  ],
+  "productionFinalityObservation": {
+    "campaignFirst": 1856579,
+    "campaignLast": 1856609,
+    "independentPostflight": 1856633,
+    "watchStartedBeforeFixture": true
+  }
+}
