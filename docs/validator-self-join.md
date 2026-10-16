@@ -120,6 +120,21 @@ The runtime 290
 is historical evidence for a runtime that is not active on the network. See the
 [qualification sequence](private-enrollment-qualification.md).
 
+## Tooling 1.4.7 preparation for runtime 290
+
+Version **1.4.7 is unpublished**. Its proposed profile accepts only runtime 290
+and the FBA Linux amd64 node (`nightly-fba4e76c-20261015`, full source
+`fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b`, binary SHA256
+`adfd8009807d340e389a8308579da84ac62c36e257c3b9122427a49fb85b6206`).
+The date in that node identifier is its candidate build date, not a promise of
+publication on that date. Historical private qualification is
+[recorded separately](evidence/guarded-fba4-private146-runtime290-20261015.json);
+it does not establish qualification of the new 1.4.7 release. A fresh signed
+installation and native fixture are required before publication. This adds no
+ARM enrollment claim. Until actual runtime 290 delivery, use the published
+1.4.6 installer and runtime 286 pair above. Versioned 1.4.6 assets, its Safe RPC
+unit adaptation, and the optional inbound P2P instructions remain applicable.
+
 ## Before enrollment
 
 The guarded window requires a proven RPC policy: the enrollment CLI uses a
