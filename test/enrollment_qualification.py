@@ -190,7 +190,7 @@ class ReceiptTests(unittest.TestCase):
         del self.r['package']['network']['metadataHash']
         with self.assertRaises(checker.VerificationError):self.assess()
     def test_new_release_cannot_inherit_the_old_runtime_range(self):
-        self.tools['version']='1.4.6';self.r['toolVersion']='roko-validator-enroll 1.4.6';self.args.mode='delivery';self.args.runtime_spec=287
+        self.tools['version']='1.4.7';self.r['toolVersion']='roko-validator-enroll 1.4.7';self.args.mode='delivery';self.args.runtime_spec=287
         self.r['expectedRuntimeSpec']=287;self.r['before']['runtime']['specVersion']=287
         for imported in self.r['agoraImport'].values(): imported['expected']['specVersion']=287
         with self.assertRaises(checker.VerificationError):self.assess()

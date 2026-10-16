@@ -197,8 +197,8 @@ sudo roko-session-key-window \
 `--public-address` is optional; outbound-only candidates use the node's listen
 addresses. The helper requires the
 [service unit contract](docs/validator-self-join.md#service-unit-contract).
-Units rendered by the 1.4.6 service installer need the documented three-line
-adaptation first.
+The 1.4.7 service installer renders it; units from the 1.4.6 or earlier
+installer need the documented adaptation first.
 
 The two confirmations attest that the operator reviewed the temporary change
 and that no tunnel, reverse proxy, or port forward publishes the loopback RPC.

@@ -33,9 +33,9 @@ active membership are separate milestones.
    paths, including Docker port publishing, reverse proxies and tunnels. A
    loopback bind alone does not rule out forwarding. The helper requires its
    supported policy-variable [unit contract](validator-self-join.md#service-unit-contract);
-   a hardcoded Safe unit, including one rendered by the 1.4.6 service
-   installer, needs that adaptation while preserving the settings recorded in
-   step 3.
+   a hardcoded Safe unit, including one rendered by the 1.4.6 or earlier
+   service installer, needs that adaptation while preserving the settings
+   recorded in step 3. The 1.4.7 service installer renders the contract.
 6. **Choose reuse or rotation.** For an existing tuple, verify its public
    identity and local custody; refresh the package without generating keys.
    Signed tooling 1.4.0 exposes CLI reuse but its helper supports generation
@@ -61,8 +61,8 @@ active membership are separate milestones.
    and finalized authorship separately. Neither an import nor a finalized
    `validate` call proves an active validator.
 
-The current qualified build for tooling 1.4.6 is listed in
-[Tooling 1.4.6 compatibility](validator-self-join.md#tooling-146-compatibility).
+The current qualified build for tooling 1.4.7 is listed in
+[Tooling 1.4.7 compatibility](validator-self-join.md#tooling-147-compatibility).
 Earlier native enrollment qualifications are in
 [guarded enrollment qualification](guarded-enrollment-qualification.md).
 They do not certify a custom PHC derivative, Docker timing behavior, the

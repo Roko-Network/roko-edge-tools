@@ -23,6 +23,10 @@ Usage:
                           [--start] [--dry-run] [--render-unit]
 
 Installs a hardened, non-authoring ROKO service with loopback-only Safe RPC.
+The unit reads its RPC method policy from /etc/roko/node-rpc.env (created as
+root-owned ROKO_RPC_METHODS=Safe when absent) and defaults to Safe, which is
+the contract roko-session-key-window requires for its bounded key window.
+An existing policy file must already be in exact Safe state.
 Chrony deployments use the explicit node time-source contract. Docker mounts
 the host command socket read/write and adds its numeric group to uid 1000.
 
@@ -89,6 +93,9 @@ else
 fi
 data_path=/var/lib/roko
 unit_path=/etc/systemd/system/roko-node.service
+# Supported RPC policy contract consumed by roko-session-key-window.
+rpc_policy_path=/etc/roko/node-rpc.env
+rpc_policy_lines="Environment=ROKO_RPC_METHODS=Safe"$'\n'"EnvironmentFile=-$rpc_policy_path"
 # The public bootnode listens on plain TCP only; a /ws address matches no listener.
 bootnode=/dns4/boot.roko.network/tcp/30333/p2p/12D3KooWKSBZRtSiGKo8ueJtazCHT89LaBi6ZAtzgbeznf4NtVGj
 # Fleet temporal-mesh policy for the routed, software-timestamped testnet mesh:
@@ -211,6 +218,7 @@ RequiresMountsFor=$data_path
 [Service]
 User=roko
 Group=roko
+$rpc_policy_lines
 $chrony_pre_line
 ExecStartPre=$clock_gate
 ExecStart=/usr/local/bin/roko-node \\
@@ -220,7 +228,7 @@ ExecStart=/usr/local/bin/roko-node \\
   --bootnodes $bootnode \\
 ${authority_lines}  --port 30333 \\
   --rpc-port 9944 \\
-${pruning_line}${time_lines}${mesh_lines}${participation_line}${observer_line}  --rpc-methods Safe
+${pruning_line}${time_lines}${mesh_lines}${participation_line}${observer_line}  --rpc-methods \${ROKO_RPC_METHODS}
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536
@@ -245,6 +253,7 @@ RequiresMountsFor=$data_path$chrony_mount_requirement
 
 [Service]
 EnvironmentFile=/etc/roko/node-image.env
+$rpc_policy_lines
 $chrony_pre_line
 ExecStartPre=$clock_gate
 ExecStartPre=/usr/bin/docker run --rm --entrypoint /bin/sh \${ROKO_IMAGE} -ec 'test -x /usr/bin/chronyc && test -x /usr/sbin/ethtool && ! command -v chronyd >/dev/null 2>&1'
@@ -259,7 +268,7 @@ ${docker_chrony_lines}  --mount type=bind,src=$data_path,dst=/data \\
   --bootnodes $bootnode \\
 ${authority_lines}  --port 30333 \\
   --rpc-port 9944 \\
-${pruning_line}${time_lines}${mesh_lines}${participation_line}${observer_line}  --rpc-methods Safe
+${pruning_line}${time_lines}${mesh_lines}${participation_line}${observer_line}  --rpc-methods \${ROKO_RPC_METHODS}
 ExecStop=/usr/bin/docker stop --time 60 roko-node
 Restart=on-failure
 RestartSec=10
@@ -300,6 +309,41 @@ fi
 
 task_tmp="$(mktemp)"
 trap 'rm -f -- "$task_tmp"' EXIT
+
+as_root() {
+  if [[ "$(id -u)" -eq 0 ]]; then "$@"; else sudo "$@"; fi
+}
+
+# Keep an existing policy only when it is root-owned, not group/world-writable,
+# and in exact Safe state; otherwise create it as root-owned Safe 0600.
+ensure_rpc_policy() {
+  local path="$1" mode staged
+  if as_root test -e "$path" || as_root test -L "$path"; then
+    if as_root test -L "$path" || ! as_root test -f "$path"; then
+      echo "$path must be a regular file, not a symlink." >&2; return 1
+    fi
+    [[ "$(as_root stat -c '%u' "$path")" == 0 ]] || {
+      echo "$path must be owned by root." >&2; return 1;
+    }
+    mode="$(as_root stat -c '%a' "$path")"
+    (( (8#$mode & 0022) == 0 )) || {
+      echo "$path must not be group- or world-writable." >&2; return 1;
+    }
+    [[ "$(as_root cat -- "$path" | tr -d '\r')" == "ROKO_RPC_METHODS=Safe" ]] || {
+      echo "$path must be restored to exact Safe state before service installation." >&2; return 1;
+    }
+    return 0
+  fi
+  staged="$(mktemp)"
+  printf 'ROKO_RPC_METHODS=Safe\n' >"$staged"
+  if ! as_root install -D -o root -g root -m 0600 "$staged" "$path"; then
+    rm -f -- "$staged"; return 1
+  fi
+  rm -f -- "$staged"
+}
+
+ensure_rpc_policy "$rpc_policy_path"
+
 if [[ "$runtime" == native ]]; then
   [[ -x /usr/local/bin/roko-node ]] || { echo "Missing /usr/local/bin/roko-node." >&2; exit 1; }
   if ! getent passwd roko >/dev/null; then
@@ -346,6 +390,7 @@ else
 fi
 
 echo "Installed $unit_path"
+echo "RPC key-management policy: $rpc_policy_path (Safe)"
 if ! "$start_service"; then
   echo "Run 'sudo systemctl start roko-node' after the selected clock provider is synchronized."
 fi

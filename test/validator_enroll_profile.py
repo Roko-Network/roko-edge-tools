@@ -17,21 +17,21 @@ checker = qualification.checker
 
 def profile():
     return json.loads((ROOT / 'release/validator-enroll-compatibility.template.json').read_text()
-                      .replace('@VERSION@', '1.4.6').replace('@SOURCE_REVISION@', '1' * 40))
+                      .replace('@VERSION@', '1.4.7').replace('@SOURCE_REVISION@', '1' * 40))
 
 
 class VersionProfileTests(unittest.TestCase):
     def setUp(self):
         self.profile = profile()
         self.row, = self.profile['node']['qualifiedBuilds']
-        self.evidence = json.loads((ROOT / 'docs/evidence/guarded-f490bcd-runtime286-20261015.json').read_text())
+        self.evidence = json.loads((ROOT / 'docs/evidence/guarded-f490bcd-runtime286-tools147-20261016.json').read_text())
 
     def test_source_commands_and_profile_version_agree(self):
-        self.assertEqual((ROOT / 'VERSION').read_text().strip(), '1.4.6')
+        self.assertEqual((ROOT / 'VERSION').read_text().strip(), '1.4.7')
         for command in ('roko-validator-enroll',):
             output = subprocess.check_output([str(ROOT / 'bin' / command), '--version'], text=True).strip()
-            self.assertEqual(output, command + ' 1.4.6')
-        self.assertEqual(self.profile['tool']['version'], '1.4.6')
+            self.assertEqual(output, command + ' 1.4.7')
+        self.assertEqual(self.profile['tool']['version'], '1.4.7')
 
     def test_exact_running_amd64_node_and_live_runtime_match_evidence(self):
         self.assertEqual(self.profile['runtime'], {'minimumSpecVersion': 286, 'maximumSpecVersion': 286})
@@ -42,13 +42,13 @@ class VersionProfileTests(unittest.TestCase):
         self.assertEqual('roko-node ' + self.row['displayVersion'], self.evidence['binaryVersion'])
         self.assertEqual(self.row['runtimeSpecVersion'], self.evidence['observedNetwork']['specVersion'])
         self.assertEqual(self.profile['updatedAt'], self.evidence['preparedAtUtc'])
-        self.assertEqual(dt.datetime.fromisoformat(self.profile['updatedAt'].replace('Z', '+00:00')).date(), dt.date(2026, 10, 15))
+        self.assertEqual(dt.datetime.fromisoformat(self.profile['updatedAt'].replace('Z', '+00:00')).date(), dt.date(2026, 10, 16))
         for name in ('evidenceUrl', 'reuseEvidenceUrl'):
             relative = self.row[name].split('/blob/' + '1' * 40 + '/', 1)[1]
             self.assertTrue((ROOT / relative).is_file())
 
     def test_projection_keeps_preflight_scope_and_actual_negative_fault_proof(self):
-        self.assertEqual(self.evidence['testedToolVersion'], '1.4.6')
+        self.assertEqual(self.evidence['testedToolVersion'], '1.4.7')
         self.assertFalse(self.evidence['deliveryBinding'])
         self.assertFalse(self.evidence['liveChainUsed'])
         self.assertIn('unpublished', self.evidence['proposedReleaseStatus'])
@@ -83,10 +83,10 @@ class SyntheticDeliveryProfileTests(unittest.TestCase):
         self.fixture = qualification.ReceiptTests()
         self.fixture.setUp()
         self.fixture.args.mode = 'delivery'
-        self.fixture.tools['version'] = '1.4.6'
+        self.fixture.tools['version'] = '1.4.7'
         self.fixture.tools['compatibility'] = profile()
         self.row = self.fixture.tools['compatibility']['node']['qualifiedBuilds'][0]
-        self.fixture.r['toolVersion'] = 'roko-validator-enroll 1.4.6'
+        self.fixture.r['toolVersion'] = 'roko-validator-enroll 1.4.7'
         self.fixture.r['binaryVersion'] = 'roko-node ' + self.row['displayVersion']
         self.fixture.values['binary'] = self.row['binarySha256']
         self.fixture.r['binarySha256'] = self.row['binarySha256']
