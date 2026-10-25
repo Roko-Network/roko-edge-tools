@@ -31,6 +31,8 @@ done
 python3 -m py_compile bin/roko-rpc-health
 python3 -m py_compile bin/roko-validator-watch test/validator_watch.py
 python3 test/validator_watch.py
+python3 -m py_compile bin/roko-timebeat-readiness lib/timebeat_readiness.py
+python3 test/timebeat_readiness.py
 python3 test/docset.py
 python3 test/validator_public_contract.py
 

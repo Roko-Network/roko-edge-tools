@@ -6,10 +6,10 @@ audience: [professional, agent]
 tasks: [install, integrate, verify]
 status: stable
 version: 1.0.0
-last_reviewed: 2026-08-01
+last_reviewed: 2026-10-24
 read_when: Adding licensed Timebeat software or an operator PTP Squared authority.
 previous: hardware-acceptance.md
-next: security-network.md
+next: timebeat-readiness.md
 ---
 
 # Timebeat and PTP Squared integration
@@ -39,9 +39,14 @@ Installing one does not configure, enroll, or prove the other. Service-active
 is not an acceptance test; verify live sources, offsets, root distance,
 convergence, logs, and behavior during source loss.
 
+For bounded local inventory, explicit runtime unknowns and shared-feed trial
+prerequisites, use [Read-only Timebeat readiness reports](timebeat-readiness.md).
+Shared-network access and a completed 24-hour trial are not established by this
+installer or an active service.
+
 Never paste licence contents or proprietary configuration into an agent prompt.
 Provide local paths only.
 
 ---
 
-Pagenbar: [← Hardware acceptance](hardware-acceptance.md) · [Index](README.md) · [Next: Security/network →](security-network.md)
+Pagenbar: [← Hardware acceptance](hardware-acceptance.md) · [Index](README.md) · [Next: Readiness reports →](timebeat-readiness.md)
