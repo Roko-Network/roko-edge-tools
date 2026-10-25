@@ -58,6 +58,10 @@ routes:
     file: verification.md
     audience: [hobbyist, professional, agent]
     tasks: [verify, monitor, accept]
+  - id: validator-timing
+    file: validator-timing.md
+    audience: [hobbyist, professional, agent]
+    tasks: [diagnose, verify, monitor]
   - id: troubleshooting
     file: troubleshooting.md
     audience: [hobbyist, professional, agent]

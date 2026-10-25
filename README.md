@@ -114,6 +114,11 @@ collects the local package, licence, and reviewed PTP Squared configuration
 paths and performs the remaining installation and verification steps. See the
 [agentic installer guide](installer/README.md).
 
+For a falling validator score or an unexpected explorer chart, use the
+[clock-alignment checklist](docs/time-authority/validator-timing.md#bring-the-clock-into-alignment).
+It gives conditional repair steps, separates UTC discipline from mesh agreement,
+and provides bounded read-only checks.
+
 ## Tools
 
 | Tool | Purpose |
@@ -121,7 +126,7 @@ paths and performs the remaining installation and verification steps. See the
 | `bin/roko-edge-doctor` | One-shot local node, service, RPC, disk, network, and Chrony health summary |
 | `bin/roko-rpc-health` | JSON-RPC health probe for local or public ROKO RPC |
 | `bin/roko-validator-watch` | Bounded Safe-RPC evidence for temporal quorum, readiness, advancing finality, and finalized authorship |
-| `bin/roko-time-health` | Chrony/system clock diagnostics for NTP and edge time hosts |
+| `bin/roko-time-health` | Chrony/system clock diagnostics; see [timing interpretation and safe checks](docs/time-authority/validator-timing.md) |
 | `bin/roko-node-tail` | Convenience log tail for a systemd-managed node |
 | `bin/roko-edge-report` | Generate a sanitized support bundle |
 | `bin/roko-seed-refresh` | Add current ROKO snapshot/release torrents to Transmission and verify completed payloads |

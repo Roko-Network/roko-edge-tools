@@ -28,7 +28,7 @@ This docset intentionally contains no private ROKO timing topology.
 | Professional node or validator candidate | [Concepts](concepts.md) → [Choose sources](choose-sources.md) → [Professional design](professional.md) → [Security](security-network.md) → [Verification](verification.md) |
 | Mainnet physical clock | Professional path → [Hardware selection](mainnet-hardware.md) → [GNSS site installation](gnss-site-installation.md) → [Hardware deployment](hardware-deployment.md) → [Hardware acceptance](hardware-acceptance.md) |
 | Licensed Timebeat/PTP Squared | Professional path, then [Timebeat and PTP Squared](timebeat-ptp2.md) |
-| Diagnose a deployment | [Verification](verification.md) → [Troubleshooting](troubleshooting.md) |
+| Diagnose a deployment | [Verification](verification.md) → [Validator timing and mesh quality](validator-timing.md) → [Troubleshooting](troubleshooting.md) |
 | Agent-assisted deployment | [Agent contract](agent-contract.md), which routes back through the applicable pages |
 
 ## Non-negotiable acceptance conditions

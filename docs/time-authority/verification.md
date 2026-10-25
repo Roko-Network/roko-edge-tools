@@ -9,7 +9,7 @@ version: 1.0.0
 last_reviewed: 2026-08-01
 read_when: After configuration, before joining, and during routine operations.
 previous: security-network.md
-next: troubleshooting.md
+next: validator-timing.md
 ---
 
 # Verification, monitoring, and acceptance
@@ -44,9 +44,13 @@ selected-source stratum changes, source count below two, abnormal root distance,
 offset or frequency excursions, service restarts, source disagreement, mesh
 quality degradation, loss of finality, and configuration drift.
 
+For falling scores, clock-domain checks and interpreting the explorer’s
+five-minute minimum, follow [Validator timing and mesh quality](validator-timing.md)
+before changing clocks, services or thresholds.
+
 Record values and timestamps in operational telemetry, but keep secrets and
 private configuration out of readiness reports.
 
 ---
 
-Pagenbar: [← Security/network](security-network.md) · [Index](README.md) · [Next: Troubleshooting →](troubleshooting.md)
+Pagenbar: [← Security/network](security-network.md) · [Index](README.md) · [Next: Validator timing →](validator-timing.md)
