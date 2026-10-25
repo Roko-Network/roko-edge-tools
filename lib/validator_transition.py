@@ -149,8 +149,15 @@ def validate_readiness(report: Any) -> dict[str, Any]:
     # roko_network#456 adds the raw queued and active sets together. Older
     # nodes omit both; a node that reports only one of them is malformed.
     queued_set = {"queuedValidators", "activeValidators"}
-    if set(report) - queued_set != required or len(set(report) & queued_set) == 1:
+    policy = {"timingProfile", "participationEligible", "strictlyTimeQualified",
+              "timingWarning", "timingBlockingReasons"}
+    quality = {"authoringTimeQuality", "minimumAuthoringTimeQuality"}
+    optional = queued_set | policy | quality | {"timeEnforcement", "offsetSpreadNs", "stalePeerCount"}
+    if (set(report) - optional != required
+            or any(set(report) & group and not group <= set(report)
+                   for group in (queued_set, policy, quality))):
         raise EnrollmentError("Validator readiness result has missing or unsupported fields")
+    validate_timing_policy(report)
     if report["lifecycleState"] not in READINESS_STATES:
         raise EnrollmentError("Validator readiness lifecycle state is unsupported")
     optional_ints = ("genericP2pPeers", "activeBabeAuthorityIndex", "activeTemporalAuthorityIndex", "producerAuthorityIndex")
@@ -230,6 +237,56 @@ def validate_readiness(report: Any) -> dict[str, Any]:
         raise EnrollmentError("Validator readiness remediation is malformed")
     reject_sensitive_text(report["remediation"])
     return report
+
+
+def validate_timing_policy(report: dict[str, Any]) -> None:
+    """Accept known newer node fields without changing or inventing evidence."""
+    def reject() -> None:
+        raise EnrollmentError("Validator readiness timing policy is malformed or inconsistent")
+
+    if "timeEnforcement" in report:
+        enforcement = report["timeEnforcement"]
+        if (not isinstance(enforcement, dict) or set(enforcement) != {"babe", "grandpa"}
+                or type(enforcement["babe"]) is not bool
+                or enforcement["grandpa"] not in ("LogOnly", "Soft", "Strict")
+                or enforcement["babe"] != (enforcement["grandpa"] != "LogOnly")
+                or (report["readyToAuthor"] and not enforcement["babe"])):
+            reject()
+    if "timingProfile" in report:
+        if (report["timingProfile"] not in ("EARLY_TESTNET", "STRICT")
+                or any(type(report[field]) is not bool for field in
+                       ("participationEligible", "strictlyTimeQualified", "timingWarning"))):
+            reject()
+        reasons = report["timingBlockingReasons"]
+        if (not isinstance(reasons, list)
+                or any(not isinstance(reason, str) or not re.fullmatch(r"[A-Z0-9_]+", reason)
+                       for reason in reasons)):
+            reject()
+        if (report["participationEligible"] != (not reasons)
+                or report["timingWarning"] != (report["timingProfile"] == "EARLY_TESTNET"
+                    and report["participationEligible"] and not report["strictlyTimeQualified"])
+                or (report["timingProfile"] == "STRICT" and report["participationEligible"]
+                    and not report["strictlyTimeQualified"])
+                or (report["readyToAuthor"] and not report["participationEligible"])):
+            reject()
+    if "authoringTimeQuality" in report:
+        value = report["authoringTimeQuality"]
+        minimum = report["minimumAuthoringTimeQuality"]
+        if (type(minimum) is not int or minimum != 3000
+                or (value is not None and (type(value) is not int or not 0 <= value <= 10000))
+                or (report["readyToAuthor"] and report.get("timingProfile") != "EARLY_TESTNET"
+                    and (value is None or value < minimum))):
+            reject()
+    for field, maximum in (("offsetSpreadNs", (1 << 64) - 1), ("stalePeerCount", (1 << 32) - 1)):
+        if field in report and (type(report[field]) is not int or not 0 <= report[field] <= maximum):
+            reject()
+    if report["lifecycleState"] == "ELIGIBLE_WITH_WARNINGS" and (
+            not report["readyToAuthor"] or report.get("timingWarning") is not True):
+        reject()
+    if report["lifecycleState"] == "TIME_ENFORCEMENT_DISABLED" and (
+            "timeEnforcement" not in report or report["timeEnforcement"]["babe"]
+            or report["readyToAuthor"]):
+        reject()
 
 
 SESSION_KEY_WIDTHS = (32, 32, 32, 32, 32, 33, 33)

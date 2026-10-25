@@ -11,6 +11,7 @@ READINESS_STATES = {
     "SESSION_KEYS_MISMATCH", "SESSION_KEYS_REGISTERED", "CANDIDATE", "QUEUED",
     "ACTIVE_BABE_KEY_MISMATCH", "ACTIVE_TEMPORAL_KEY_MISMATCH",
     "ACTIVE_INITIALIZING", "CONVERGED", "AUTHORED",
+    "ELIGIBLE_WITH_WARNINGS", "TIME_ENFORCEMENT_DISABLED",
 }
 PROHIBITED_KEY = re.compile(r"(?:secret|private|seed|mnemonic|phrase|suri|keystore|vault|openbao|token|password|cookie|approle|nodekey)", re.I)
 HASH = re.compile(r"^0x[0-9a-f]{64}$", re.I)

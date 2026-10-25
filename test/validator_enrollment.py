@@ -334,6 +334,84 @@ class ValidatorEnrollmentTests(unittest.TestCase):
         self.assertEqual(MODULE.capture_readiness(rpc), report)
         self.assertEqual(rpc.calls, [("temporal_getValidatorReadiness", ())])
 
+    def current_readiness(self):
+        report = self.readiness()
+        report.update(timeEnforcement={"babe": True, "grandpa": "Soft"},
+                      timingProfile="EARLY_TESTNET", participationEligible=True,
+                      strictlyTimeQualified=False, timingWarning=True,
+                      timingBlockingReasons=[], authoringTimeQuality=1874,
+                      minimumAuthoringTimeQuality=3000, offsetSpreadNs=1200,
+                      stalePeerCount=0, lifecycleState="ELIGIBLE_WITH_WARNINGS")
+        return report
+
+    def test_current_readiness_exports_unchanged_with_safe_rpc_only(self):
+        report = self.current_readiness()
+        rpc = FakeRpc({("temporal_getValidatorReadiness", ()): report})
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "readiness.json"
+            with mock.patch.object(MODULE, "RpcClient", return_value=rpc), \
+                    mock.patch.object(MODULE, "listener_is_loopback"):
+                self.assertEqual(MODULE.main(["--save-readiness", str(output)]), 0)
+            self.assertEqual(json.loads(output.read_text()), report)
+        self.assertEqual(rpc.calls, [("temporal_getValidatorReadiness", ())])
+
+    def test_known_lifecycle_with_expanded_fields_and_diagnostic_boundaries(self):
+        report = self.current_readiness()
+        report.update(lifecycleState="CONVERGED", strictlyTimeQualified=True,
+                      timingWarning=False, authoringTimeQuality=10000,
+                      offsetSpreadNs=(1 << 64) - 1, stalePeerCount=(1 << 32) - 1)
+        self.assertIs(MODULE.validate_readiness(report), report)
+        for field, value in (("stalePeerCount", 1 << 32), ("stalePeerCount", True),
+                             ("offsetSpreadNs", -1), ("authoringTimeQuality", -1)):
+            invalid = dict(report, **{field: value})
+            with self.subTest(field=field), self.assertRaises(MODULE.EnrollmentError):
+                MODULE.validate_readiness(invalid)
+
+    def test_current_candidate_preserves_active_keys_unverified(self):
+        report = self.current_readiness()
+        report.update(lifecycleState="CANDIDATE", readyToAuthor=False,
+                      activeSessionMatch=False, queuedKeysMatch=False,
+                      participationEligible=False, timingWarning=False,
+                      timingBlockingReasons=["ACTIVE_KEYS_UNVERIFIED"])
+        self.assertIs(MODULE.validate_readiness(report), report)
+
+    def test_readiness_rejects_unknown_partial_and_malformed_policy(self):
+        for field in ("timingProfile", "participationEligible", "strictlyTimeQualified",
+                      "timingWarning", "timingBlockingReasons", "authoringTimeQuality",
+                      "minimumAuthoringTimeQuality"):
+            report = self.current_readiness()
+            del report[field]
+            with self.subTest(missing=field), self.assertRaises(MODULE.EnrollmentError):
+                MODULE.validate_readiness(report)
+        for field, value in (
+            ("unknownSafeField", 1), ("offsetSpreadNs", True), ("stalePeerCount", -1),
+            ("offsetSpreadNs", 1 << 64), ("authoringTimeQuality", 10001),
+            ("authoringTimeQuality", True), ("minimumAuthoringTimeQuality", 0),
+            ("timeEnforcement", {"babe": True, "grandpa": "LogOnly"}),
+            ("timeEnforcement", {"babe": False, "grandpa": "LogOnly"}),
+            ("timingBlockingReasons", ["ACTIVE_KEYS_UNVERIFIED"]),
+            ("timingBlockingReasons", ["/home/example"]),
+            ("timingProfile", "STRICT"), ("timingWarning", False),
+            ("participationEligible", True + 0), ("strictlyTimeQualified", True),
+        ):
+            report = self.current_readiness()
+            report[field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(MODULE.EnrollmentError):
+                MODULE.validate_readiness(report)
+
+    def test_disabled_policy_and_strict_quality_remain_enforced(self):
+        report = self.current_readiness()
+        report.update(lifecycleState="TIME_ENFORCEMENT_DISABLED", readyToAuthor=False,
+                      timeEnforcement={"babe": False, "grandpa": "LogOnly"})
+        self.assertIs(MODULE.validate_readiness(report), report)
+        report.update(lifecycleState="CONVERGED", readyToAuthor=True,
+                      timeEnforcement={"babe": True, "grandpa": "Strict"},
+                      timingProfile="STRICT", timingWarning=False, strictlyTimeQualified=True)
+        with self.assertRaises(MODULE.EnrollmentError):
+            MODULE.validate_readiness(report)
+        report["authoringTimeQuality"] = 3000
+        self.assertIs(MODULE.validate_readiness(report), report)
+
     def test_readiness_rejects_method_absence_secret_fields_and_bad_tuple(self):
         missing = FakeRpc({
             ("temporal_getValidatorReadiness", ()): MODULE.RpcRejectedError(
