@@ -8,7 +8,7 @@ status: stable
 version: 1.0.0
 last_reviewed: 2026-08-01
 read_when: Before opening ports, serving clients, or handling licences and keys.
-previous: timebeat-ptp2.md
+previous: timebeat-readiness.md
 next: verification.md
 ---
 
@@ -43,4 +43,4 @@ inventory, source URLs, checksums, configuration revision, and approval record.
 
 ---
 
-Pagenbar: [← Timebeat/PTP²](timebeat-ptp2.md) · [Index](README.md) · [Next: Verification →](verification.md)
+Pagenbar: [← Timebeat readiness](timebeat-readiness.md) · [Index](README.md) · [Next: Verification →](verification.md)

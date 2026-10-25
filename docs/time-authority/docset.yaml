@@ -50,6 +50,10 @@ routes:
     file: timebeat-ptp2.md
     audience: [professional, agent]
     tasks: [install, integrate]
+  - id: timebeat-readiness
+    file: timebeat-readiness.md
+    audience: [professional, agent, operator]
+    tasks: [diagnose, verify, qualify]
   - id: security
     file: security-network.md
     audience: [hobbyist, professional, agent]

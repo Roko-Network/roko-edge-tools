@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Produce a bounded, sanitized Timebeat report without changing clock or service state."""
+import argparse
+import json
+from pathlib import Path
+import re
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+from timebeat_readiness import Runner, collect
+
+
+def interface(value):
+    if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,15}", value) or value.startswith("-"):
+        raise argparse.ArgumentTypeError("invalid interface selector")
+    return value
+
+
+def timer(value):
+    if not re.fullmatch(r"[A-Za-z0-9_.@-]{1,96}\.timer", value) or value.startswith("-"):
+        raise argparse.ArgumentTypeError("invalid timer selector")
+    return value
+
+
+def port(value):
+    try:
+        result = int(value)
+        if 1 <= result <= 65535:
+            return result
+    except ValueError:
+        pass
+    raise argparse.ArgumentTypeError("invalid listener port")
+
+
+class SafeParser(argparse.ArgumentParser):
+    def error(self, message):
+        self.exit(2, "invalid diagnostics arguments; use --help\n")
+
+
+def main():
+    parser = SafeParser(description=__doc__)
+    parser.add_argument("--offline", action="store_true", help="skip all local commands and device probes")
+    parser.add_argument("--configuration-summary", help="dedicated sanitized ROKO summary JSON, never a Timebeat configuration or license")
+    parser.add_argument("--runtime-evidence", help="sanitized collector handoff JSON; never qualifies its own transport or CLI semantics")
+    parser.add_argument("--interface", type=interface, help="approved local interface for read-only ethtool -T; interface name omitted from JSON")
+    parser.add_argument("--listener-port", type=port, action="append", default=[], help="approved local port to inspect, not a remote network probe")
+    parser.add_argument("--recovery-timer", type=timer, action="append", default=[], help="reviewed existing timer unit; name omitted from JSON")
+    args = parser.parse_args()
+    if len(args.listener_port) > 8 or len(args.recovery_timer) > 8:
+        parser.error("at most eight listener and eight timer selectors")
+    try:
+        report = collect(Runner(), args.configuration_summary, args.runtime_evidence, args.interface,
+                         tuple(sorted(set(args.listener_port))), tuple(dict.fromkeys(args.recovery_timer)), args.offline)
+        print(json.dumps(report, allow_nan=False, sort_keys=True))
+        return 2 if report["readiness"]["state"] == "failed" else 3
+    except Exception:
+        # No exception message, input path, command output or credential can reach stdout/stderr.
+        print(json.dumps({"schema": "roko.timebeat-readiness.v1", "readiness": {"state": "unknown"}, "error": "collection_failed"}))
+        return 3
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

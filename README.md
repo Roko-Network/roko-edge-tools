@@ -126,6 +126,7 @@ and provides bounded read-only checks.
 | `bin/roko-edge-doctor` | One-shot local node, service, RPC, disk, network, and Chrony health summary |
 | `bin/roko-rpc-health` | JSON-RPC health probe for local or public ROKO RPC |
 | `bin/roko-validator-watch` | Bounded Safe-RPC evidence for temporal quorum, readiness, advancing finality, and finalized authorship |
+| `bin/roko-timebeat-readiness` | Bounded read-only Timebeat inventory with sanitized JSON and explicit runtime unknowns; [scope and trial gates](docs/time-authority/timebeat-readiness.md) |
 | `bin/roko-time-health` | Chrony/system clock diagnostics; see [timing interpretation and safe checks](docs/time-authority/validator-timing.md) |
 | `bin/roko-node-tail` | Convenience log tail for a systemd-managed node |
 | `bin/roko-edge-report` | Generate a sanitized support bundle |
