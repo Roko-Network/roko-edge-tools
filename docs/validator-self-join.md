@@ -1,8 +1,8 @@
 # Validator self-join
 
-Read the [unreleased readiness compatibility notice](validator-readiness-compatibility.md)
+Read the [1.4.9 readiness compatibility notice](validator-readiness-compatibility.md)
 before using readiness-dependent commands with the expanded runtime-290 node
-report. This source fix does not update the signed 1.4.8 artifact.
+report. The signed 1.4.8 archive remains unchanged; its parser limitation is historical.
 
 For ordinary users, the [local node-wallet procedure](validator-node-wallet.md)
 is the primary enrollment path with successful user deployments. Follow that
@@ -21,6 +21,20 @@ The node and wallet remain separate security domains. Never upload a keystore,
 seed phrase, secret URI, node-key bytes, wallet private key, or OpenBao
 credential. The enrollment JSON is public but integrity-sensitive and
 short-lived; discard it after use and generate a fresh package for rotation.
+
+## Current tooling 1.4.9
+
+[Tooling 1.4.9](https://github.com/Roko-Network/roko-edge-tools/releases/tag/v1.4.9)
+is a signed GitHub prerelease published on **2026-10-25 UTC**. Its freshly
+installed signed bundle passed the bounded Linux amd64 fba4/runtime-290 fixture,
+including expanded readiness export over Safe RPC. Read the
+[qualification scope](validator-readiness-compatibility.md); this is not a new
+live enrollment, browser-wallet or strict timing qualification.
+
+The canonical versioned directory and CURRENT now serve the same verified
+1.4.9 bytes. Use the [versioned 1.4.9 installer](https://downloads.roko.network/validator-tools/1.4.9/install-roko-validator-enroll.sh)
+with the [signature-verification sequence](../README.md#signed-validator-enrollment-tools). The following
+1.4.7 commands are retained solely as historical installation records.
 
 ## Historical tooling 1.4.7 installation and qualification
 
@@ -57,9 +71,9 @@ older node-line/range fields describe the compatibility envelope; its exact
 
 As verified on 2026-10-24, the published **tooling 1.4.8** archive has an older
 readiness parser that rejects the expanded runtime-290 payload. Its recorded
-compatibility profile does not remove that limitation. The source correction
-in tooling **1.4.9** remains **unreleased**; see the [compatibility notice](validator-readiness-compatibility.md)
-for affected operations and the required new signed-release qualification.
+compatibility profile does not remove that limitation. The separately signed **1.4.9** release corrects this parser limitation; see
+the [compatibility notice](validator-readiness-compatibility.md) for affected
+operations and the exact new qualification scope.
 
 A node display string such as `3.0.0-dev-f490bcd12df` is distinct from the node
 release ID and the enrollment-tool version. Verify signed artifact identity
@@ -94,10 +108,10 @@ v1.3.0 assets remain unchanged; see [asset evidence](offline-checksum-qualificat
 
 ## Tooling 1.4.7 compatibility
 
-Tooling 1.4.7 accepts exactly runtime spec **286**, the network's live runtime,
-the same range as 1.4.6. Tooling 1.4.5 covered runtime specs 285–287; a future
+Historically, tooling 1.4.7 accepted exactly runtime spec **286**, then the
+network's live runtime, with the same range as 1.4.6. Tooling 1.4.5 covered runtime specs 285–287; a future
 runtime upgrade requires a new tooling release with its own fixture. The profile's single qualified
-build is the node the managed fleet runs:
+build was:
 
 | Field | Value |
 |---|---|
@@ -131,22 +145,20 @@ For a step-by-step Jetson procedure with expected output at each step, see the
 
 The runtime 290
 [candidate fixture](evidence/guarded-fba4-runtime290-candidate-20261015.json)
-is historical evidence for a runtime that is not active on the network. See the
-[qualification sequence](private-enrollment-qualification.md).
+records an earlier candidate campaign, before runtime 290 activation. It is
+historical evidence, not qualification of the new 1.4.9 artifact.
 
-## Tooling 1.4.8 preparation for runtime 290
+## Historical 1.4.8 preparation and parser limitation
 
-Version **1.4.8 is unpublished**. Its proposed profile accepts only runtime 290
-and the FBA Linux amd64 node (`nightly-fba4e76c-20261015`, full source
-`fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b`, binary SHA256
-`adfd8009807d340e389a8308579da84ac62c36e257c3b9122427a49fb85b6206`).
-The node identifier records its candidate build date, independent of a later
-publication date. The [private historical fixture](evidence/guarded-fba4-private147-runtime290-20261016.json)
-used a different private 1.4.7 build; it does not qualify 1.4.8. A fresh signed
-installation and native fixture are required. The service installer's RPC policy
-contract from published 1.4.7 is preserved. This adds no ARM enrollment claim.
-Until actual runtime 290 delivery, use the published 1.4.7 installer and runtime
-286 pair above. Immutable 1.4.6/1.4.5 routes and historical evidence remain.
+The earlier proposed profile targeted runtime 290 and the FBA Linux amd64 node
+(`nightly-fba4e76c-20261015`). Its
+[private historical fixture](evidence/guarded-fba4-private147-runtime290-20261016.json)
+used a different private 1.4.7 build and did not qualify the later 1.4.8 archive.
+Tooling 1.4.8 was subsequently published, but its older readiness parser rejects
+the expanded payload. Use the separately signed and fixture-tested 1.4.9 release
+for that parser correction, within its [documented scope](validator-readiness-compatibility.md).
+Immutable earlier routes and qualification records remain historical; no ARM
+enrollment claim or runtime downgrade recommendation follows from them.
 
 ## Before enrollment
 
@@ -323,7 +335,8 @@ From tooling 1.4.7, `installer/scripts/install-roko-service.sh` renders this
 contract for every role and runtime and creates `/etc/roko/node-rpc.env` as
 root-owned `ROKO_RPC_METHODS=Safe` (mode 0600) when it is absent. It refuses to
 install over an existing policy file that is not in exact Safe state. Rerun
-the 1.4.7 installer with your original arguments, or check an installed unit:
+a reviewed service installer with your original arguments, or check an installed
+unit. Keep the enrollment CLI on its separately qualified release:
 
 ```bash
 systemctl cat roko-node.service | grep -F -- '--rpc-methods ${ROKO_RPC_METHODS}'
@@ -334,7 +347,7 @@ Expected: the `--rpc-methods ${ROKO_RPC_METHODS}` line, then
 `ROKO_RPC_METHODS=Safe`.
 
 Units rendered by the service installer in tooling 1.4.6 and earlier hardcode
-`--rpc-methods Safe` and do not create the policy file. Rerun the 1.4.7
+`--rpc-methods Safe` and do not create the policy file. Use a reviewed service
 installer, or adapt them by hand before opening the window. The manual
 adaptation is the contract used by the qualification fixture:
 

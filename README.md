@@ -41,22 +41,30 @@ verify them locally, inspect them, and then run the native or Docker workflow.
 Do not pipe a remote script directly into a shell. Offline Docker archives are
 available by HTTPS and through the official torrent for registry-free setup.
 
+## Signed validator enrollment tools
+
 The validator enrollment CLI is also a signed, versioned release artifact. It
-does not require a development clone. Verify the pinned release key and signed
-checksum manifest before executing the canonical installer:
+does not require a development clone. [Tooling 1.4.9](https://github.com/Roko-Network/roko-edge-tools/releases/tag/v1.4.9)
+was published as a signed GitHub prerelease on **2026-10-25 UTC**, after the
+installed-bundle native fixture passed. The canonical versioned directory and
+CURRENT were activated and anonymously verified on the same UTC date. Use the
+versioned 1.4.9 assets below for a pinned installation. See the
+[readiness compatibility and qualification scope](docs/validator-readiness-compatibility.md).
+Verify the pinned release key and signed checksum manifest before executing
+the installer:
 
 ```bash
 mkdir roko-validator-tool && cd roko-validator-tool
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/install-roko-validator-enroll.sh
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/SHA256SUMS
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/SHA256SUMS.asc
-curl --fail --location --remote-name https://downloads.roko.network/validator-tools/current/roko-release-signing-key.asc
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.9/install-roko-validator-enroll.sh
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.9/SHA256SUMS
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.9/SHA256SUMS.asc
+curl --fail --location --remote-name https://downloads.roko.network/validator-tools/1.4.9/roko-release-signing-key.asc
 export ROKO_VERIFY_GNUPGHOME="$(mktemp -d)"
 test "$(GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --with-colons --import-options show-only --import roko-release-signing-key.asc 2>/dev/null | awk -F: '$1=="fpr"{print toupper($10);exit}')" = 62297562B1C7053088F405DB0117DAAA677A5BF2
 GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --import roko-release-signing-key.asc
 GNUPGHOME="$ROKO_VERIFY_GNUPGHOME" gpg --batch --verify SHA256SUMS.asc SHA256SUMS
 awk '$2=="install-roko-validator-enroll.sh"{print}' SHA256SUMS | sha256sum --check --strict
-sudo bash install-roko-validator-enroll.sh
+sudo bash install-roko-validator-enroll.sh --release-base https://downloads.roko.network/validator-tools/1.4.9
 roko-validator-enroll --version
 ```
 
@@ -208,8 +216,8 @@ sudo roko-session-key-window \
 `--public-address` is optional; outbound-only candidates use the node's listen
 addresses. The helper requires the
 [service unit contract](docs/validator-self-join.md#service-unit-contract).
-The 1.4.7 service installer renders it; units from the 1.4.6 or earlier
-installer need the documented adaptation first.
+The service installer introduced this contract in 1.4.7; units from the 1.4.6
+or earlier installer need the documented adaptation first.
 
 The two confirmations attest that the operator reviewed the temporary change
 and that no tunnel, reverse proxy, or port forward publishes the loopback RPC.
