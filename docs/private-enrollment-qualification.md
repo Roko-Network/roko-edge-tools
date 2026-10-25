@@ -1,5 +1,11 @@
 # Private enrollment qualification preparation
 
+> Current preparation (2026-10-24): tooling **1.4.9** corrects the expanded
+> readiness parser. A new signed, installed-bundle native fixture is still
+> required. The 1.4.8 preparation statements and executions below are dated
+> historical records; none qualifies 1.4.9. Preserve their original receipts.
+> See the [readiness compatibility notice](validator-readiness-compatibility.md).
+
 The signed 1.4.5 release and its published spec285–287 support remain unchanged.
 The [runtime 290 candidate fixture](evidence/guarded-fba4-runtime290-candidate-20261015.json)
 passed with the exact FBA AMD64 node and production mainnet Wasm while using
