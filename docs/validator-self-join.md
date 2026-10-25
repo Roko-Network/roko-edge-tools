@@ -1,29 +1,33 @@
 # Validator self-join
 
-The permissionless path is a two-system handoff:
+Read the [unreleased readiness compatibility notice](validator-readiness-compatibility.md)
+before using readiness-dependent commands with the expanded runtime-290 node
+report. This source fix does not update the signed 1.4.8 artifact.
 
-1. This repository installs and verifies the operator-controlled node.
-2. `roko-validator-enroll` generates node-owned session keys locally and
-   exports only public enrollment facts.
-3. The operator imports the file into Agora and uses their own wallet to sign
-   lock/bond, `session.setKeys`, and `staking.validate`.
-4. Agora follows finalized candidate, waiting, queued, active, authoring,
-   maintenance, rotation, and exit state.
+For ordinary users, the [local node-wallet procedure](validator-node-wallet.md)
+is the primary enrollment path with successful user deployments. Follow that
+procedure's lock, bond, session-key and validation sequence on the validator
+host; keep its existing safety and readiness checks.
 
-If a browser wallet cannot complete enrollment, follow the
-[local node-wallet alternative](validator-node-wallet.md). It performs the same
-lock, bond, set-keys, and validate sequence from the validator host.
+This repository installs and verifies the operator-controlled node.
+`roko-validator-enroll` generates node-owned session keys locally and exports
+only public enrollment facts. Agora can display finalized candidate, waiting,
+queued, active, authoring, maintenance, rotation and exit state. Complete
+browser-wallet enrollment through MetaMask or Talisman remains unverified or
+known-failing; a supported browser lock operation does not qualify the full
+enrollment sequence.
 
 The node and wallet remain separate security domains. Never upload a keystore,
 seed phrase, secret URI, node-key bytes, wallet private key, or OpenBao
 credential. The enrollment JSON is public but integrity-sensitive and
 short-lived; discard it after use and generate a fresh package for rotation.
 
-## Install the enrollment commands
+## Historical tooling 1.4.7 installation and qualification
 
 The enrollment CLI is a separate signed edge-tool release, not part of the
-`roko-node` binary. The guided validator-candidate installer installs it. For
-an already-running node, use the canonical signed-manifest-first sequence:
+`roko-node` binary. The guided validator-candidate installer installs it. The
+following versioned sequence records the historical 1.4.7 installation and signature checks; it is
+not a recommendation to downgrade or evidence of current-build compatibility:
 
 ```bash
 mkdir roko-validator-tool && cd roko-validator-tool
@@ -40,17 +44,22 @@ sudo bash install-roko-validator-enroll.sh --release-base https://downloads.roko
 roko-validator-enroll --version
 ```
 
-The current release is **tooling 1.4.7**. Its exact qualified pair is Linux
+The historical **tooling 1.4.7** qualification covered the exact Linux
 amd64 node release `nightly-f490bcd1-20261014` (source
 `f490bcd12df8af67e9bd009482fbc1954199d7f1`) on runtime spec 286; see
 [Tooling 1.4.7 compatibility](#tooling-147-compatibility). Earlier releases
 qualified older node builds; their records remain in the qualification
-evidence. Prefer the already-qualified current node; do not downgrade merely
-to match version labels. The [qualification record](guarded-enrollment-qualification.md)
-contains binary digests, runtime-code identity and scope. The signed manifest's
+evidence. Do not downgrade merely to match version labels. The
+[qualification record](guarded-enrollment-qualification.md) contains binary digests, runtime-code identity and scope. The signed manifest's
 older node-line/range fields describe the compatibility envelope; its exact
 `qualifiedBuilds` entries describe the executions actually tested. Runtime
 285/287 and a custom PHC image are not implied to have passed those tests.
+
+As verified on 2026-10-24, the published **tooling 1.4.8** archive has an older
+readiness parser that rejects the expanded runtime-290 payload. Its recorded
+compatibility profile does not remove that limitation. The source correction
+in this branch remains **unreleased**; see the [compatibility notice](validator-readiness-compatibility.md)
+for affected operations and the required new signed-release qualification.
 
 A node display string such as `3.0.0-dev-f490bcd12df` is distinct from the node
 release ID and the enrollment-tool version. Verify signed artifact identity
