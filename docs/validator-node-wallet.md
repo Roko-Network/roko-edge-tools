@@ -1,8 +1,13 @@
 # Enroll with a local node-generated wallet
 
-Use this alternative when Talisman or another browser wallet cannot complete
-validator enrollment. It signs the same native runtime transactions used by
-the managed validator setup: `pwRoko.lock`, `staking.bond`, `session.setKeys`,
+Use the local node wallet as the primary validator enrollment path. As of the
+October 23, 2026 operator correction, it is the only path with successful
+validator deployment reported for ordinary users. MetaMask/Talisman enrollment
+is unverified or known-failing; browser wallet connection, balances and network
+setup do not prove enrollment support. A pwROKO lock completed through a browser,
+where supported, does not qualify the complete enrollment flow.
+
+It signs the same native runtime transactions used by the managed validator setup: `pwRoko.lock`, `staking.bond`, `session.setKeys`,
 and `staking.validate`. The operator funds and controls the staking account.
 No administrator or sudo account is used.
 
@@ -29,11 +34,17 @@ use this workflow. See the [address and function reference](https://docs.roko.ne
 
 ## Verification status
 
-Published September 13, 2026. Encryption/recovery tests, the existing installer
-smoke suite, and read-only call encoding against testnet runtime 286 passed.
-A funded end-to-end enrollment with this new command remains unverified.
-Browser-wallet failures remain under investigation; this is a separate local
-signing path, not a claim that Talisman has been repaired.
+Current operator guidance (October 23, 2026): local node-wallet deployment has
+succeeded for ordinary users. This is the enrollment procedure to follow.
+MetaMask/Talisman enrollment remains unverified or known-failing. Successful
+candidate registration still requires separate activation, election and
+finalized-authorship checks.
+
+Historical September 13, 2026 verification: encryption/recovery tests, the
+existing installer smoke suite, and read-only call encoding against testnet
+runtime 286 passed; funded end-to-end enrollment was unverified at publication.
+That historical test boundary does not override the current operator guidance
+or qualify any additional release, architecture or runtime.
 
 ## 1. Open the validator terminal and check software
 

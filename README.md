@@ -181,6 +181,11 @@ runtime or consensus defect, or by itself close a recovery incident.
 
 ## Permissionless validator enrollment
 
+For ordinary enrollment, follow the [local node-wallet walkthrough](docs/validator-node-wallet.md).
+The public-package and preflight tools below also support compatibility
+investigation; a generated package or browser connection does not verify browser
+enrollment.
+
 Finish the guided `validator-candidate` installation first. The node must
 remain non-authoring, fully synchronized, peered, finalizing, and
 time-synchronized. The supported service starts with `--rpc-methods Safe`,
@@ -339,12 +344,28 @@ Use it to observe and report; make operational changes deliberately.
 - Primary: [github.com/Roko-Network/roko-edge-tools](https://github.com/Roko-Network/roko-edge-tools)
 - Mirror: [git.integrolabs.net/roctinam/roko-edge-tools](https://git.integrolabs.net/roctinam/roko-edge-tools)
 
-## Wallet setup before enrollment
+## Local node wallet for validator enrollment
+
+Use the [local node-wallet walkthrough](docs/validator-node-wallet.md) on the
+validator host. As of the October 23, 2026 operator correction, this is the
+only path with successful validator deployment reported for ordinary users.
+Create and back up the encrypted staking wallet, fund its printed public
+account, prepare the public session package, review `plan`, then explicitly
+submit with `enroll --execute`. Verify finalized registration and the activation
+gate before enabling validator mode; election and authorship are separate.
+
+MetaMask/Talisman enrollment is unverified or known-failing. Browser connection,
+displayed balances and custom-network setup do not establish enrollment support.
+A browser-based pwROKO lock, where supported, is a separate action and does not
+qualify the complete validator enrollment flow.
+The browser setup checklist below is retained for compatibility investigation;
+it is not the ordinary validator deployment procedure.
+
+### Browser compatibility investigation
 
 Agora uses Substrate signing with an Ethereum-format AccountId20 account.
-Ordinary MetaMask/EVM mode cannot sign this flow. Talisman is the documented
-path with reported enrollment success; confirm the intended account and exact
-network/metadata in Agora. A web-only wallet is not a verified substitute.
+Ordinary MetaMask/EVM mode cannot sign this flow. No browser wallet is qualified
+here as a working validator enrollment substitute for the local node wallet.
 
 In a build whose `roko-validator-enroll --help` lists `--wallet-setup`, run:
 
@@ -366,8 +387,8 @@ phrase. Verify the exact same account after any wallet migration. A watch-only
 account cannot sign. Use a desktop browser extension and custom Substrate
 network; adding an EVM network alone is insufficient.
 
-Complete the browser wallet/network check before generating the short-lived
-node package. Compare the installed CLI and signed catalog with the actual
+For browser qualification only, complete the wallet/network check before
+generating a short-lived node package. Compare the installed CLI and signed catalog with the actual
 Agora importer contract; version labels do not prove acceptance. If a package
 expires, use the supported refresh/reissue procedure without editing its tuple
 or expiry and without assuming another key rotation is necessary. Existing
