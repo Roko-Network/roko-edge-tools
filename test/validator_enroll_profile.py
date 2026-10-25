@@ -18,7 +18,7 @@ checker = qualification.checker
 
 def profile():
     return json.loads((ROOT / 'release/validator-enroll-compatibility.template.json').read_text()
-                      .replace('@VERSION@', '1.4.8').replace('@SOURCE_REVISION@', '1' * 40))
+                      .replace('@VERSION@', '1.4.9').replace('@SOURCE_REVISION@', '1' * 40))
 
 
 class VersionProfileTests(unittest.TestCase):
@@ -28,11 +28,11 @@ class VersionProfileTests(unittest.TestCase):
         self.evidence = json.loads((ROOT / 'docs/evidence/guarded-fba4-private147-runtime290-20261016.json').read_text())
 
     def test_source_commands_and_profile_version_agree(self):
-        self.assertEqual((ROOT / 'VERSION').read_text().strip(), '1.4.8')
+        self.assertEqual((ROOT / 'VERSION').read_text().strip(), '1.4.9')
         for command in ('roko-validator-enroll',):
             output = subprocess.check_output([str(ROOT / 'bin' / command), '--version'], text=True).strip()
-            self.assertEqual(output, command + ' 1.4.8')
-        self.assertEqual(self.profile['tool']['version'], '1.4.8')
+            self.assertEqual(output, command + ' 1.4.9')
+        self.assertEqual(self.profile['tool']['version'], '1.4.9')
 
     def test_exact_candidate_amd64_node_and_runtime_match_historical_evidence(self):
         self.assertEqual(self.profile['runtime'], {'minimumSpecVersion': 290, 'maximumSpecVersion': 290})
@@ -89,10 +89,10 @@ class SyntheticDeliveryProfileTests(unittest.TestCase):
         self.fixture = qualification.ReceiptTests()
         self.fixture.setUp()
         self.fixture.args.mode = 'delivery'
-        self.fixture.tools['version'] = '1.4.8'
+        self.fixture.tools['version'] = '1.4.9'
         self.fixture.tools['compatibility'] = profile()
         self.row = self.fixture.tools['compatibility']['node']['qualifiedBuilds'][0]
-        self.fixture.r['toolVersion'] = 'roko-validator-enroll 1.4.8'
+        self.fixture.r['toolVersion'] = 'roko-validator-enroll 1.4.9'
         self.fixture.r['binaryVersion'] = 'roko-node ' + self.row['displayVersion']
         self.fixture.values['binary'] = self.row['binarySha256']
         self.fixture.r['binarySha256'] = self.row['binarySha256']

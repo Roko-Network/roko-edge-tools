@@ -286,6 +286,48 @@ class ParserBoundaryTests(unittest.TestCase):
                     harness.qualify(binary,checker.digest(binary),root/'receipt',wasm,checker.digest(wasm),290)
                 run.assert_not_called()
 
+class InstalledReadinessFixtureTests(unittest.TestCase):
+    def report(self):
+        return dict.fromkeys(("timeEnforcement", "timingProfile", "participationEligible",
+                              "strictlyTimeQualified", "timingWarning", "timingBlockingReasons",
+                              "authoringTimeQuality", "minimumAuthoringTimeQuality",
+                              "offsetSpreadNs", "stalePeerCount"), None) | {
+            "validatorRoleConfigured": False, "readyToAuthor": False,
+            "lifecycleState": "NON_AUTHORING_NODE",
+            "sessionKeys": [{"public": "synthetic-public-key-not-for-receipt"}]}
+
+    def capture(self, report):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'readiness.json'
+            def export(*args):
+                self.assertEqual(args, (str(harness.TOOL_BIN/'roko-validator-enroll'),
+                                 '--rpc', 'http://127.0.0.1:12345', '--save-readiness', str(path)))
+                path.write_text(json.dumps(report))
+            with mock.patch.object(harness, 'run', side_effect=export) as run:
+                result = harness.capture_installed_readiness(12345, path)
+                run.assert_called_once()
+                self.assertEqual(result['savedReportSha256'], checker.digest(path))
+                self.assertNotIn('sessionKeys', json.dumps(result))
+                self.assertNotIn('synthetic-public-key', json.dumps(result))
+                return result
+
+    def test_installed_safe_rpc_export_records_only_acceptance_facts(self):
+        result = self.capture(self.report())
+        self.assertTrue(result['accepted'])
+        self.assertEqual(result['rpcPolicy'], 'Safe')
+        self.assertEqual(len(result['expandedFields']), 10)
+
+    def test_legacy_shape_or_authoring_candidate_cannot_qualify_parser_fix(self):
+        for change in ('missing-expanded-field', 'ready', 'role', 'wrong-state'):
+            report = self.report()
+            if change == 'missing-expanded-field': del report['offsetSpreadNs']
+            if change == 'ready': report['readyToAuthor'] = True
+            if change == 'role': report['validatorRoleConfigured'] = True
+            if change == 'wrong-state': report['lifecycleState'] = 'CANDIDATE'
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, 'installed expanded readiness'):
+                self.capture(report)
+
+
 class ProductionServiceTests(unittest.TestCase):
     unit = 'roko-titan.service'
     slice_name = 'rokoenrollqualabc123def456.slice'

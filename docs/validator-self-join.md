@@ -58,7 +58,7 @@ older node-line/range fields describe the compatibility envelope; its exact
 As verified on 2026-10-24, the published **tooling 1.4.8** archive has an older
 readiness parser that rejects the expanded runtime-290 payload. Its recorded
 compatibility profile does not remove that limitation. The source correction
-in this branch remains **unreleased**; see the [compatibility notice](validator-readiness-compatibility.md)
+in tooling **1.4.9** remains **unreleased**; see the [compatibility notice](validator-readiness-compatibility.md)
 for affected operations and the required new signed-release qualification.
 
 A node display string such as `3.0.0-dev-f490bcd12df` is distinct from the node

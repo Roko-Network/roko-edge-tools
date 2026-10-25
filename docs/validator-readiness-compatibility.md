@@ -1,4 +1,4 @@
-# Validator readiness compatibility — unreleased source fix
+# Validator readiness compatibility — 1.4.9 preparation (unreleased)
 
 The source parser now accepts the additional readiness fields emitted by node
 build `fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b` (runtime spec 290), including
@@ -9,7 +9,7 @@ supported; unknown fields, partial field groups and inconsistent evidence fail
 closed. A warning is not strict timing qualification, and disabled enforcement
 is not readiness to author.
 
-**This is a source change, not a new qualified release.** On 2026-10-24, the
+**Tooling 1.4.9 is release preparation, not a new qualified release.** On 2026-10-24, the
 signed, versioned tooling 1.4.8 archive still contained the older parser. It
 rejects the expanded report even when the lifecycle state itself is familiar.
 Readiness-dependent operations, including `--save-readiness` and transition
