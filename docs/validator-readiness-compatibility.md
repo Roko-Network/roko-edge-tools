@@ -65,4 +65,3 @@ enable unsafe RPC to work around a parser failure.
 - [Signed 1.4.9 metadata](https://downloads.roko.network/validator-tools/1.4.9/roko-validator-enroll-1.4.9.metadata.json)
 - [Historical 1.4.8 signed manifest](https://downloads.roko.network/validator-tools/1.4.8/SHA256SUMS)
 - [Historical 1.4.8 metadata](https://downloads.roko.network/validator-tools/1.4.8/roko-validator-enroll-1.4.8.metadata.json)
-- [Pinned native readiness fields](https://github.com/Roko-Network/roko_network/blob/fba4e76cfeb062bcba0cc2c2fd16f9d9b23c275b/node/rpc/src/temporal.rs#L631)
