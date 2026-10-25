@@ -66,6 +66,30 @@ def wait_rpc(rpc_port, alive):
     raise TimeoutError("RPC startup deadline")
 
 
+def capture_installed_readiness(rpc_port, output):
+    """Exercise the installed parser on this owned non-authoring Safe RPC node."""
+    run(str(TOOL_BIN / "roko-validator-enroll"), "--rpc",
+        f"http://127.0.0.1:{rpc_port}", "--save-readiness", str(output))
+    raw = output.read_bytes()
+    report = json.loads(raw)
+    expanded = {"timeEnforcement", "timingProfile", "participationEligible",
+                "strictlyTimeQualified", "timingWarning", "timingBlockingReasons",
+                "authoringTimeQuality", "minimumAuthoringTimeQuality",
+                "offsetSpreadNs", "stalePeerCount"}
+    if (not isinstance(report, dict) or not expanded <= set(report)
+            or report.get("validatorRoleConfigured") is not False
+            or report.get("readyToAuthor") is not False
+            or report.get("lifecycleState") != "NON_AUTHORING_NODE"):
+        raise ValueError("installed expanded readiness fixture failed")
+    # The installed parser validated the complete raw report. Keep only public
+    # acceptance facts and its digest, not candidate session-key records.
+    return {"accepted": True, "method": "temporal_getValidatorReadiness",
+            "rpcPolicy": "Safe", "lifecycleState": report["lifecycleState"],
+            "validatorRoleConfigured": False, "readyToAuthor": False,
+            "expandedFields": sorted(expanded),
+            "savedReportSha256": hashlib.sha256(raw).hexdigest()}
+
+
 def systemd_properties(unit, names):
     text = run("systemctl", "show", unit, *["--property=" + name for name in names]).stdout
     values = dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
@@ -320,6 +344,8 @@ def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_s
                 report["policyBytesRestored"] = run("sudo", "-n", "cat", str(policy)).stdout == initial.read_text()
                 if not report["policyBytesRestored"]:
                     raise ValueError("policy bytes not restored")
+                report["installedReadiness"] = capture_installed_readiness(
+                    rpc_port, root / "expanded-readiness.json")
                 baseline_keys = {p.name: p.read_bytes() for p in (root / "candidate").rglob("keystore/*") if p.is_file()}
                 reuse_output = root / "reused-package.json"
                 reuse_args = [*privileged_tool("roko-session-key-window"),
