@@ -76,7 +76,7 @@ and installer; extract it and pass its directory with `--bundle-dir`.
 The tools are intentionally dependency-light:
 
 - Bash for host/service/time checks
-- Python 3 standard library for JSON-RPC probes
+- Python 3.10 or newer (standard library only) for JSON-RPC probes, enrollment and qualification; Ubuntu 22.04 and Jetson system Python is enough
 - Diagnostic tools do not read secrets. The optional [local validator wallet](docs/validator-node-wallet.md) encrypts a node-generated staking key locally.
 - Diagnostic tools do not change chain state. Local wallet enrollment requires an explicit `enroll --execute` command and signs with your own funded account.
 

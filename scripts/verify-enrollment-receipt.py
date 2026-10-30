@@ -14,6 +14,16 @@ import subprocess
 import tarfile
 import tempfile
 
+
+def sha256_stream(stream):
+    """SHA-256 of a binary stream; hashlib.file_digest only exists on Python 3.11+."""
+    if hasattr(hashlib, 'file_digest'):
+        return hashlib.file_digest(stream, 'sha256').hexdigest()  # novermin: guarded by hasattr above
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: stream.read(1 << 20), b''):
+        digest.update(chunk)
+    return digest.hexdigest()
+
 FINGERPRINT = "62297562B1C7053088F405DB0117DAAA677A5BF2"
 LIVE_GENESIS = "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb"
 LEGACY = {"version": "1.4.5", "source": "864d66340f3cef1d2bf1b1c3e45b8f87b5c27bfa",
@@ -36,7 +46,7 @@ def require(value, message):
 
 def digest(path):
     with Path(path).open('rb') as stream:
-        return hashlib.file_digest(stream, 'sha256').hexdigest()
+        return sha256_stream(stream)
 
 def read_json(path):
     return json.loads(Path(path).read_text())
@@ -212,7 +222,7 @@ def authenticated_node(args):
             matching = [member for member in bundle.getmembers() if member.name == member_name]
             require(len(matching) == 1 and matching[0].isfile(), 'Native archive binary member missing/ambiguous')
             stream = bundle.extractfile(matching[0])
-            require(hashlib.file_digest(stream, 'sha256').hexdigest() == values['binary'], 'Exported native binary differs from signed archive')
+            require(sha256_stream(stream) == values['binary'], 'Exported native binary differs from signed archive')
         provenance = {'kind': 'signed-operator-derived-attestation', 'issuer': binding['issuer'], 'sha256': digest(args.node_binding)}
     else:
         require(args.node_binding_signature is None and args.node_archive is None, 'Derived binding inputs require explicit attestation')

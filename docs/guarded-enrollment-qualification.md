@@ -51,7 +51,8 @@ this is enrollment qualification, not strict timing or relay qualification.
 
 The runner is [test/guarded_enrollment_live.py](../test/guarded_enrollment_live.py).
 It requires exact binary/runtime digests, explicit paths, a new receipt path,
-local systemd/sudo capability and synchronized host time. It is opt-in and is
+local systemd/sudo capability, synchronized host time and the system
+`/usr/bin/python3` at version 3.10 or newer. It is opt-in and is
 not part of ordinary smoke tests. The nightly receipt retains the historical
 runner bytes used for that run. The revised resource-bounded runner is described
 in [private qualification preparation](private-enrollment-qualification.md);
