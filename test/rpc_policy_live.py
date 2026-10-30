@@ -14,6 +14,16 @@ import tempfile
 import time
 import urllib.request
 
+
+def sha256_stream(stream):
+    """SHA-256 of a binary stream; hashlib.file_digest only exists on Python 3.11+."""
+    if hasattr(hashlib, "file_digest"):
+        return hashlib.file_digest(stream, "sha256").hexdigest()  # novermin: guarded by hasattr above
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: stream.read(1 << 20), b""):
+        digest.update(chunk)
+    return digest.hexdigest()
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -76,7 +86,7 @@ def qualify(binary):
                         process.kill()
                         process.wait(timeout=5)
     with binary.open("rb") as stream:
-        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        digest = sha256_stream(stream)
     return {
         "observedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "binaryVersion": subprocess.check_output([str(binary), "--version"], text=True).strip(),

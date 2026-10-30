@@ -18,6 +18,16 @@ import tempfile
 import time
 import urllib.request
 
+
+def sha256_stream(stream):
+    """SHA-256 of a binary stream; hashlib.file_digest only exists on Python 3.11+."""
+    if hasattr(hashlib, "file_digest"):
+        return hashlib.file_digest(stream, "sha256").hexdigest()  # novermin: guarded by hasattr above
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: stream.read(1 << 20), b""):
+        digest.update(chunk)
+    return digest.hexdigest()
+
 ROOT = Path(__file__).resolve().parents[1]
 TOOL_BIN = ROOT / "bin"
 LIVE_GENESIS = "0x0a2296f8f036f71437e8f6f2028ccbf0dc3dd6b3de9120fc15e43789c794e8bb"
@@ -162,7 +172,7 @@ def observe_custody_window(arguments, rpc_port, policy, encoded_keys, timeout=18
 def qualify(binary, expected, receipt, runtime_wasm, expected_runtime, runtime_spec,
             agora_module=None, agora_sha256=None, campaign_name=None, campaign_slice=None):
     with binary.open("rb") as stream:
-        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        digest = sha256_stream(stream)
     if digest != expected:
         raise ValueError("binary digest mismatch")
     runtime_code = runtime_wasm.read_bytes()
