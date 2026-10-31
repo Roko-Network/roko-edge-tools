@@ -1,0 +1,1342 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://roko.network/contracts/node-system-snapshot-v1.schema.json",
+  "title": "ROKO node system snapshot v1",
+  "description": "Privacy-filtered hardware, configuration and utilization snapshot of a ROKO node host. Produced by bin/roko-node-snapshot without root. Contains no keys, IP or MAC addresses, serial numbers, hostnames or peer IDs unless identity was explicitly included.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "snapshotId",
+    "generatedAt",
+    "toolsVersion",
+    "label",
+    "identity",
+    "host",
+    "storage",
+    "network",
+    "roko",
+    "time",
+    "node",
+    "utilization",
+    "checks",
+    "collectionGaps"
+  ],
+  "properties": {
+    "schema": {
+      "const": "roko.node-system-snapshot.v1"
+    },
+    "snapshotId": {
+      "type": "string",
+      "pattern": "^[0-9a-f-]{36}$"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "toolsVersion": {
+      "type": "string",
+      "maxLength": 32
+    },
+    "label": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[A-Za-z0-9._-]{1,64}$"
+    },
+    "identity": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "hostname"
+      ],
+      "properties": {
+        "hostname": {
+          "type": "string"
+        }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "os": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "idLike": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "versionId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "prettyName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kernelRelease": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "architecture": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "virtualization": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pythonVersion": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "inContainer": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "uptimeSeconds": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "architecture",
+            "id",
+            "idLike",
+            "inContainer",
+            "kernelRelease",
+            "prettyName",
+            "pythonVersion",
+            "uptimeSeconds",
+            "versionId",
+            "virtualization"
+          ]
+        },
+        "platform": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "systemVendor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "productName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "boardVendor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "boardName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "chassisType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "deviceTreeModel": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "boardName",
+            "boardVendor",
+            "chassisType",
+            "deviceTreeModel",
+            "productName",
+            "systemVendor"
+          ]
+        },
+        "cpu": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "vendor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "logicalCpus": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "usableCpus": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "sockets": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "coresPerSocket": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "threadsPerCore": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "numaNodes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "maxMhz": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "scalingGovernor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cgroupCpuLimit": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "featuresOfInterest": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "cgroupCpuLimit",
+            "coresPerSocket",
+            "featuresOfInterest",
+            "logicalCpus",
+            "maxMhz",
+            "model",
+            "numaNodes",
+            "scalingGovernor",
+            "sockets",
+            "threadsPerCore",
+            "usableCpus",
+            "vendor"
+          ]
+        },
+        "memory": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "totalBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "availableBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "usedPercent": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "swapTotalBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "swapUsedBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "hugePagesTotal": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "transparentHugePages": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "swappiness": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "cgroupMemoryLimitBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "availableBytes",
+            "cgroupMemoryLimitBytes",
+            "hugePagesTotal",
+            "swapTotalBytes",
+            "swapUsedBytes",
+            "swappiness",
+            "totalBytes",
+            "transparentHugePages",
+            "usedPercent"
+          ]
+        }
+      },
+      "required": [
+        "cpu",
+        "memory",
+        "os",
+        "platform"
+      ]
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "blockDevices": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sizeBytes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "rotational": {
+                "type": "boolean"
+              },
+              "transport": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "model": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fsType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mountpoint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "fsType",
+              "model",
+              "mountpoint",
+              "name",
+              "parent",
+              "rotational",
+              "sizeBytes",
+              "transport",
+              "type"
+            ]
+          }
+        },
+        "dataFilesystem": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "basePath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "basePathExists": {
+              "type": "boolean"
+            },
+            "mountpoint": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fsType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "mountOptions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "backingDisk": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "backingDiskRotational": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "ioScheduler": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "totalBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "availableBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "usedPercent": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inodesUsedPercent": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "basePath",
+            "basePathExists"
+          ]
+        },
+        "chainData": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "chains": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "chain": {
+                    "type": "string"
+                  },
+                  "databaseDirs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sizeBytes": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "chain",
+                  "databaseDirs",
+                  "sizeBytes"
+                ]
+              }
+            },
+            "totalBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "chains",
+            "totalBytes"
+          ]
+        }
+      },
+      "required": [
+        "blockDevices",
+        "chainData",
+        "dataFilesystem"
+      ]
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "interfaces": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "physical",
+                  "wireless",
+                  "bond"
+                ]
+              },
+              "operState": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "speedMbps": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "duplex": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mtu": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "rxErrors": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "txErrors": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "rxDropped": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "duplex",
+              "kind",
+              "mtu",
+              "name",
+              "operState",
+              "rxDropped",
+              "rxErrors",
+              "speedMbps",
+              "txErrors"
+            ]
+          }
+        },
+        "otherInterfaceCounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "hasIpv4DefaultRoute": {
+          "type": "boolean"
+        },
+        "ipv6Enabled": {
+          "type": "boolean"
+        },
+        "listeners": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "service": {
+                "type": "string"
+              },
+              "port": {
+                "type": "integer"
+              },
+              "protocol": {
+                "enum": [
+                  "tcp",
+                  "udp"
+                ]
+              },
+              "bindScope": {
+                "enum": [
+                  "loopback",
+                  "all-interfaces",
+                  "specific-address"
+                ]
+              }
+            },
+            "required": [
+              "bindScope",
+              "port",
+              "protocol",
+              "service"
+            ]
+          }
+        },
+        "p2pEstablishedTcp": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "hasIpv4DefaultRoute",
+        "interfaces",
+        "ipv6Enabled",
+        "listeners",
+        "otherInterfaceCounts",
+        "p2pEstablishedTcp"
+      ]
+    },
+    "roko": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deployment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "runtime": {
+              "enum": [
+                "native",
+                "docker",
+                "not-detected"
+              ]
+            },
+            "dockerImageId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "dockerImageId",
+            "runtime"
+          ]
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "present": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "activeState": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "subState": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "unitFileState": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "restartPolicy": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "restartCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "activeSeconds": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "memoryCurrentBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "cpuUsageSeconds": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tasksCurrent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "limitNofile": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "present"
+          ]
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "running": {
+              "type": "boolean"
+            },
+            "matchingProcesses": {
+              "type": "integer"
+            },
+            "inContainer": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "ageSeconds": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "residentBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "peakResidentBytes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "threads": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "openFiles": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "openFilesLimit": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "systemdUnit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "running",
+            "matchingProcesses"
+          ]
+        },
+        "binary": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "present": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sha256": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "present"
+          ]
+        },
+        "nodeFlags": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "enum": [
+                "running-process",
+                "service-unit",
+                "not-found"
+              ]
+            },
+            "flags": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "flag": {
+                    "type": "string",
+                    "pattern": "^--"
+                  },
+                  "value": {
+                    "type": [
+                      "string",
+                      "boolean"
+                    ]
+                  }
+                },
+                "required": [
+                  "flag",
+                  "value"
+                ]
+              }
+            }
+          },
+          "required": [
+            "flags",
+            "source"
+          ]
+        },
+        "validatorEnrollToolVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "binary",
+        "deployment",
+        "nodeFlags",
+        "process",
+        "service",
+        "validatorEnrollToolVersion"
+      ]
+    },
+    "time": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ntpSynchronized": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "rtcInLocalTime": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "activeTimeServices": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "chronySocketPresent": {
+          "type": "boolean"
+        },
+        "chrony": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "stratum": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "systemTimeOffsetSeconds": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "lastOffsetSeconds": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rmsOffsetSeconds": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "frequencyPpm": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "skewPpm": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rootDelaySeconds": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rootDispersionSeconds": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "leapStatus": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sourcesTotal": {
+              "type": "integer"
+            },
+            "sourcesSelected": {
+              "type": "integer"
+            },
+            "sourcesCombined": {
+              "type": "integer"
+            },
+            "sourcesUnreachable": {
+              "type": "integer"
+            }
+          }
+        },
+        "ptpHardwareClocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "activeTimeServices",
+        "chrony",
+        "chronySocketPresent",
+        "ntpSynchronized",
+        "ptpHardwareClocks",
+        "rtcInLocalTime"
+      ]
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "endpointScope": {
+          "enum": [
+            "loopback",
+            "remote",
+            null
+          ]
+        },
+        "reachable": {
+          "type": "boolean"
+        },
+        "software": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "chain": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "roles": {
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "peers": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "isSyncing": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "currentBlock": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "highestBlock": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "finalizedBlock": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "specName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "specVersion": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "meshPeerCount": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "meshTimeQuality": {},
+        "meshConvergenceState": {},
+        "unavailableMethods": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "peerId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "endpointScope",
+        "reachable"
+      ]
+    },
+    "utilization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sampleSeconds": {
+          "type": "number"
+        },
+        "loadAverage": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number"
+          }
+        },
+        "pressure": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "cpuPercent": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "disks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "device": {
+                "type": "string"
+              },
+              "readIops": {
+                "type": "number"
+              },
+              "writeIops": {
+                "type": "number"
+              },
+              "readBytesPerSec": {
+                "type": "integer"
+              },
+              "writeBytesPerSec": {
+                "type": "integer"
+              },
+              "busyPercent": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "busyPercent",
+              "device",
+              "readBytesPerSec",
+              "readIops",
+              "writeBytesPerSec",
+              "writeIops"
+            ]
+          }
+        },
+        "network": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "interface": {
+                "type": "string"
+              },
+              "rxBytesPerSec": {
+                "type": "integer"
+              },
+              "txBytesPerSec": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "interface",
+              "rxBytesPerSec",
+              "txBytesPerSec"
+            ]
+          }
+        },
+        "nodeProcessCpuPercentOfOneCore": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "sampleSeconds",
+        "loadAverage",
+        "pressure"
+      ]
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "warn",
+              "fail",
+              "unknown"
+            ]
+          },
+          "observed": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "basis",
+          "expected",
+          "id",
+          "observed",
+          "status"
+        ]
+      }
+    },
+    "collectionGaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "area": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "area",
+          "reason"
+        ]
+      }
+    }
+  }
+}

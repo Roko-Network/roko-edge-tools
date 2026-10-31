@@ -35,6 +35,10 @@ python3 -m py_compile bin/roko-timebeat-readiness lib/timebeat_readiness.py
 python3 test/timebeat_readiness.py
 python3 test/docset.py
 python3 test/validator_public_contract.py
+python3 -m py_compile bin/roko-node-snapshot lib/node_snapshot/*.py test/node_snapshot.py
+python3 test/node_snapshot.py
+grep -F "roko.node-system-snapshot.v1" contracts/node-system-snapshot-v1.schema.json >/dev/null
+grep -F "roko-node-snapshot" README.md >/dev/null
 
 grep -R "ntp01.roko.network" README.md examples docs bin lib >/dev/null
 grep -R "/roko/timesync/1" README.md docs >/dev/null

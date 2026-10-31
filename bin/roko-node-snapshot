@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""Write a privacy-filtered system snapshot of a ROKO node host for support and capacity planning."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+from node_snapshot.snapshot_cli import main
+
+raise SystemExit(main())

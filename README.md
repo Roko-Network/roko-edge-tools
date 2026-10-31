@@ -90,7 +90,12 @@ cd roko-edge-tools
 ./bin/roko-rpc-health --rpc http://127.0.0.1:9944
 ./bin/roko-validator-watch --rpc http://127.0.0.1:9944 --output validator-window.jsonl
 ./bin/roko-time-health
+./bin/roko-node-snapshot --label my-node
 ```
+
+`roko-node-snapshot` needs no root and writes a `0600` JSON file you can
+review and send to the ROKO team when asking for help. See
+[what it collects and never collects](docs/node-system-snapshot.md).
 
 For a guided full, archive, observer, or validator-candidate installation:
 
@@ -138,6 +143,7 @@ and provides bounded read-only checks.
 | `bin/roko-time-health` | Chrony/system clock diagnostics; see [timing interpretation and safe checks](docs/time-authority/validator-timing.md) |
 | `bin/roko-node-tail` | Convenience log tail for a systemd-managed node |
 | `bin/roko-edge-report` | Generate a sanitized support bundle |
+| `bin/roko-node-snapshot` | Write a privacy-filtered JSON snapshot of host hardware, node configuration and utilization for support and capacity planning; see [node system snapshot](docs/node-system-snapshot.md) |
 | `bin/roko-seed-refresh` | Add current ROKO snapshot/release torrents to Transmission and verify completed payloads |
 | `bin/roko-guided-install` | Run the self-contained AIWG-manifested installer for Chrony or operator-licensed Timebeat deployments |
 | `bin/roko-validator-enroll` | Generate/verify a public enrollment package and capture the node's validated redacted Safe-RPC readiness result for Agora |
