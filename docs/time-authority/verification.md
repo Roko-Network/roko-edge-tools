@@ -44,6 +44,9 @@ selected-source stratum changes, source count below two, abnormal root distance,
 offset or frequency excursions, service restarts, source disagreement, mesh
 quality degradation, loss of finality, and configuration drift.
 
+To keep the clock tied to its nearest stratum-1 servers and be alerted when it
+drifts, follow [Nearest stratum-1 sources and scheduled bootstrap](stratum1-bootstrap.md).
+
 For falling scores, clock-domain checks and interpreting the explorer’s
 five-minute minimum, follow [Validator timing and mesh quality](validator-timing.md)
 before changing clocks, services or thresholds.

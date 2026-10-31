@@ -141,6 +141,8 @@ and provides bounded read-only checks.
 | `bin/roko-validator-watch` | Bounded Safe-RPC evidence for temporal quorum, readiness, advancing finality, and finalized authorship |
 | `bin/roko-timebeat-readiness` | Bounded read-only Timebeat inventory with sanitized JSON and explicit runtime unknowns; [scope and trial gates](docs/time-authority/timebeat-readiness.md) |
 | `bin/roko-time-health` | Chrony/system clock diagnostics; see [timing interpretation and safe checks](docs/time-authority/validator-timing.md) |
+| `bin/roko-stratum1-select` | Measure public stratum-1 NTP servers from this host and add the nearest healthy ones to Chrony; see [nearest stratum-1 sources](docs/time-authority/stratum1-bootstrap.md) |
+| `bin/roko-stratum1-schedule` | Schedule `bin/roko-stratum1-bootstrap`, an hourly refresh-and-verify check against stratum-1 UTC that never steps the clock |
 | `bin/roko-node-tail` | Convenience log tail for a systemd-managed node |
 | `bin/roko-edge-report` | Generate a sanitized support bundle |
 | `bin/roko-node-snapshot` | Write a privacy-filtered JSON snapshot of host hardware, node configuration and utilization for support and capacity planning; see [node system snapshot](docs/node-system-snapshot.md) |

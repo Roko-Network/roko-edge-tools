@@ -62,6 +62,10 @@ routes:
     file: verification.md
     audience: [hobbyist, professional, agent]
     tasks: [verify, monitor, accept]
+  - id: stratum1-bootstrap
+    file: stratum1-bootstrap.md
+    audience: [hobbyist, professional, agent]
+    tasks: [select, configure, schedule, verify]
   - id: validator-timing
     file: validator-timing.md
     audience: [hobbyist, professional, agent]

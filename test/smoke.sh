@@ -39,6 +39,14 @@ python3 -m py_compile bin/roko-node-snapshot lib/node_snapshot/*.py test/node_sn
 python3 test/node_snapshot.py
 grep -F "roko.node-system-snapshot.v1" contracts/node-system-snapshot-v1.schema.json >/dev/null
 grep -F "roko-node-snapshot" README.md >/dev/null
+bash -n bin/roko-stratum1-bootstrap
+bash -n bin/roko-stratum1-schedule
+python3 -m py_compile bin/roko-stratum1-select lib/stratum1_select/*.py test/stratum1_select.py
+python3 test/stratum1_select.py
+test/stratum1_bootstrap.sh
+test/stratum1_schedule.sh
+grep -F "roko.stratum1-candidates.v1" installer/stratum1-candidates.json >/dev/null
+grep -F "never steps the clock" bin/roko-stratum1-bootstrap >/dev/null
 
 grep -R "ntp01.roko.network" README.md examples docs bin lib >/dev/null
 grep -R "/roko/timesync/1" README.md docs >/dev/null

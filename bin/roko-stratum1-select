@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""Find the nearest healthy stratum-1 NTP servers from this host and configure them for Chrony."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+from stratum1_select.select_cli import main
+
+raise SystemExit(main())

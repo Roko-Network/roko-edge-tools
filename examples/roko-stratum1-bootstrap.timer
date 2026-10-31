@@ -1,0 +1,14 @@
+[Unit]
+Description=Refresh and verify ROKO host clock against stratum-1 UTC every hour
+
+[Timer]
+OnBootSec=10min
+OnCalendar=hourly
+# Spread hosts across the hour (stable per host) so public servers are not hit at once.
+RandomizedDelaySec=55min
+FixedRandomDelay=true
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
