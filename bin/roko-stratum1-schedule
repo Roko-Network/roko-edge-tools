@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# Install, preview or remove a recurring stratum-1 clock check (systemd timer or cron).
+set -euo pipefail
+
+TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DEST_ROOT="${ROKO_STRATUM1_DEST_ROOT:-}"   # staging prefix for tests; empty on real hosts
+LIBEXEC="$DEST_ROOT/usr/local/libexec/roko-stratum1-bootstrap"
+UNIT_DIR="$DEST_ROOT/etc/systemd/system"
+CRON_FILE="$DEST_ROOT/etc/cron.d/roko-stratum1-bootstrap"
+mode=systemd execute=false remove=false
+
+usage() {
+  cat <<'USAGE'
+Usage: roko-stratum1-schedule [--cron] [--remove] [--execute]
+
+Schedules bin/roko-stratum1-bootstrap to run hourly as the Chrony user.
+Without --execute it only prints what it would install (dry run).
+
+  --cron      use /etc/cron.d instead of a systemd timer (hosts without systemd)
+  --remove    uninstall the schedule and the installed check
+  --execute   apply the change (needs root)
+USAGE
+}
+
+while (($#)); do
+  case "$1" in
+    --cron) mode=cron ;;
+    --remove) remove=true ;;
+    --execute) execute=true ;;
+    -h|--help) usage; exit 0 ;;
+    *) printf 'roko-stratum1-schedule: unknown option %s\n' "$1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+chrony_user() {
+  local candidate
+  for candidate in _chrony chrony; do
+    if getent passwd "$candidate" >/dev/null 2>&1; then printf '%s' "$candidate"; return; fi
+  done
+  printf 'root'
+}
+
+# A stable per-host minute keeps cron hosts spread across the hour.
+host_minute() {
+  local seed
+  seed="$(cat /etc/machine-id 2>/dev/null || hostname)"
+  printf '%d' $(( 0x$(printf '%s' "$seed" | sha256sum | cut -c1-6) % 60 ))
+}
+
+render_service() { sed "s/@CHRONY_USER@/$1/g" "$TOOL_DIR/examples/roko-stratum1-bootstrap.service"; }
+
+render_cron() {
+  printf '# Managed by roko-stratum1-schedule: hourly stratum-1 clock check (never steps the clock).\n'
+  printf 'SHELL=/bin/sh\nPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n'
+  printf '%s * * * * %s /usr/local/libexec/roko-stratum1-bootstrap 2>&1 | logger -t roko-stratum1-bootstrap\n' \
+    "$(host_minute)" "$1"
+}
+
+preflight() {
+  command -v chronyc >/dev/null 2>&1 || { echo "roko-stratum1-schedule: chronyc not found; install chrony first" >&2; exit 1; }
+  if [[ "$mode" == systemd && -z "$DEST_ROOT" ]] && ! command -v systemctl >/dev/null 2>&1; then
+    echo "roko-stratum1-schedule: systemctl not found; use --cron" >&2; exit 1
+  fi
+  local existing="$UNIT_DIR/roko-stratum1-bootstrap.service"
+  if [[ -f "$existing" ]] && ! grep -q 'roko-edge-tools' "$existing"; then
+    echo "roko-stratum1-schedule: $existing exists and is managed by something else; leaving it alone" >&2
+    exit 1
+  fi
+  if $execute && [[ -z "$DEST_ROOT" && "$(id -u)" -ne 0 ]]; then
+    echo "roko-stratum1-schedule: --execute needs root; re-run with sudo" >&2; exit 1
+  fi
+}
+
+systemctl_live() { [[ -z "$DEST_ROOT" ]] && systemctl "$@"; }
+
+install_schedule() {
+  local user; user="$(chrony_user)"
+  echo "plan: install $LIBEXEC (from bin/roko-stratum1-bootstrap)"
+  if [[ "$mode" == systemd ]]; then
+    echo "plan: install $UNIT_DIR/roko-stratum1-bootstrap.{service,timer} (User=$user), enable timer, run once"
+  else
+    echo "plan: install $CRON_FILE:"; render_cron "$user" | sed 's/^/    /'
+  fi
+  $execute || { echo "dry run: nothing changed; add --execute to apply"; return; }
+  install -D -m 0755 "$TOOL_DIR/bin/roko-stratum1-bootstrap" "$LIBEXEC"
+  if [[ "$mode" == systemd ]]; then
+    mkdir -p "$UNIT_DIR"
+    render_service "$user" >"$UNIT_DIR/roko-stratum1-bootstrap.service"
+    install -m 0644 "$TOOL_DIR/examples/roko-stratum1-bootstrap.timer" "$UNIT_DIR/roko-stratum1-bootstrap.timer"
+    systemctl_live daemon-reload || true
+    systemctl_live enable --now roko-stratum1-bootstrap.timer || true
+    if [[ -z "$DEST_ROOT" ]]; then
+      systemctl start roko-stratum1-bootstrap.service || echo "first check failed; see: journalctl -u roko-stratum1-bootstrap" >&2
+      systemctl list-timers roko-stratum1-bootstrap.timer --no-pager || true
+    fi
+  else
+    mkdir -p "$(dirname "$CRON_FILE")"
+    render_cron "$user" >"$CRON_FILE"; chmod 0644 "$CRON_FILE"
+  fi
+  echo "installed; results go to the journal (tag roko-stratum1-bootstrap)"
+}
+
+remove_schedule() {
+  echo "plan: disable timer, remove units, cron entry and $LIBEXEC"
+  $execute || { echo "dry run: nothing changed; add --execute to apply"; return; }
+  systemctl_live disable --now roko-stratum1-bootstrap.timer 2>/dev/null || true
+  rm -f "$UNIT_DIR/roko-stratum1-bootstrap.service" "$UNIT_DIR/roko-stratum1-bootstrap.timer" "$CRON_FILE" "$LIBEXEC"
+  systemctl_live daemon-reload 2>/dev/null || true
+  echo "removed"
+}
+
+preflight
+if $remove; then remove_schedule; else install_schedule; fi

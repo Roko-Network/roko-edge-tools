@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Refresh Chrony's stratum-1 measurements and verify the clock against them.
+#
+# Requests a measurement burst, waits for Chrony's sync gate, then fails unless at
+# least one fresh stratum-1 source agrees with the system clock and the clock is
+# disciplined at local stratum <= 2. It never steps the clock: Chrony keeps
+# slewing under its configured sources. A non-zero exit shows up in
+# `systemctl --failed`, the journal, or cron mail.
+#
+# Run as root or the Chrony user (_chrony on Debian/Ubuntu, chrony on Fedora/RHEL),
+# which may use chronyc's privileged burst command. Schedule it with
+# roko-stratum1-schedule; choose sources with roko-stratum1-select.
+#
+# Environment (all optional):
+#   CHRONYC                          chronyc binary (tests inject a fixture)
+#   ROKO_STRATUM1_MAX_OFFSET_S       max |offset| to a stratum-1 source (default 0.005)
+#   ROKO_STRATUM1_MAX_AGE_S          max seconds since that source's last sample (default 180)
+#   ROKO_STRATUM1_MIN_SOURCES        fresh in-bound stratum-1 sources required (default 1)
+#   ROKO_STRATUM1_SETTLE_S           seconds to wait for burst samples (default 20)
+#   ROKO_STRATUM1_MAX_LOCAL_STRATUM  highest acceptable local stratum (default 2)
+set -euo pipefail
+
+CHRONYC="${CHRONYC:-chronyc}"
+max_offset="${ROKO_STRATUM1_MAX_OFFSET_S:-0.005}"
+max_age="${ROKO_STRATUM1_MAX_AGE_S:-180}"
+min_sources="${ROKO_STRATUM1_MIN_SOURCES:-1}"
+settle="${ROKO_STRATUM1_SETTLE_S:-20}"
+max_local_stratum="${ROKO_STRATUM1_MAX_LOCAL_STRATUM:-2}"
+
+log() { printf 'roko-stratum1-bootstrap: %s\n' "$*"; }
+
+case "${1:-}" in
+  -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  "") ;;
+  *) log "unknown argument: $1"; exit 2 ;;
+esac
+
+if ! "$CHRONYC" burst 4/8 >/dev/null 2>&1; then
+  log "FAIL chronyc burst was refused; run as root or the Chrony user, with chronyd running"
+  exit 1
+fi
+sleep "$settle"
+if ! "$CHRONYC" waitsync 12 0.001 5 5 >/dev/null; then
+  log "FAIL Chrony did not reach its sync gate (offset <= 1 ms) within 60 s"
+  exit 1
+fi
+
+# CSV columns: mode,state,name,stratum,poll,reach(octal),lastRx,adjusted,measured,error
+summary="$("$CHRONYC" -c -n sources | awk -F, \
+  -v max_offset="$max_offset" -v max_age="$max_age" '
+  $1 == "^" && $4 == 1 {
+    total++
+    offset = $8 < 0 ? -$8 : $8
+    fresh = ($6 != "0" && $7 != "-" && $7 + 0 <= max_age)
+    if (fresh && offset <= max_offset) ok++
+    detail = detail sprintf(" %s(state=%s reach=%s age=%ss offset=%.6fs)", $3, $2, $6, $7, $8)
+  }
+  END { printf "%d %d%s\n", total + 0, ok + 0, detail }')"
+
+read -r total ok _ <<<"$summary"
+detail="${summary#* * }"
+if (( total == 0 )); then
+  log "FAIL no stratum-1 source is configured; add one with: sudo roko-stratum1-select --install"
+  exit 1
+fi
+if (( ok < min_sources )); then
+  log "FAIL ${ok}/${total} stratum-1 source(s) fresh within ${max_offset}s (need ${min_sources}):${detail}"
+  exit 1
+fi
+# CSV columns: refid,name,stratum,...
+IFS=, read -r _ reference local_stratum _ < <("$CHRONYC" -c -n tracking)
+if ! [[ "$local_stratum" =~ ^[0-9]+$ ]] || (( local_stratum > max_local_stratum )); then
+  log "FAIL clock disciplined by ${reference:-unknown} at stratum ${local_stratum:-?} (need <= ${max_local_stratum}); ${ok}/${total} stratum-1 source(s) agree:${detail}"
+  exit 1
+fi
+log "OK ${ok}/${total} stratum-1 source(s) fresh within ${max_offset}s; disciplined by ${reference} at stratum ${local_stratum}:${detail}"

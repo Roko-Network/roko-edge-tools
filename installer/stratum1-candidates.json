@@ -1,0 +1,16 @@
+{
+  "schema": "roko.stratum1-candidates.v1",
+  "reviewed": "2026-10-31",
+  "note": "Public stratum-1 NTP servers measured as reachable stratum 1 from a ROKO host on the review date. roko-stratum1-select re-measures every candidate from the operator's own network before choosing; add a nearby national time laboratory with --candidate HOST.",
+  "candidates": [
+    {"host": "time-a-g.nist.gov", "operator": "NIST", "region": "americas", "directory": "https://tf.nist.gov/tf-cgi/servers.cgi"},
+    {"host": "time-b-g.nist.gov", "operator": "NIST", "region": "americas", "directory": "https://tf.nist.gov/tf-cgi/servers.cgi"},
+    {"host": "ptbtime1.ptb.de", "operator": "PTB", "region": "europe", "directory": "https://www.ptb.de/cms/en/ptb/fachabteilungen/abt9/gruppe-95/ref-952/time-synchronization-of-computers-using-the-network-time-protocol-ntp.html"},
+    {"host": "ptbtime2.ptb.de", "operator": "PTB", "region": "europe", "directory": "https://www.ptb.de/cms/en/ptb/fachabteilungen/abt9/gruppe-95/ref-952/time-synchronization-of-computers-using-the-network-time-protocol-ntp.html"},
+    {"host": "ptbtime3.ptb.de", "operator": "PTB", "region": "europe", "directory": "https://www.ptb.de/cms/en/ptb/fachabteilungen/abt9/gruppe-95/ref-952/time-synchronization-of-computers-using-the-network-time-protocol-ntp.html"},
+    {"host": "ptbtime4.ptb.de", "operator": "PTB", "region": "europe", "directory": "https://www.ptb.de/cms/en/ptb/fachabteilungen/abt9/gruppe-95/ref-952/time-synchronization-of-computers-using-the-network-time-protocol-ntp.html"},
+    {"host": "ntp1.npl.co.uk", "operator": "NPL", "region": "europe", "directory": null},
+    {"host": "sth1.ntp.se", "operator": "Netnod", "region": "europe", "directory": null},
+    {"host": "ntp.nict.jp", "operator": "NICT", "region": "asia", "directory": "https://www.nict.go.jp/en/sts/ntp.html"}
+  ]
+}
