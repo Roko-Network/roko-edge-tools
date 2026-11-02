@@ -22,6 +22,11 @@ The command samples utilization for five seconds, prints a summary, and writes
 `roko-node-snapshot-<UTC time>.json` with mode `0600`. It never overwrites an
 existing file. Review the JSON before you send it.
 
+## Send it
+
+Message [@manitcor](https://t.me/manitcor) on Telegram to arrange delivery of
+your snapshot file.
+
 Useful options:
 
 | Option | Effect |
